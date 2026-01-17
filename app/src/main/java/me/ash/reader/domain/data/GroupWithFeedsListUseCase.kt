@@ -84,8 +84,11 @@ class GroupWithFeedsListUseCase @Inject constructor(
                     val feedList = it.feeds.map { feed ->
                         feed.copy(important = articleCountMap[feed.id] ?: 0)
                     }
-                    it.copy(feeds = feedList.toMutableList())
+                    // 2026-01-27: 按 sortOrder 排序，使订阅源排序功能生效
+                    it.copy(feeds = feedList.sortedBy { it.sortOrder }.toMutableList())
                 })
+                // 2026-01-22: 按 sortOrder 排序，使分组排序功能生效
+                .sortedBy { it.group.sortOrder }
             }.flowOn(ioDispatcher).collect { _groupWithFeedsListFlow.value = it }
 
         }
@@ -105,22 +108,26 @@ class GroupWithFeedsListUseCase @Inject constructor(
                         feed.copy(important = feedCount)
                     }
 
+                    // 2026-01-27: 按 sortOrder 排序，使订阅源排序功能生效
+                    val sortedFeedList = feedList.sortedBy { it.sortOrder }
+
                     val groupItem = if (hideEmptyGroups) {
-                        val filteredFeeds = feedList.filterNot { it.important == 0 }
+                        val filteredFeeds = sortedFeedList.filterNot { it.important == 0 }
                         if (filteredFeeds.isEmpty()) {
                             continue
                         } else {
                             groupItem.copy(feeds = filteredFeeds.toMutableList())
                         }
                     } else {
-                        groupItem.copy(feeds = feedList.toMutableList())
+                        groupItem.copy(feeds = sortedFeedList.toMutableList())
                     }
 
                     if (groupItem.group.id != defaultGroupId || groupItem.feeds.isNotEmpty()) {
                         result.add(groupItem)
                     }
                 }
-                result
+                // 2026-01-22: 按 sortOrder 排序，使分组排序功能生效
+                result.sortedBy { it.group.sortOrder }
             }.flowOn(ioDispatcher).collect {
                 _groupWithFeedsListFlow.value = it
             }
@@ -148,15 +155,18 @@ class GroupWithFeedsListUseCase @Inject constructor(
                         feed.copy(important = combinedFeedCount.coerceAtLeast(0))
                     }
 
+                    // 2026-01-27: 按 sortOrder 排序，使订阅源排序功能生效
+                    val sortedFeedList = feedList.sortedBy { it.sortOrder }
+
                     val groupItem = if (hideEmptyGroups) {
-                        val filteredFeeds = feedList.filterNot { it.important == 0 }
+                        val filteredFeeds = sortedFeedList.filterNot { it.important == 0 }
                         if (filteredFeeds.isEmpty()) {
                             continue
                         } else {
                             groupItem.copy(feeds = filteredFeeds.toMutableList())
                         }
                     } else {
-                        groupItem.copy(feeds = feedList.toMutableList())
+                        groupItem.copy(feeds = sortedFeedList.toMutableList())
                     }
 
                     if (groupItem.group.id != defaultGroupId || groupItem.feeds.isNotEmpty()) {
@@ -164,7 +174,8 @@ class GroupWithFeedsListUseCase @Inject constructor(
                     }
 
                 }
-                result
+                // 2026-01-22: 按 sortOrder 排序，使分组排序功能生效
+                result.sortedBy { it.group.sortOrder }
             }.debounce(200L).flowOn(ioDispatcher).collect { _groupWithFeedsListFlow.value = it }
         }
     }

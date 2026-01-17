@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.DefaultAlpha
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -26,6 +27,7 @@ val SIZE_1000 = Size(1000, 1000)
 fun RYAsyncImage(
     modifier: Modifier = Modifier,
     data: Any? = null,
+    key: Any? = null,  // 2026-01-23: 添加缓存 key 支持
     size: Size = Size.ORIGINAL,
     scale: Scale = Scale.FIT,
     precision: Precision = Precision.AUTOMATIC,
@@ -33,6 +35,8 @@ fun RYAsyncImage(
     contentDescription: String? = null,
     @DrawableRes placeholder: Int? = null,
     @DrawableRes error: Int? = null,
+    colorFilter: ColorFilter? = null,
+    backgroundColor: Color? = null,
 ) {
     val painter =
         rememberAsyncImagePainter(
@@ -42,6 +46,10 @@ fun RYAsyncImage(
                         val domain = data.toString().extractDomain()
                         if (data.toString().extractDomain() != null) {
                             addHeader("Referer", domain!!)
+                        }
+                        // 2026-01-23: 使用 key 强制 Coil 在数据变化时重新加载
+                        if (key != null) {
+                            memoryCacheKey(key.toString())
                         }
                     }
                     .data(data = data)
@@ -59,7 +67,8 @@ fun RYAsyncImage(
         painter = painter,
         contentDescription = contentDescription,
         contentScale = contentScale,
-        modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainer),
+        colorFilter = colorFilter,
+        modifier = modifier.background(backgroundColor ?: MaterialTheme.colorScheme.surfaceContainer),
     )
 
     //    coil.compose.AsyncImage(

@@ -41,7 +41,7 @@ sealed class FlowArticleListDescPreference(val value: Int) : Preference() {
 
     companion object {
 
-        val default = SHORT
+        val default = NONE
         val values = listOf(NONE, SHORT, LONG)
 
         fun fromPreferences(preferences: Preferences) =

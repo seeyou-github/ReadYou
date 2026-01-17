@@ -20,20 +20,37 @@ data class Settings(
     val darkTheme: DarkThemePreference = DarkThemePreference.default,
     val amoledDarkTheme: AmoledDarkThemePreference = AmoledDarkThemePreference.default,
     val basicFonts: BasicFontsPreference = BasicFontsPreference.default,
+    val customReaderThemes: List<me.ash.reader.domain.model.theme.ColorTheme> = CustomReaderThemesPreference.default,
+//    val selectedReaderThemeId: String = SelectedReaderThemeIdPreference.default,
 
     // Feeds page
     val feedsFilterBarStyle: FeedsFilterBarStylePreference = FeedsFilterBarStylePreference.default,
     val feedsFilterBarPadding: Int = FeedsFilterBarPaddingPreference.default,
     val feedsFilterBarTonalElevation: FeedsFilterBarTonalElevationPreference = FeedsFilterBarTonalElevationPreference.default,
+    val feedsFilterBarHeight: Int = FeedsFilterBarHeightPreference.default,
+    val feedsTopBarHeight: Int = FeedsTopBarHeightPreference.default,
     val feedsTopBarTonalElevation: FeedsTopBarTonalElevationPreference = FeedsTopBarTonalElevationPreference.default,
     val feedsGroupListExpand: FeedsGroupListExpandPreference = FeedsGroupListExpandPreference.default,
     val feedsGroupListTonalElevation: FeedsGroupListTonalElevationPreference = FeedsGroupListTonalElevationPreference.default,
+    val feedsLayoutStyle: FeedsLayoutStylePreference = FeedsLayoutStylePreference.default,
+    val feedsPageColorThemes: List<me.ash.reader.domain.model.theme.ColorTheme> = FeedsPageColorThemesPreference.default,
+    // 2026-01-21: 新增订阅源图标样式设置
+    val feedsIconBrightness: Int = FeedsIconBrightnessPreference.default,
+    val feedsGridColumnCount: Int = FeedsGridColumnCountPreference.default,
+    val feedsGridRowSpacing: Int = FeedsGridRowSpacingPreference.default,
+    val feedsGridIconSize: Int = FeedsGridIconSizePreference.default,
+    val feedsListItemHeight: Int = FeedsListItemHeightPreference.default,
+    // 2026-01-23: 新增列表视图列表边距字段
+    // 修改原因：在 Settings 中存储列表视图列表边距设置
+    val feedsListItemPadding: Int = FeedsListItemPaddingPreference.default,
 
     // Flow page
     val flowFilterBarStyle: FlowFilterBarStylePreference = FlowFilterBarStylePreference.default,
     val flowFilterBarPadding: Int = FlowFilterBarPaddingPreference.default,
     val flowFilterBarTonalElevation: FlowFilterBarTonalElevationPreference = FlowFilterBarTonalElevationPreference.default,
     val flowTopBarTonalElevation: FlowTopBarTonalElevationPreference = FlowTopBarTonalElevationPreference.default,
+    // 2026-01-21: 新增过滤栏自动隐藏功能
+    val flowFilterBarAutoHide: FlowFilterBarAutoHidePreference = FlowFilterBarAutoHidePreference.default,
     val flowArticleListFeedIcon: FlowArticleListFeedIconPreference = FlowArticleListFeedIconPreference.default,
     val flowArticleListFeedName: FlowArticleListFeedNamePreference = FlowArticleListFeedNamePreference.default,
     val flowArticleListImage: FlowArticleListImagePreference = FlowArticleListImagePreference.default,
@@ -43,6 +60,18 @@ data class Settings(
     val flowArticleListTonalElevation: FlowArticleListTonalElevationPreference = FlowArticleListTonalElevationPreference.default,
     val flowArticleListReadIndicator: FlowArticleReadIndicatorPreference = FlowArticleReadIndicatorPreference.default,
     val flowSortUnreadArticles: SortUnreadArticlesPreference = SortUnreadArticlesPreference.default,
+    // 2026-01-27: 新增首行大图模式设置
+    val flowArticleListFirstItemLargeImage: FlowArticleListFirstItemLargeImagePreference = FlowArticleListFirstItemLargeImagePreference.default,
+    // 2026-01-18: 新增文章列表样式设置相关的字段
+    val flowArticleListTitleFontSize: Int = FlowArticleListTitleFontSizePreference.default,
+    val flowArticleListTitleLineHeight: Float = FlowArticleListTitleLineHeightPreference.default,
+    val flowArticleListHorizontalPadding: Int = FlowArticleListHorizontalPaddingPreference.default,
+    val flowArticleListVerticalPadding: Int = FlowArticleListVerticalPaddingPreference.default,
+    val flowArticleListImageRoundedCorners: Int = FlowArticleListImageRoundedCornersPreference.default,
+    val flowArticleListImageSize: Int = FlowArticleListImageSizePreference.default,
+    val flowArticleListColorThemes: List<me.ash.reader.domain.model.theme.ColorTheme> = FlowArticleListColorThemesPreference.default,
+    val flowArticleListRoundedCorners: Int = FlowArticleListRoundedCornersPreference.default,
+    val flowArticleListItemSpacing: Int = FlowArticleListItemSpacingPreference.default,
 
     // Reading page
     val readingRenderer: ReadingRendererPreference = ReadingRendererPreference.default,
@@ -65,7 +94,13 @@ data class Settings(
     val readingSubheadUpperCase: ReadingSubheadUpperCasePreference = ReadingSubheadUpperCasePreference.default,
     val readingImageHorizontalPadding: Int = ReadingImageHorizontalPaddingPreference.default,
     val readingImageRoundedCorners: Int = ReadingImageRoundedCornersPreference.default,
+    val readingImageBrightness: Int = ReadingImageBrightnessPreference.default,
     val readingImageMaximize: ReadingImageMaximizePreference = ReadingImageMaximizePreference.default,
+    // 2026-01-24: 新增阅读页面标题样式设置相关字段
+    // 修改原因：支持标题字体大小、颜色、左右边距的可配置存储
+    val readingTitleFontSize: Int = ReadingTitleFontSizePreference.default,
+    val readingTitleColor: String = ReadingTitleColorPreference.default,
+    val readingTitleHorizontalPadding: Int = ReadingTitleHorizontalPaddingPreference.default,
 
     // Interaction
     val initialPage: InitialPagePreference = InitialPagePreference.default,

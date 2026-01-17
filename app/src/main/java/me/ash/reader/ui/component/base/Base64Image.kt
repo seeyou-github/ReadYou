@@ -18,6 +18,7 @@ fun Base64Image(
     modifier: Modifier = Modifier,
     base64Uri: String,
     onEmpty: @Composable () -> Unit = {},
+    colorFilter: androidx.compose.ui.graphics.ColorFilter? = null,
 ) {
     val isSvg = base64Uri.startsWith("image/svg")
 
@@ -25,7 +26,8 @@ fun Base64Image(
         Image(
             painter = base64ToPainter(base64Uri),
             modifier = modifier,
-            contentDescription = null
+            contentDescription = null,
+            colorFilter = colorFilter
         )
     } else {
         val bytes = base64ToBytes(base64Uri)
@@ -37,7 +39,8 @@ fun Base64Image(
             Image(
                 bitmap = bitmap.asImageBitmap(),
                 modifier = modifier,
-                contentDescription = null
+                contentDescription = null,
+                colorFilter = colorFilter
             )
         }
     }

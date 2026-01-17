@@ -27,8 +27,8 @@ sealed class FlowArticleListFeedIconPreference(val value: Boolean) : Preference(
     }
 
     companion object {
-
-        val default = ON
+        //默认值：订阅图标
+        val default = OFF
         val values = listOf(ON, OFF)
 
         fun fromPreferences(preferences: Preferences) =

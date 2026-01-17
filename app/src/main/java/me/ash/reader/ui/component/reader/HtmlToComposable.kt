@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Feeder: Android RSS reader app
  * https://gitlab.com/spacecowboy/Feeder
  *
@@ -52,6 +52,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import java.io.InputStream
 import me.ash.reader.R
+import me.ash.reader.infrastructure.preference.LocalReadingImageBrightness
 import me.ash.reader.infrastructure.preference.LocalReadingImageMaximize
 import me.ash.reader.ui.ext.requiresBidi
 import me.ash.reader.ui.theme.applyTextDirection
@@ -67,6 +68,7 @@ fun LazyListScope.htmlFormattedText(
     @DrawableRes imagePlaceholder: Int,
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
     onLinkClick: (String) -> Unit,
+    imageBrightness: Int = 100,
 ) {
     Jsoup.parse(inputStream, null, baseUrl)?.body()?.let { body ->
         formatBody(
@@ -76,6 +78,7 @@ fun LazyListScope.htmlFormattedText(
             onImageClick = onImageClick,
             onLinkClick = onLinkClick,
             baseUrl = baseUrl,
+            imageBrightness = imageBrightness,
         )
     }
 }
@@ -88,6 +91,7 @@ private fun LazyListScope.formatBody(
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
     onLinkClick: (String) -> Unit,
     baseUrl: String,
+    imageBrightness: Int = 100,
 ) {
     val composer = TextComposer { paragraphBuilder ->
         item {
@@ -129,6 +133,7 @@ private fun LazyListScope.formatBody(
         onImageClick = onImageClick,
         onLinkClick = onLinkClick,
         baseUrl = baseUrl,
+        imageBrightness = imageBrightness,
     )
 
     composer.terminateCurrentText()
@@ -140,6 +145,7 @@ private fun LazyListScope.formatCodeBlock(
     onImageClick: ((imgUrl: String, altText: String) -> Unit)?,
     onLinkClick: (String) -> Unit,
     baseUrl: String,
+    imageBrightness: Int = 100,
 ) {
     val composer = TextComposer { paragraphBuilder ->
         item {
@@ -176,6 +182,7 @@ private fun LazyListScope.formatCodeBlock(
         onImageClick = onImageClick,
         onLinkClick = onLinkClick,
         baseUrl = baseUrl,
+        imageBrightness = imageBrightness,
     )
 
     composer.terminateCurrentText()
@@ -190,6 +197,7 @@ private fun TextComposer.appendTextChildren(
     onImageClick: ((imgUrl: String, altText: String) -> Unit)?,
     onLinkClick: (String) -> Unit,
     baseUrl: String,
+    imageBrightness: Int = 100,
 ) {
     var node = nodes.firstOrNull()
     while (node != null) {
@@ -228,6 +236,7 @@ private fun TextComposer.appendTextChildren(
                                 onImageClick = onImageClick,
                                 onLinkClick = onLinkClick,
                                 baseUrl = baseUrl,
+                                imageBrightness = imageBrightness,
                             )
                         } else {
                             withParagraph {
@@ -238,6 +247,7 @@ private fun TextComposer.appendTextChildren(
                                     onImageClick = onImageClick,
                                     onLinkClick = onLinkClick,
                                     baseUrl = baseUrl,
+                                    imageBrightness = imageBrightness,
                                 )
                             }
                         }
@@ -332,6 +342,7 @@ private fun TextComposer.appendTextChildren(
                                 onImageClick = onImageClick,
                                 onLinkClick = onLinkClick,
                                 baseUrl = baseUrl,
+                                imageBrightness = imageBrightness,
                             )
                         }
                     }
@@ -348,6 +359,7 @@ private fun TextComposer.appendTextChildren(
                                 onImageClick = onImageClick,
                                 onLinkClick = onLinkClick,
                                 baseUrl = baseUrl,
+                                imageBrightness = imageBrightness,
                             )
                         }
                     }
@@ -361,6 +373,7 @@ private fun TextComposer.appendTextChildren(
                                 onImageClick = onImageClick,
                                 onLinkClick = onLinkClick,
                                 baseUrl = baseUrl,
+                                imageBrightness = imageBrightness,
                             )
                         }
                     }
@@ -374,6 +387,7 @@ private fun TextComposer.appendTextChildren(
                                 onImageClick = onImageClick,
                                 onLinkClick = onLinkClick,
                                 baseUrl = baseUrl,
+                                imageBrightness = imageBrightness,
                             )
                         }
                     }
@@ -387,6 +401,7 @@ private fun TextComposer.appendTextChildren(
                                 onImageClick = onImageClick,
                                 onLinkClick = onLinkClick,
                                 baseUrl = baseUrl,
+                                imageBrightness = imageBrightness,
                             )
                         }
                     }
@@ -400,6 +415,7 @@ private fun TextComposer.appendTextChildren(
                                 onImageClick = onImageClick,
                                 onLinkClick = onLinkClick,
                                 baseUrl = baseUrl,
+                                imageBrightness = imageBrightness,
                             )
                         }
                     }
@@ -414,6 +430,7 @@ private fun TextComposer.appendTextChildren(
                                 onImageClick = onImageClick,
                                 onLinkClick = onLinkClick,
                                 baseUrl = baseUrl,
+                                imageBrightness = imageBrightness,
                             )
                         }
                     }
@@ -427,6 +444,7 @@ private fun TextComposer.appendTextChildren(
                             onImageClick = onImageClick,
                             onLinkClick = onLinkClick,
                             baseUrl = baseUrl,
+                            imageBrightness = imageBrightness,
                         )
                     }
 
@@ -439,6 +457,7 @@ private fun TextComposer.appendTextChildren(
                                 onImageClick = onImageClick,
                                 onLinkClick = onLinkClick,
                                 baseUrl = baseUrl,
+                                imageBrightness = imageBrightness,
                             )
                         } else {
                             // inline code
@@ -451,6 +470,7 @@ private fun TextComposer.appendTextChildren(
                                     onImageClick = onImageClick,
                                     onLinkClick = onLinkClick,
                                     baseUrl = baseUrl,
+                                    imageBrightness = imageBrightness,
                                 )
                             }
                         }
@@ -471,6 +491,7 @@ private fun TextComposer.appendTextChildren(
                                     onImageClick = onImageClick,
                                     onLinkClick = onLinkClick,
                                     baseUrl = baseUrl,
+                                    imageBrightness = imageBrightness,
                                 )
                             }
                         }
@@ -486,6 +507,7 @@ private fun TextComposer.appendTextChildren(
                                 onImageClick = onImageClick,
                                 onLinkClick = onLinkClick,
                                 baseUrl = baseUrl,
+                                imageBrightness = imageBrightness,
                             )
                         }
                     }
@@ -513,6 +535,7 @@ private fun TextComposer.appendTextChildren(
                                                     PaddingValues(
                                                         horizontal = imageHorizontalPadding().dp
                                                     ),
+                                                brightness = imageBrightness,
                                                 onImageClick = onImageClick,
                                             )
                                         }
@@ -544,7 +567,7 @@ private fun TextComposer.appendTextChildren(
                             .forEach { listItem ->
                                 withParagraph {
                                     // no break space
-                                    append("  • ")
+                                    append("  �?")
                                     appendTextChildren(
                                         listItem.childNodes(),
                                         lazyListScope = lazyListScope,
@@ -655,6 +678,7 @@ private fun TextComposer.appendTextChildren(
                                                         PaddingValues(
                                                             horizontal = imageHorizontalPadding().dp
                                                         ),
+                                                    brightness = imageBrightness,
                                                 )
                                                 Box(
                                                     modifier =
@@ -736,7 +760,13 @@ private fun testIt() {
                 baseUrl = "https://cowboyprogrammer.org",
                 imagePlaceholder = R.drawable.ic_telegram,
                 onLinkClick = {},
+                imageBrightness = 100,
             )
         }
     }
 }
+
+
+
+
+

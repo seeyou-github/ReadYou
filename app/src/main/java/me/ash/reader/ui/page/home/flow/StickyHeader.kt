@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import me.ash.reader.domain.model.theme.ColorTheme
 import me.ash.reader.ui.ext.surfaceColorAtElevation
 import me.ash.reader.ui.theme.palette.onDark
 
@@ -18,13 +19,14 @@ fun StickyHeader(
     dateString: String,
     isShowFeedIcon: Boolean,
     articleListTonalElevation: Int,
+    colorTheme: ColorTheme? = null,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                MaterialTheme.colorScheme.surfaceColorAtElevation(articleListTonalElevation.dp)
-                        onDark MaterialTheme.colorScheme.surface
+                colorTheme?.backgroundColor ?: (MaterialTheme.colorScheme.surfaceColorAtElevation(articleListTonalElevation.dp)
+                        onDark MaterialTheme.colorScheme.surface)
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {

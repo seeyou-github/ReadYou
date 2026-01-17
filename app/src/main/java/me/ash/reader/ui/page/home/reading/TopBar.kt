@@ -45,8 +45,12 @@ import androidx.compose.ui.zIndex
 import me.ash.reader.R
 import me.ash.reader.infrastructure.preference.LocalReadingPageTonalElevation
 import me.ash.reader.infrastructure.preference.LocalSharedContent
+import me.ash.reader.infrastructure.preference.LocalFeedsTopBarTonalElevation
 import me.ash.reader.infrastructure.preference.ReadingPageTonalElevationPreference
 import me.ash.reader.ui.component.base.FeedbackIconButton
+import me.ash.reader.ui.component.reader.LocalReaderPaints
+import me.ash.reader.ui.component.reader.ReaderPaints
+import me.ash.reader.ui.ext.atElevation
 import me.ash.reader.ui.page.adaptive.NavigationAction
 
 private val sizeSpec = spring<IntSize>(stiffness = 700f)
@@ -62,16 +66,29 @@ fun TopBar(
     onClick: (() -> Unit)? = null,
     onNavButtonClick: (NavigationAction) -> Unit = {},
     onNavigateToStylePage: () -> Unit,
+    height: Int = 50, // 2026-01-22: 新增高度参数，默认64dp
 ) {
     val context = LocalContext.current
     val sharedContent = LocalSharedContent.current
     val isOutlined =
         LocalReadingPageTonalElevation.current == ReadingPageTonalElevationPreference.Outlined
 
+    // 2026-01-25: 使用当前主题的 backgroundColor
+    val readerPaints = LocalReaderPaints.current
+    val topBarTonalElevation = LocalFeedsTopBarTonalElevation.current
     val containerColor by
         animateColorAsState(
-            with(MaterialTheme.colorScheme) {
-                if (isOutlined || !isScrolled) surface else surfaceContainer
+            if (isOutlined || !isScrolled) {
+                readerPaints.background.atElevation(
+                    sourceColor = MaterialTheme.colorScheme.onSurface,
+                    elevation = topBarTonalElevation.value.dp
+                )
+            } else {
+                // 滚动时使用稍微深一点的颜色
+                readerPaints.background.atElevation(
+                    sourceColor = MaterialTheme.colorScheme.onSurface,
+                    elevation = topBarTonalElevation.value.dp
+                ).copy(alpha = 0.95f)
             },
             label = "",
             animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
@@ -92,12 +109,16 @@ fun TopBar(
                 TopAppBar(
                     title = {},
                     modifier =
-                        if (onClick == null) Modifier
-                        else
-                            Modifier.clickable(
-                                onClick = onClick,
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() },
+                        Modifier
+                            .height(height.dp)
+                            .then(
+                                if (onClick == null) Modifier
+                                else
+                                    Modifier.clickable(
+                                        onClick = onClick,
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() },
+                                    )
                             ),
                     windowInsets = WindowInsets(0.dp),
                     navigationIcon = {
@@ -123,14 +144,6 @@ fun TopBar(
                     },
                     actions = {
                         FeedbackIconButton(
-                            modifier = Modifier.size(22.dp),
-                            imageVector = Icons.Outlined.Palette,
-                            contentDescription = stringResource(R.string.style),
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        ) {
-                            onNavigateToStylePage()
-                        }
-                        FeedbackIconButton(
                             modifier = Modifier.size(20.dp),
                             imageVector = Icons.Outlined.Share,
                             contentDescription = stringResource(R.string.share),
@@ -138,6 +151,15 @@ fun TopBar(
                         ) {
                             sharedContent.share(context, title, link)
                         }
+                        FeedbackIconButton(
+                            modifier = Modifier.size(22.dp),
+                            imageVector = Icons.Outlined.Palette,
+                            contentDescription = stringResource(R.string.style),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        ) {
+                            onNavigateToStylePage()
+                        }
+
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 )

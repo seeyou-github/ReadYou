@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import java.util.Date
+import me.ash.reader.infrastructure.preference.LocalReadingImageBrightness
 import me.ash.reader.infrastructure.preference.LocalReadingRenderer
 import me.ash.reader.infrastructure.preference.LocalReadingSubheadUpperCase
 import me.ash.reader.infrastructure.preference.ReadingRendererPreference
@@ -71,6 +72,8 @@ fun Content(
                 }
             }
         }
+
+    val imageBrightness = LocalReadingImageBrightness.current
 
     if (isLoading) {
         Column { LoadingIndicator(modifier = Modifier.size(56.dp)) }
@@ -132,6 +135,7 @@ fun Content(
                             content = content,
                             onImageClick = onImageClick,
                             onLinkClick = { uriHandler.openUri(it) },
+                            imageBrightness = imageBrightness,
                         )
 
                         item {

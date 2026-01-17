@@ -176,22 +176,22 @@ fun TipsAndSupportPage(
                                     view.playSoundEffect(SoundEffectConstants.CLICK)
                                 },
                                 onTap = {
-                                    updateViewModel.checkUpdate(
-                                        {
-                                            context.showToast(context.getString(R.string.checking_updates))
-                                            context.dataStore.put(
-                                                DataStoreKey.skipVersionNumber,
-                                                ""
-                                            )
-                                        },
-                                        {
-                                            if (!it) {
-                                                context.showToast(
-                                                    context.getString(R.string.is_latest_version)
-                                                )
-                                            }
-                                        }
-                                    )
+//                                    updateViewModel.checkUpdate(
+//                                        {
+//                                            context.showToast(context.getString(R.string.checking_updates))
+//                                            context.dataStore.put(
+//                                                DataStoreKey.skipVersionNumber,
+//                                                ""
+//                                            )
+//                                        },
+//                                        {
+//                                            if (!it) {
+//                                                context.showToast(
+//                                                    context.getString(R.string.is_latest_version)
+//                                                )
+//                                            }
+//                                        }
+//                                    )
                                 }
                             )
                         },
@@ -247,15 +247,15 @@ fun TipsAndSupportPage(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         // Sponsor
-                        RoundIconButton(
-                            RoundIconButtonType.Sponsor(
-                                backgroundColor = MaterialTheme.colorScheme.tertiaryContainer alwaysLight true,
-                            ) {
-                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                view.playSoundEffect(SoundEffectConstants.CLICK)
-                                showSponsorDialog = true
-                            })
-                        Spacer(modifier = Modifier.width(16.dp))
+//                        RoundIconButton(
+//                            RoundIconButtonType.Sponsor(
+//                                backgroundColor = MaterialTheme.colorScheme.tertiaryContainer alwaysLight true,
+//                            ) {
+//                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+//                                view.playSoundEffect(SoundEffectConstants.CLICK)
+//                                showSponsorDialog = true
+//                            })
+//                        Spacer(modifier = Modifier.width(16.dp))
 
                         // GitHub
                         RoundIconButton(
@@ -272,18 +272,18 @@ fun TipsAndSupportPage(
                         Spacer(modifier = Modifier.width(16.dp))
 
                         // Telegram
-                        RoundIconButton(
-                            RoundIconButtonType.Telegram(
-                                backgroundColor = MaterialTheme.colorScheme.primaryContainer alwaysLight true,
-                            ) {
-                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                view.playSoundEffect(SoundEffectConstants.CLICK)
-                                context.openURL(
-                                    context.getString(R.string.telegram_link),
-                                    OpenLinkPreference.AutoPreferCustomTabs
-                                )
-                            })
-                        Spacer(modifier = Modifier.width(16.dp))
+//                        RoundIconButton(
+//                            RoundIconButtonType.Telegram(
+//                                backgroundColor = MaterialTheme.colorScheme.primaryContainer alwaysLight true,
+//                            ) {
+//                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+//                                view.playSoundEffect(SoundEffectConstants.CLICK)
+//                                context.openURL(
+//                                    context.getString(R.string.telegram_link),
+//                                    OpenLinkPreference.AutoPreferCustomTabs
+//                                )
+//                            })
+//                        Spacer(modifier = Modifier.width(16.dp))
 
                         // Help
                         RoundIconButton(
@@ -306,7 +306,7 @@ fun TipsAndSupportPage(
 
     UpdateDialog()
     if (showSponsorDialog) {
-        SponsorDialog { showSponsorDialog = false }
+//        SponsorDialog { showSponsorDialog = false }
     }
 }
 

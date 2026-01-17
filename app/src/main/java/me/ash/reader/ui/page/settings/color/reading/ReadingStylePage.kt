@@ -73,6 +73,7 @@ fun ReadingStylePage(
     navigateToReadingPageText: () -> Unit,
     navigateToReadingPageImage: () -> Unit,
     navigateToReadingPageVideo: () -> Unit,
+    navigateToColorTheme: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -92,12 +93,19 @@ fun ReadingStylePage(
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             uri?.let {
-                ExternalFonts(
-                    context,
-                    it,
-                    ExternalFonts.FontType.ReadingFont
-                ).copyToInternalStorage()
-                ReadingFontsPreference.External.put(context, scope)
+                try {
+                    ExternalFonts(
+                        context,
+                        it,
+                        ExternalFonts.FontType.ReadingFont
+                    ).copyToInternalStorage()
+                    // 2026-01-21: 先关闭对话框，避免在对话框显示时重启导致应用退出
+                    fontsDialogVisible = false
+                    ReadingFontsPreference.External.put(context, scope)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    context.showToast("Failed to load font: ${e.message}")
+                }
             } ?: context.showToast("Cannot get activity result with launcher")
         }
 
@@ -187,6 +195,11 @@ fun ReadingStylePage(
                         title = stringResource(R.string.reading_fonts),
                         desc = fonts.toDesc(context),
                         onClick = { fontsDialogVisible = true },
+                    ) {}
+                    SettingItem(
+                        title = stringResource(R.string.color_theme),
+                        desc = stringResource(R.string.color_and_style_desc),
+                        onClick = navigateToColorTheme,
                     ) {}
                     SettingItem(
                         title = stringResource(R.string.auto_hide_toolbars),
@@ -307,6 +320,8 @@ fun ReadingStylePage(
                 selected = it == fonts,
             ) {
                 if (it.value == ReadingFontsPreference.External.value) {
+                    // 2026-01-21: 先关闭对话框，避免在对话框显示时重启导致应用退出
+                    fontsDialogVisible = false
                     launcher.launch(arrayOf(MimeType.FONT))
                 } else {
                     it.put(context, scope)

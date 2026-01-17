@@ -20,6 +20,8 @@ import me.ash.reader.infrastructure.di.IODispatcher
 import me.ash.reader.ui.ext.DataStoreKey
 import me.ash.reader.ui.ext.collectAsStateValue
 import me.ash.reader.ui.ext.dataStore
+// 2026-01-23: 导入列表视图列表边距 Preference
+import me.ash.reader.infrastructure.preference.FeedsListItemPaddingPreference
 import javax.inject.Inject
 
 class SettingsProvider @Inject constructor(
@@ -87,6 +89,20 @@ class SettingsProvider @Inject constructor(
             LocalFeedsFilterBarStyle provides settings.feedsFilterBarStyle,
             LocalFeedsFilterBarPadding provides settings.feedsFilterBarPadding,
             LocalFeedsFilterBarTonalElevation provides settings.feedsFilterBarTonalElevation,
+            LocalFeedsFilterBarHeight provides settings.feedsFilterBarHeight,
+            LocalFeedsTopBarHeight provides settings.feedsTopBarHeight,
+            LocalFeedsLayoutStyle provides settings.feedsLayoutStyle,
+            LocalFeedsPageColorThemes provides settings.feedsPageColorThemes,
+            LocalFeedsPageColorTheme provides settings.feedsPageColorThemes.firstOrNull { it.isDefault },
+            // 2026-01-21: 新增订阅源图标样式设置
+            LocalFeedsIconBrightness provides settings.feedsIconBrightness,
+            LocalFeedsGridColumnCount provides settings.feedsGridColumnCount,
+            LocalFeedsGridRowSpacing provides settings.feedsGridRowSpacing,
+            LocalFeedsGridIconSize provides settings.feedsGridIconSize,
+            LocalFeedsListItemHeight provides settings.feedsListItemHeight,
+            // 2026-01-23: 提供列表视图列表边距设置
+            // 修改原因：在 Compose 中提供列表视图列表边距的访问
+            LocalFeedsListItemPadding provides settings.feedsListItemPadding,
 
             // Flow page
             LocalFlowTopBarTonalElevation provides settings.flowTopBarTonalElevation,
@@ -100,8 +116,22 @@ class SettingsProvider @Inject constructor(
             LocalFlowFilterBarStyle provides settings.flowFilterBarStyle,
             LocalFlowFilterBarPadding provides settings.flowFilterBarPadding,
             LocalFlowFilterBarTonalElevation provides settings.flowFilterBarTonalElevation,
+            // 2026-01-21: 新增过滤栏自动隐藏功能
+            LocalFlowFilterBarAutoHide provides settings.flowFilterBarAutoHide,
             LocalFlowArticleListReadIndicator provides settings.flowArticleListReadIndicator,
             LocalSortUnreadArticles provides settings.flowSortUnreadArticles,
+            // 2026-01-27: 新增首行大图模式设置
+            LocalFlowArticleListFirstItemLargeImage provides settings.flowArticleListFirstItemLargeImage,
+            // 2026-01-18: 新增文章列表样式设置相关的LocalSettings
+            LocalFlowArticleListTitleFontSize provides settings.flowArticleListTitleFontSize,
+            LocalFlowArticleListTitleLineHeight provides settings.flowArticleListTitleLineHeight,
+            LocalFlowArticleListHorizontalPadding provides settings.flowArticleListHorizontalPadding,
+            LocalFlowArticleListVerticalPadding provides settings.flowArticleListVerticalPadding,
+            LocalFlowArticleListImageRoundedCorners provides settings.flowArticleListImageRoundedCorners,
+            LocalFlowArticleListImageSize provides settings.flowArticleListImageSize,
+            LocalFlowArticleListRoundedCorners provides settings.flowArticleListRoundedCorners,
+            LocalFlowArticleListItemSpacing provides settings.flowArticleListItemSpacing,
+            LocalFlowArticleListColorThemes provides settings.flowArticleListColorThemes,
 
             // Reading page
             LocalReadingRenderer provides settings.readingRenderer,
@@ -124,7 +154,15 @@ class SettingsProvider @Inject constructor(
             LocalReadingSubheadUpperCase provides settings.readingSubheadUpperCase,
             LocalReadingImageHorizontalPadding provides settings.readingImageHorizontalPadding,
             LocalReadingImageRoundedCorners provides settings.readingImageRoundedCorners,
+            LocalReadingImageBrightness provides settings.readingImageBrightness,
             LocalReadingImageMaximize provides settings.readingImageMaximize,
+            LocalCustomReaderThemes provides settings.customReaderThemes,
+            LocalCustomReaderTheme provides settings.customReaderThemes.firstOrNull { it.isDefault },
+            // 2026-01-24: 新增阅读页面标题样式设置的 CompositionLocal 提供
+            // 修改原因：在 Compose 中提供标题字体大小、颜色、左右边距的访问
+            LocalReadingTitleFontSize provides settings.readingTitleFontSize,
+            LocalReadingTitleColor provides settings.readingTitleColor,
+            LocalReadingTitleHorizontalPadding provides settings.readingTitleHorizontalPadding,
 
             // Interaction
             LocalInitialPage provides settings.initialPage,

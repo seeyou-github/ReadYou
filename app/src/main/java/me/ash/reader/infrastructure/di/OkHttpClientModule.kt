@@ -71,8 +71,8 @@ fun cachingHttpClient(
     cacheDirectory: File? = null,
     cacheSize: Long = 10L * 1024L * 1024L,
     trustAllCerts: Boolean = true,
-    connectTimeoutSecs: Long = 30L,
-    readTimeoutSecs: Long = 30L,
+    connectTimeoutSecs: Long = 10L,
+    readTimeoutSecs: Long = 10L,
     clientCertificateAlias: String? = null,
 ): OkHttpClient {
     val builder: OkHttpClient.Builder = OkHttpClient.Builder()

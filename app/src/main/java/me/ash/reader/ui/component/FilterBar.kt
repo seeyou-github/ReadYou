@@ -36,6 +36,7 @@ fun FilterBar(
     filterBarFilled: Boolean,
     filterBarPadding: Dp,
     filterBarTonalElevation: Dp,
+    backgroundColor: Color? = null, // 2026-01-25: 新增自定义背景色参数
     filterOnClick: (Filter) -> Unit = {},
 ) {
     val view = LocalView.current
@@ -52,7 +53,7 @@ fun FilterBar(
     }
 
     Surface(
-        color = MaterialTheme.colorScheme.surfaceColorAtElevation(filterBarTonalElevation),
+        color = backgroundColor ?: MaterialTheme.colorScheme.surfaceColorAtElevation(filterBarTonalElevation),
         modifier = modifier
     ) {
         Row(

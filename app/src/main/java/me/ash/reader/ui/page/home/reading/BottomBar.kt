@@ -35,12 +35,15 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import me.ash.reader.R
+import me.ash.reader.infrastructure.preference.LocalFeedsTopBarTonalElevation
 import me.ash.reader.infrastructure.preference.LocalReadingPageTonalElevation
 import me.ash.reader.infrastructure.preference.LocalReadingRenderer
 import me.ash.reader.infrastructure.preference.ReadingPageTonalElevationPreference
 import me.ash.reader.infrastructure.preference.ReadingRendererPreference
 import me.ash.reader.ui.component.base.CanBeDisabledIconButton
+import me.ash.reader.ui.component.reader.LocalReaderPaints
 import me.ash.reader.ui.component.webview.BoldCharactersIcon
+import me.ash.reader.ui.ext.atElevation
 
 private val sizeSpec = spring<IntSize>(stiffness = 700f)
 
@@ -63,9 +66,15 @@ fun BottomBar(
     val tonalElevation = LocalReadingPageTonalElevation.current
     val isOutlined = tonalElevation == ReadingPageTonalElevationPreference.Outlined
     val renderer = LocalReadingRenderer.current
+    // 2026-01-26: 使用统一的顶栏色调配置
+    val topBarTonalElevation = LocalFeedsTopBarTonalElevation.current
+    
+    // 2026-01-25: 使用当前主题的 backgroundColor
+    val readerPaints = LocalReaderPaints.current
 
     Box(
         modifier = Modifier
+//            .fillMaxWidth().height(60.dp)
             .fillMaxSize()
             .zIndex(1f),
         contentAlignment = Alignment.BottomCenter
@@ -84,14 +93,21 @@ fun BottomBar(
                     )
                 }
                 Surface(
-                    color = MaterialTheme.colorScheme.run { if (isOutlined) surface else surfaceContainer }
+                    color = if (isOutlined) {
+                        readerPaints.background
+                    } else {
+                        readerPaints.background.atElevation(
+                            sourceColor = MaterialTheme.colorScheme.onSurface,
+                            elevation = topBarTonalElevation.value.dp
+                        )
+                    }
                 ) {
                     // TODO: Component styles await refactoring
                     Row(
                         modifier = Modifier
                             .navigationBarsPadding()
                             .fillMaxWidth()
-                            .height(60.dp),
+                            .height(50.dp),
                         horizontalArrangement = Arrangement.SpaceAround,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -114,35 +130,6 @@ fun BottomBar(
                             onUnread(!isUnread)
                         }
                         CanBeDisabledIconButton(
-                            modifier = Modifier.size(40.dp),
-                            disabled = false,
-                            imageVector = if (isStarred) {
-                                Icons.Rounded.Star
-                            } else {
-                                Icons.Rounded.StarOutline
-                            },
-                            contentDescription = stringResource(if (isStarred) R.string.mark_as_unstar else R.string.mark_as_starred),
-                            tint = if (isStarred) {
-                                MaterialTheme.colorScheme.onSecondaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.outline
-                            },
-                        ) {
-                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            onStarred(!isStarred)
-                        }
-                        CanBeDisabledIconButton(
-                            disabled = !isNextArticleAvailable,
-                            modifier = Modifier.size(40.dp),
-                            imageVector = Icons.Rounded.ExpandMore,
-                            contentDescription = "Next Article",
-                            tint = MaterialTheme.colorScheme.outline,
-                        ) {
-                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            onNextArticle()
-                        }
-                        ttsButton()
-                        CanBeDisabledIconButton(
                             disabled = false,
                             modifier = Modifier.size(40.dp),
                             imageVector = if (isFullContent) {
@@ -159,6 +146,35 @@ fun BottomBar(
                         ) {
                             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                             onFullContent(!isFullContent)
+                        }
+                        CanBeDisabledIconButton(
+                            disabled = !isNextArticleAvailable,
+                            modifier = Modifier.size(40.dp),
+                            imageVector = Icons.Rounded.ExpandMore,
+                            contentDescription = "Next Article",
+                            tint = MaterialTheme.colorScheme.outline,
+                        ) {
+                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            onNextArticle()
+                        }
+                        ttsButton()
+                        CanBeDisabledIconButton(
+                            modifier = Modifier.size(40.dp),
+                            disabled = false,
+                            imageVector = if (isStarred) {
+                                Icons.Rounded.Star
+                            } else {
+                                Icons.Rounded.StarOutline
+                            },
+                            contentDescription = stringResource(if (isStarred) R.string.mark_as_unstar else R.string.mark_as_starred),
+                            tint = if (isStarred) {
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.outline
+                            },
+                        ) {
+                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            onStarred(!isStarred)
                         }
                     }
                 }

@@ -39,16 +39,21 @@ import me.ash.reader.ui.page.settings.accounts.AccountsPage
 import me.ash.reader.ui.page.settings.accounts.AddAccountsPage
 import me.ash.reader.ui.page.settings.color.ColorAndStylePage
 import me.ash.reader.ui.page.settings.color.DarkThemePage
+import me.ash.reader.ui.page.settings.color.HomePageStylePage
 import me.ash.reader.ui.page.settings.color.feeds.FeedsPageStylePage
-import me.ash.reader.ui.page.settings.color.flow.FlowPageStylePage
 import me.ash.reader.ui.page.settings.color.reading.BoldCharactersPage
 import me.ash.reader.ui.page.settings.color.reading.ReadingImagePage
 import me.ash.reader.ui.page.settings.color.reading.ReadingStylePage
 import me.ash.reader.ui.page.settings.color.reading.ReadingTextPage
 import me.ash.reader.ui.page.settings.color.reading.ReadingTitlePage
 import me.ash.reader.ui.page.settings.color.reading.ReadingVideoPage
+
 import me.ash.reader.ui.page.settings.interaction.InteractionPage
 import me.ash.reader.ui.page.settings.languages.LanguagesPage
+import me.ash.reader.ui.page.settings.other.OtherPage
+import me.ash.reader.ui.page.settings.backup.BackupAndRestorePage
+import me.ash.reader.ui.page.settings.blacklist.BlacklistPage
+import me.ash.reader.ui.page.settings.blacklist.BlacklistViewModel
 import me.ash.reader.ui.page.settings.tips.LicenseListPage
 import me.ash.reader.ui.page.settings.tips.TipsAndSupportPage
 import me.ash.reader.ui.page.settings.troubleshooting.TroubleshootingPage
@@ -147,7 +152,8 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                                 animatedVisibilityScope = LocalNavAnimatedContentScope.current,
                                 viewModel = viewModel,
                                 onBack = onBack,
-                                onNavigateToStylePage = { backStack.add(Route.ReadingPageStyle) },
+                                // 2026-01-21: 移除对 Route.ReadingPageStyle 的引用，改为在 ArticleListReadingPage 中显示对话框
+                                onNavigateToStylePage = { },
                             )
                         }
                     }
@@ -183,11 +189,9 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                                 navigateToAccounts = { backStack.add(Route.Accounts) },
                                 navigateToColorAndStyle = { backStack.add(Route.ColorAndStyle) },
                                 navigateToInteraction = { backStack.add(Route.Interaction) },
-                                navigateToLanguages = { backStack.add(Route.Languages) },
-                                navigateToTroubleshooting = {
-                                    backStack.add(Route.Troubleshooting)
-                                },
-                                navigateToTipsAndSupport = { backStack.add(Route.TipsAndSupport) },
+                                navigateToBackupAndRestore = { backStack.add(Route.BackupAndRestore) },
+                                navigateToOther = { backStack.add(Route.Other) },
+                                navigateToBlacklist = { backStack.add(Route.Blacklist) },
                             )
                         }
                     Route.Accounts ->
@@ -225,16 +229,15 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                             ColorAndStylePage(
                                 onBack = onBack,
                                 navigateToDarkTheme = { backStack.add(Route.DarkTheme) },
+                                navigateToHomePageStyle = { backStack.add(Route.HomePageStyle) },
                                 navigateToFeedsPageStyle = { backStack.add(Route.FeedsPageStyle) },
-                                navigateToFlowPageStyle = { backStack.add(Route.FlowPageStyle) },
-                                navigateToReadingPageStyle = {
-                                    backStack.add(Route.ReadingPageStyle)
-                                },
+                                // 2026-01-21: 移除对 Route.ReadingPageStyle 的引用，改为在阅读页面中直接打开样式设置对话框
+                                navigateToReadingPageStyle = { },
                             )
                         }
                     Route.DarkTheme -> NavEntry(key) { DarkThemePage(onBack = onBack) }
+                    Route.HomePageStyle -> NavEntry(key) { HomePageStylePage(onBack = onBack) }
                     Route.FeedsPageStyle -> NavEntry(key) { FeedsPageStylePage(onBack = onBack) }
-                    Route.FlowPageStyle -> NavEntry(key) { FlowPageStylePage(onBack = onBack) }
                     Route.ReadingPageStyle ->
                         NavEntry(key) {
                             ReadingStylePage(
@@ -254,6 +257,7 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                                 navigateToReadingPageVideo = {
                                     backStack.add(Route.ReadingPageVideo)
                                 },
+                                navigateToColorTheme = { backStack.add(Route.ReadingColorTheme) },
                             )
                         }
                     Route.ReadingBoldCharacters ->
@@ -262,7 +266,16 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                     Route.ReadingPageText -> NavEntry(key) { ReadingTextPage(onBack = onBack) }
                     Route.ReadingPageImage -> NavEntry(key) { ReadingImagePage(onBack = onBack) }
                     Route.ReadingPageVideo -> NavEntry(key) { ReadingVideoPage(onBack = onBack) }
+//                    Route.ReadingColorTheme -> NavEntry(key) {
+//                        ReadingColorThemePage(onBack = onBack)
+//                    }
                     Route.Interaction -> NavEntry(key) { InteractionPage(onBack = onBack) }
+                    Route.Blacklist -> NavEntry(key) {
+                        BlacklistPage(
+                            viewModel = hiltViewModel(),
+                            onBack = onBack,
+                        )
+                    }
                     Route.Languages -> NavEntry(key) { LanguagesPage(onBack = onBack) }
                     Route.Troubleshooting -> NavEntry(key) { TroubleshootingPage(onBack = onBack) }
                     Route.TipsAndSupport ->
@@ -273,6 +286,16 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                             )
                         }
                     Route.LicenseList -> NavEntry(key) { LicenseListPage(onBack = onBack) }
+                    Route.BackupAndRestore -> NavEntry(key) { BackupAndRestorePage(onBack = onBack) }
+                    Route.Other ->
+                        NavEntry(key) {
+                            OtherPage(
+                                onBack = onBack,
+                                navigateToLanguages = { backStack.add(Route.Languages) },
+                                navigateToTroubleshooting = { backStack.add(Route.Troubleshooting) },
+                                navigateToTipsAndSupport = { backStack.add(Route.TipsAndSupport) },
+                            )
+                        }
                     else -> NavEntry(key) { throw Exception("Unknown destination") }
                 }
             },

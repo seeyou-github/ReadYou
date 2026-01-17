@@ -32,6 +32,7 @@
     <string name="empty">Empty</string>
     <string name="back">Back</string>
     <string name="go_to">Go to</string>
+    <string name="warning">Warning</string>
     <string name="settings">Settings</string>
     <string name="refresh">Refresh</string>
     <string name="search">Search</string>
@@ -67,6 +68,10 @@
     <string name="all_move_to_group_toast">Moved all feeds to the \"%1$s\" group</string>
     <string name="rename">Rename</string>
     <string name="change_url">Change URL</string>
+    <string name="change_icon">Change Icon</string>
+    <string name="export_feed_as_opml">Export this feed as OPML</string>
+    <string name="export_group_as_opml">Export all feeds in this group as OPML</string>
+    <string name="icon_url_placeholder" translatable="false">https://example.com/icon.png</string>
     <string name="feed_url_placeholder" translatable="false">http://example.com/feed.rss</string>
     <string name="rename_toast">Renamed to \"%1$s\"</string>
     <string name="create_new_group">Create new group</string>
@@ -107,6 +112,9 @@
     <string name="color_and_style_desc">Theme, color style, font size</string>
     <string name="interaction">Usage</string>
     <string name="interaction_desc">Startup page, gestures</string>
+    <string name="backup_and_restore">Backup &amp; restore</string>
+    <string name="backup_and_restore_desc">Import/Export preferences and subscriptions</string>
+    <string name="other_desc">Languages, troubleshooting, support</string>
     <string name="languages">Languages</string>
     <string name="help_translate">Help translate</string>
     <string name="translatable_url" translatable="false">https://hosted.weblate.org/projects/readyou/</string>
@@ -148,11 +156,20 @@
     <string name="amoled_dark_theme">Black dark theme</string>
     <string name="tonal_elevation">Tonal elevation</string>
     <string name="reading_fonts">Reading fonts</string>
+    <string name="color_theme">Color Theme</string>
+    <string name="add_custom_theme">Add Custom Theme</string>
+    <string name="theme_name">Theme Name</string>
+    <string name="text_color">Text Color</string>
+    <string name="background_color">Background Color</string>
+    <string name="invalid_hex_code">Invalid hex code</string>
+    <string name="preview">Preview</string>
+    <string name="hex_color">Hex Color</string>
     <string name="basic_fonts">Basic fonts</string>
     <string name="google_sans" translatable="false">Google Sans Flex</string>
     <string name="feeds_page">Feeds page</string>
     <string name="flow_page">Flow page</string>
     <string name="reading_page">Reading page</string>
+    <string name="home_page">Home page</string>
     <string name="sponsor">Sponsor</string>
     <string name="open_source_licenses">Open source licenses</string>
     <string name="github_link" translatable="false">https://github.com/ReadYouApp/ReadYou</string>
@@ -181,6 +198,7 @@
     <string name="article_date">Article publication time</string>
     <string name="article_desc">Article descriptions</string>
     <string name="article_images">Article images</string>
+    <string name="first_item_large_image">First item large image</string>
     <string name="feed_names">Feed names</string>
     <string name="feed_favicons">Feed favicons</string>
     <string name="article_date_sticky_header">Sticky publication date header</string>
@@ -195,6 +213,10 @@
     <string name="icons">Icons</string>
     <string name="icons_and_labels">Icons and labels</string>
     <string name="icons_and_label_only_selected">Icons and label (only active)</string>
+    <string name="hide">Hide</string>
+
+    <string name="grid">Grid</string>
+    <string name="layout">Layout</string>
     <string name="tips_top_bar_tonal_elevation">Tonal elevation for the top bar list is only available when scrolling</string>
     <string name="tips_article_list_tonal_elevation">Tonal elevation for the article list is only available in the light theme</string>
     <string name="tips_group_list_tonal_elevation">Tonal elevation for the group list is only available in the light theme</string>
@@ -270,7 +292,33 @@
     <string name="only_when_charging">Only when charging</string>
     <string name="keep_archived_articles">Keep archived articles</string>
     <string name="block_list">Block list</string>
+    <!-- 2026-01-24: 新增关键词屏蔽相关字符串 -->
+    <string name="blacklist">关键词屏蔽</string>
+    <string name="blacklist_desc">设置文章标题关键词过滤规则</string>
+    <string name="add_keyword">添加关键词</string>
+    <string name="keyword_hint">请输入关键词</string>
+    <string name="scope_all_feeds">全部订阅源</string>
+    <string name="scope_specific_feed">指定订阅源</string>
+    <string name="delete_keyword">删除</string>
+    <string name="keyword_added">已添加关键词</string>
+    <string name="keyword_deleted">已删除关键词</string>
+    <string name="keyword_empty_error">关键词不能为空</string>
+    <string name="select_feed">选择订阅源</string>
+    <string name="all_feeds">全部订阅源</string>
+    <string name="no_keywords">暂无关键词</string>
+    <string name="no_keywords_desc">点击右上角添加关键词</string>
+    <string name="filter_scope">作用范围</string>
+    <string name="article_title">文章标题</string>
+    <string name="blacklist_keywords_count">已添加 %1$d 个关键词</string>
+    <string name="blacklist_keyword_hint">请输入关键词</string>
+    <string name="blacklist_all_feeds">全部订阅源</string>
+    <string name="blacklist_scope">作用范围</string>
+    <string name="blacklist_no_feeds_hint">暂无可用订阅源，请先添加订阅源</string>
+    <string name="blacklist_scope_feed">指定订阅源</string>
+    <string name="blacklist_multi_feeds_count">%1$d 个订阅源</string>
+    <!-- 2026-01-24: 结束新增 -->
     <string name="export_as_opml">Export as OPML</string>
+    <string name="subscriptions">Subscriptions</string>
     <string name="clear_all_articles">Clear all articles</string>
     <string name="delete_account">Delete account</string>
     <string name="clear_all_articles_tips">Are you sure you want to clear the articles list for this account?</string>
@@ -340,6 +388,18 @@
     <string name="import_from_json">Import from JSON</string>
     <string name="export_as_json">Export as JSON</string>
     <string name="invalid_json_file_warning">This file may not be a valid JSON file. Importing it could potentially corrupt the app and result in the loss of current preferences. Are you sure you want to proceed?</string>
+    <string name="keywords">Keywords</string>
+    <string name="import_keywords_from_json">Import keywords from JSON</string>
+    <string name="export_keywords_as_json">Export keywords as JSON</string>
+    <string name="import_keywords_warning">This will add %1$d keywords to your existing list. Are you sure you want to proceed?</string>
+    <string name="invalid_keywords_json_warning">This file may not be a valid keywords JSON file. Are you sure you want to proceed?</string>
+    <string name="one_click_backup">One-click backup</string>
+    <string name="one_click_backup_desc">Backup subscriptions, keywords, and app settings</string>
+    <string name="backup_location">Backup location</string>
+    <string name="backup_not_set">Not set</string>
+    <string name="backup_success">Backup completed successfully</string>
+    <string name="backup_failed">Backup failed: %1$s</string>
+    <string name="long_press_to_change_folder">Long press to change backup folder</string>
     <string name="webview" translatable="false">WebView</string>
     <string name="native_component">Native component</string>
     <string name="content_renderer">Content renderer</string>

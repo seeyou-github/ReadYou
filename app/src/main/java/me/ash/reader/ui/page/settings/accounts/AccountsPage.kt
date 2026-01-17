@@ -17,6 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import me.ash.reader.R
+import me.ash.reader.infrastructure.preference.LocalFeedsPageColorThemes
 import me.ash.reader.ui.component.base.*
 import me.ash.reader.ui.ext.collectAsStateValue
 import me.ash.reader.ui.page.settings.SettingItem
@@ -32,9 +33,14 @@ fun AccountsPage(
     val context = LocalContext.current
     val uiState = viewModel.accountUiState.collectAsStateValue()
     val accounts = viewModel.accounts.collectAsStateValue(initial = emptyList())
+    
+    // 获取颜色主题
+    val colorThemes = LocalFeedsPageColorThemes.current
+    val selectedColorTheme = colorThemes.firstOrNull { it.isDefault } ?: colorThemes.firstOrNull()
 
     RYScaffold(
-        containerColor = MaterialTheme.colorScheme.surface onLight MaterialTheme.colorScheme.inverseOnSurface,
+        containerColor = selectedColorTheme?.backgroundColor ?: (MaterialTheme.colorScheme.surface onLight MaterialTheme.colorScheme.inverseOnSurface),
+        topBarColor = selectedColorTheme?.backgroundColor ?: (MaterialTheme.colorScheme.surface onLight MaterialTheme.colorScheme.inverseOnSurface),
         navigationIcon = {
             FeedbackIconButton(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,

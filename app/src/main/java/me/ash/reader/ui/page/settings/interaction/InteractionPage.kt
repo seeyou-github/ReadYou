@@ -41,6 +41,7 @@ import me.ash.reader.infrastructure.preference.SharedContentPreference
 import me.ash.reader.infrastructure.preference.SortUnreadArticlesPreference
 import me.ash.reader.infrastructure.preference.SwipeEndActionPreference
 import me.ash.reader.infrastructure.preference.SwipeStartActionPreference
+import me.ash.reader.infrastructure.preference.LocalFeedsPageColorThemes
 import me.ash.reader.ui.component.base.DisplayText
 import me.ash.reader.ui.component.base.FeedbackIconButton
 import me.ash.reader.ui.component.base.RYScaffold
@@ -84,9 +85,14 @@ fun InteractionPage(
     var sharedContentDialogVisible by remember { mutableStateOf(false) }
     var showSortUnreadArticlesDialog by remember { mutableStateOf(false) }
     var showPullToLoadDialog by remember { mutableStateOf(false) }
+    
+    // 获取颜色主题
+    val colorThemes = LocalFeedsPageColorThemes.current
+    val selectedColorTheme = colorThemes.firstOrNull { it.isDefault } ?: colorThemes.firstOrNull()
 
     RYScaffold(
-        containerColor = MaterialTheme.colorScheme.surface onLight MaterialTheme.colorScheme.inverseOnSurface,
+        containerColor = selectedColorTheme?.backgroundColor ?: (MaterialTheme.colorScheme.surface onLight MaterialTheme.colorScheme.inverseOnSurface),
+        topBarColor = selectedColorTheme?.backgroundColor ?: (MaterialTheme.colorScheme.surface onLight MaterialTheme.colorScheme.inverseOnSurface),
         navigationIcon = {
             FeedbackIconButton(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
@@ -122,82 +128,37 @@ fun InteractionPage(
                     ) {}
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Subtitle(
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        text = stringResource(R.string.feeds_page),
-                    )
-                    SettingItem(
-                        title = stringResource(R.string.hide_empty_groups),
-                        onClick = {
-                            hideEmptyGroups.toggle(context, scope)
-                        },
-                    ) {
-                        RYSwitch(activated = hideEmptyGroups.value) {
-                            hideEmptyGroups.toggle(context, scope)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
+                    // 2026-01-21: 隐藏订阅源界面设置
+                    // 修改原因：简化设置页面，减少不必要的设置项
+                    // Subtitle(
+                    //     modifier = Modifier.padding(horizontal = 24.dp),
+                    //     text = stringResource(R.string.feeds_page),
+                    // )
+                    // SettingItem(
+                    //     title = stringResource(R.string.hide_empty_groups),
+                    //     onClick = {
+                    //         hideEmptyGroups.toggle(context, scope)
+                    //     },
+                    // ) {
+                    //         RYSwitch(activated = hideEmptyGroups.value) {
+                    //             hideEmptyGroups.toggle(context, scope)
+                    //         }
+                    //     }
+                    // Spacer(modifier = Modifier.height(24.dp))
 
-                    Subtitle(
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        text = stringResource(R.string.article_list),
-                    )
-                    SettingItem(
-                        title = stringResource(R.string.swipe_to_start),
-                        desc = swipeToStartAction.desc,
-                        onClick = {
-                            swipeStartDialogVisible = true
-                        },
-                    ) {}
-                    SettingItem(
-                        title = stringResource(R.string.swipe_to_end),
-                        desc = swipeToEndAction.desc,
-                        onClick = {
-                            swipeEndDialogVisible = true
-                        },
-                    ) {}
-
-                    SettingItem(
-                        title = stringResource(R.string.sort_unread_articles),
-                        onClick = {
-                            showSortUnreadArticlesDialog = true
-                        },
-                        desc = sortUnreadArticles.description()
-                    ) {
-                    }
-
-                    SettingItem(
-                        title = stringResource(R.string.mark_as_read_on_scroll),
-                        onClick = {
-                            markAsReadOnScroll.toggle(context, scope)
-                        },
-                    ) {
-                        RYSwitch(activated = markAsReadOnScroll.value) {
-                            markAsReadOnScroll.toggle(context, scope)
-                        }
-                    }
-
-                    SettingItem(
-                        title = stringResource(R.string.pull_from_bottom),
-                        desc = pullToSwitchFeed.description(),
-                        onClick = {
-                            showPullToLoadDialog = true
-                        },
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Subtitle(
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        text = stringResource(R.string.reading_page),
-                    )
-                    SettingItem(
-                        title = stringResource(id = R.string.pull_to_switch_article),
-                        onClick = { pullToSwitchArticle.toggle(context, scope) }) {
-                        RYSwitch(activated = pullToSwitchArticle.value) {
-                            pullToSwitchArticle.toggle(context, scope)
-                        }
-                    }
+                    // 2026-01-21: 隐藏阅读界面设置
+                    // 修改原因：简化设置页面，减少不必要的设置项
+                    // Subtitle(
+                    //     modifier = Modifier.padding(horizontal = 24.dp),
+                    //     text = stringResource(R.string.reading_page),
+                    // )
+                    // SettingItem(
+                    //     title = stringResource(id = R.string.pull_to_switch_article),
+                    //     onClick = { pullToSwitchArticle.toggle(context, scope) }) {
+                    //         RYSwitch(activated = pullToSwitchArticle.value) {
+                    //             pullToSwitchArticle.toggle(context, scope)
+                    //         }
+                    //     }
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Subtitle(

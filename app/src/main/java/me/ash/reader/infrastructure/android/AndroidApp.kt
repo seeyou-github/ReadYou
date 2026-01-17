@@ -29,7 +29,7 @@ import me.ash.reader.infrastructure.rss.OPMLDataSource
 import me.ash.reader.infrastructure.rss.RssHelper
 import me.ash.reader.ui.ext.del
 import me.ash.reader.ui.ext.getLatestApk
-import me.ash.reader.ui.ext.isGitHub
+//import me.ash.reader.ui.ext.isGitHub
 import okhttp3.OkHttpClient
 import timber.log.Timber
 
@@ -102,8 +102,10 @@ class AndroidApp : Application(), Configuration.Provider {
         }
         applicationScope.launch {
             accountInit()
-            workerInit()
-            checkUpdate()
+            // 2026-01-22: 注释掉自动同步
+            // 修改原因：用户需求，进入app时不自动执行更新订阅操作
+            // workerInit()
+//            checkUpdate()
         }
         Coil.setImageLoader(imageLoader)
     }
@@ -121,8 +123,10 @@ class AndroidApp : Application(), Configuration.Provider {
         withContext(ioDispatcher) {
             if (accountService.isNoAccount()) {
                 launch { accountService.initWithDefaultAccount() }
+                    // 2026-01-22: 注释掉自动同步
+                    // 修改原因：用户需求，进入app时不自动执行更新订阅操作
                     .invokeOnCompletion {
-                        rssService.get().doSyncOneTime(accountService.getCurrentAccountId())
+                        // rssService.get().doSyncOneTime(accountService.getCurrentAccountId())
                     }
             }
         }
@@ -132,11 +136,11 @@ class AndroidApp : Application(), Configuration.Provider {
         rssService.get().initSync()
     }
 
-    private suspend fun checkUpdate() {
-        if (!isGitHub) return
-        withContext(ioDispatcher) {
-            applicationContext.getLatestApk().let { if (it.exists()) it.del() }
-        }
-        appService.checkUpdate(showToast = false)
-    }
+//    private suspend fun checkUpdate() {
+//        if (!isGitHub) return
+//        withContext(ioDispatcher) {
+//            applicationContext.getLatestApk().let { if (it.exists()) it.del() }
+//        }
+//        appService.checkUpdate(showToast = false)
+//    }
 }

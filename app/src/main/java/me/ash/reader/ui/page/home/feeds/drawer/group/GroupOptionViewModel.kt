@@ -1,5 +1,7 @@
 package me.ash.reader.ui.page.home.feeds.drawer.group
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalBottomSheetState
 import androidx.compose.material.ModalBottomSheetValue
@@ -16,6 +18,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.ash.reader.domain.model.group.Group
+import me.ash.reader.domain.service.OpmlService
+import me.ash.reader.R
 import me.ash.reader.domain.service.RssService
 import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.IODispatcher
@@ -32,6 +36,7 @@ class GroupOptionViewModel @Inject constructor(
     private val ioDispatcher: CoroutineDispatcher,
     @ApplicationScope
     private val applicationScope: CoroutineScope,
+    private val opmlService: OpmlService,
 ) : ViewModel() {
 
     private val _groupOptionUiState = MutableStateFlow(GroupOptionUiState())
@@ -210,6 +215,10 @@ class GroupOptionViewModel @Inject constructor(
 
     fun inputNewName(content: String) {
         _groupOptionUiState.update { it.copy(newName = content) }
+    }
+
+    suspend fun exportGroupAsOpml(groupId: String): String {
+        return opmlService.saveGroupFeedsToString(groupId, attachInfo = true)
     }
 }
 

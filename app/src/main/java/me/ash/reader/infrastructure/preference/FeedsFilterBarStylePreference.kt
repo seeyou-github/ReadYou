@@ -18,6 +18,7 @@ sealed class FeedsFilterBarStylePreference(val value: Int) : Preference() {
     object Icon : FeedsFilterBarStylePreference(0)
     object IconLabel : FeedsFilterBarStylePreference(1)
     object IconLabelOnlySelected : FeedsFilterBarStylePreference(2)
+    object Hide : FeedsFilterBarStylePreference(3)
 
     override fun put(context: Context, scope: CoroutineScope) {
         scope.launch {
@@ -33,18 +34,20 @@ sealed class FeedsFilterBarStylePreference(val value: Int) : Preference() {
             Icon -> context.getString(R.string.icons)
             IconLabel -> context.getString(R.string.icons_and_labels)
             IconLabelOnlySelected -> context.getString(R.string.icons_and_label_only_selected)
+            Hide -> context.getString(R.string.hide)
         }
 
     companion object {
 
         val default = Icon
-        val values = listOf(Icon, IconLabel, IconLabelOnlySelected)
+        val values = listOf(Icon, IconLabel, IconLabelOnlySelected, Hide)
 
         fun fromPreferences(preferences: Preferences): FeedsFilterBarStylePreference =
             when (preferences[DataStoreKey.keys[feedsFilterBarStyle]?.key as Preferences.Key<Int>]) {
                 0 -> Icon
                 1 -> IconLabel
                 2 -> IconLabelOnlySelected
+                3 -> Hide
                 else -> default
             }
     }

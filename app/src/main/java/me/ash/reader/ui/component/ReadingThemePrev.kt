@@ -42,9 +42,7 @@ fun ReadingThemePrev(
         modifier = Modifier
             .width(150.dp)
             .clip(Shape24)
-            .background(MaterialTheme.colorScheme.inverseOnSurface
-                    onLight MaterialTheme.colorScheme.surface
-            )
+            .background(MaterialTheme.colorScheme.inverseOnSurface onLight MaterialTheme.colorScheme.surface)
             .border(
                 width = animateDpAsState(if (selected == theme) 4.dp else (-1).dp).value,
                 color = MaterialTheme.colorScheme.primary,

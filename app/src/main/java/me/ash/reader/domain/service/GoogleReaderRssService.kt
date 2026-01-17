@@ -35,6 +35,7 @@ import me.ash.reader.domain.model.article.Article
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.model.group.Group
 import me.ash.reader.domain.repository.ArticleDao
+import me.ash.reader.domain.repository.BlacklistKeywordDao
 import me.ash.reader.domain.repository.FeedDao
 import me.ash.reader.domain.repository.GroupDao
 import me.ash.reader.infrastructure.android.NotificationHelper
@@ -77,6 +78,7 @@ constructor(
     private val workManager: WorkManager,
     private val accountService: AccountService,
     private val syncLogger: SyncLogger,
+    private val blacklistKeywordDao: BlacklistKeywordDao,
 ) :
     AbstractRssRepository(
         articleDao,
@@ -443,6 +445,17 @@ constructor(
             val remoteGroups = async { groupWithFeedsMap.await().keys.toList() }
             val remoteFeeds = async { groupWithFeedsMap.await().values.flatten() }
 
+            // 2026-01-24: 获取订阅源 URL 映射用于关键词过滤
+            val feedUrlMap = mutableMapOf<String, String>()
+            launch {
+                remoteFeeds.await().forEach { feed ->
+                    feedUrlMap[feed.id] = feed.url
+                }
+            }
+
+            // 2026-01-24: 获取黑名单关键词
+            val blacklistKeywords = blacklistKeywordDao.getAllSync()
+
             // Handle empty icon for feeds
             launch {
                 val localFeeds = feedDao.queryAll(accountId)
@@ -473,10 +486,26 @@ constructor(
                 launch {
                         whileSelect {
                             for (deferred in deferredList) {
-                                deferred.onAwait {
-                                    articleDao.insertList(it)
+                                deferred.onAwait { articles ->
+                                    // 2026-01-24: 关键词过滤 - 过滤的文章不保存
+                                    val filteredArticles = if (blacklistKeywords.isNotEmpty()) {
+                                        articles.filterNot { article ->
+                                            val feedUrl = feedUrlMap[article.feedId]
+                                            blacklistKeywords.any { keyword ->
+                                                keyword.enabled && article.title.contains(
+                                                    keyword.keyword,
+                                                    ignoreCase = true
+                                                ) && (keyword.feedUrls.isNullOrBlank() || feedUrl?.let {
+                                                    keyword.feedUrls.split(",").contains(it)
+                                                } == true)
+                                            }
+                                        }
+                                    } else {
+                                        articles
+                                    }
+                                    articleDao.insertList(filteredArticles)
                                     articlesToNotify.addAll(
-                                        it.fastFilter {
+                                        filteredArticles.fastFilter {
                                             it.isUnread && notificationFeedIds.contains(it.feedId)
                                         }
                                     )
@@ -649,6 +678,7 @@ constructor(
                     }
             }
 
+
             launch {
                 val toBeUnstarred = localStarredIds - remoteStarredIds.await()
                 toBeUnstarred
@@ -663,7 +693,24 @@ constructor(
                     }
             }
 
-            articleDao.insert(*items.toTypedArray())
+            // 2026-01-24: 关键词过滤 - 过滤的文章不保存
+            val blacklistKeywords = blacklistKeywordDao.getAllSync()
+            val filteredItems = if (blacklistKeywords.isNotEmpty()) {
+                items.filterNot { article ->
+                    blacklistKeywords.any { keyword ->
+                        keyword.enabled && article.title.contains(
+                            keyword.keyword,
+                            ignoreCase = true
+                        ) && (keyword.feedUrls.isNullOrBlank() || keyword.feedUrls.split(
+                            ","
+                        ).contains(feed.url))
+                    }
+                }
+            } else {
+                items
+            }
+
+            articleDao.insert(*filteredItems.toTypedArray())
             Timber.i("onCompletion: ${System.currentTimeMillis() - preTime}")
 
             ListenableWorker.Result.success()

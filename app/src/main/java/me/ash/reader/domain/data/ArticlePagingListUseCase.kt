@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.ash.reader.domain.model.article.ArticleFlowItem
 import me.ash.reader.domain.model.article.mapPagingFlowItem
+import me.ash.reader.domain.repository.ArticleDao
+import me.ash.reader.domain.repository.FeedDao
 import me.ash.reader.domain.service.AccountService
 import me.ash.reader.domain.service.RssService
 import me.ash.reader.infrastructure.android.AndroidStringsHelper
@@ -41,6 +43,8 @@ constructor(
     private val settingsProvider: SettingsProvider,
     private val filterStateUseCase: FilterStateUseCase,
     private val accountService: AccountService,
+    private val feedDao: FeedDao,
+    private val articleDao: ArticleDao,
 ) {
 
     private val mutablePagerFlow =
@@ -69,11 +73,13 @@ constructor(
     init {
         applicationScope.launch(ioDispatcher) {
             filterStateUseCase.filterStateFlow
-                .combine(accountService.currentAccountIdFlow) { filterState, accountId ->
+                .combine(accountService.currentAccountIdFlow) { filterState, _ ->
                     filterState
                 }
                 .collect { filterState ->
-                    val searchContent = filterState.searchContent
+                    // 防御性检查：确保 filterState 不为 null
+                    val currentFilterState = filterState ?: return@collect
+                    val searchContent = currentFilterState.searchContent
 
                     mutablePagerFlow.value =
                         PagerData(
@@ -85,10 +91,10 @@ constructor(
                                             .get()
                                             .searchArticles(
                                                 content = searchContent.trim(),
-                                                groupId = filterState.group?.id,
-                                                feedId = filterState.feed?.id,
-                                                isStarred = filterState.filter.isStarred(),
-                                                isUnread = filterState.filter.isUnread(),
+                                                groupId = currentFilterState.group?.id,
+                                                feedId = currentFilterState.feed?.id,
+                                                isStarred = currentFilterState.filter.isStarred(),
+                                                isUnread = currentFilterState.filter.isUnread(),
                                                 sortAscending =
                                                     settingsProvider.settings.flowSortUnreadArticles
                                                         .value,
@@ -97,10 +103,10 @@ constructor(
                                         rssService
                                             .get()
                                             .pullArticles(
-                                                groupId = filterState.group?.id,
-                                                feedId = filterState.feed?.id,
-                                                isStarred = filterState.filter.isStarred(),
-                                                isUnread = filterState.filter.isUnread(),
+                                                groupId = currentFilterState.group?.id,
+                                                feedId = currentFilterState.feed?.id,
+                                                isStarred = currentFilterState.filter.isStarred(),
+                                                isUnread = currentFilterState.filter.isUnread(),
                                                 sortAscending =
                                                     settingsProvider.settings.flowSortUnreadArticles
                                                         .value,
@@ -110,7 +116,7 @@ constructor(
                                 .flow
                                 .map { it.mapPagingFlowItem(androidStringsHelper) }
                                 .cachedIn(applicationScope),
-                            filterState = filterState,
+                            filterState = currentFilterState,
                         )
                 }
         }
@@ -118,6 +124,96 @@ constructor(
             pagerFlow.collectLatest { (pager, _) ->
                 pager.collectLatest { pagingDataPresenter.collectFrom(it) }
             }
+        }
+
+        // 监听文章数量变化，当文章被清空或新增时自动刷新
+        observeArticleCountChanges()
+    }
+
+    /**
+     * 上一次处理的文章数量，用于检测变化
+     */
+    private val lastArticleCount = MutableStateFlow(-1)
+
+    /**
+     * 监听当前过滤条件下的文章数量变化
+     * 当文章被清空或新增时，自动触发 Pager 刷新
+     */
+    private fun observeArticleCountChanges() {
+        applicationScope.launch(ioDispatcher) {
+            filterStateUseCase.filterStateFlow
+                .combine(accountService.currentAccountIdFlow) { filterState, accountId ->
+                    Pair(filterState, accountId)
+                }
+                .collect { (filterState, accountId) ->
+                    // 防御性检查：如果 accountId 为 null，跳过
+                    val currentAccountId = accountId ?: return@collect
+
+                    val articleCountFlow = when {
+                        filterState.feed != null -> kotlinx.coroutines.flow.flow {
+                            val count = articleDao.queryMetadataByFeedId(
+                                currentAccountId, filterState.feed.id, filterState.filter.isUnread()
+                            ).size
+                            emit(count)
+                        }
+                        filterState.group != null -> kotlinx.coroutines.flow.flow {
+                            val count = articleDao.queryMetadataByGroupIdWhenIsUnread(
+                                currentAccountId, filterState.group.id, filterState.filter.isUnread()
+                            ).size
+                            emit(count)
+                        }
+                        else -> kotlinx.coroutines.flow.flow {
+                            val count = articleDao.queryMetadataAll(currentAccountId, filterState.filter.isUnread()).size
+                            emit(count)
+                        }
+                    }
+
+                    articleCountFlow.collect { count ->
+                        // 防御性检查：确保 lastArticleCount 已初始化
+                        val lastCount = lastArticleCount.value.takeIf { it >= 0 } ?: return@collect
+                        // 文章数量发生显著变化时触发刷新
+                        if (lastCount != count) {
+                            lastArticleCount.value = count
+                            val searchContent = filterState.searchContent
+
+                            mutablePagerFlow.value =
+                                PagerData(
+                                    Pager(
+                                            config = PagingConfig(pageSize = 50, enablePlaceholders = false)
+                                        ) {
+                                            if (!searchContent.isNullOrBlank()) {
+                                                rssService
+                                                    .get()
+                                                    .searchArticles(
+                                                        content = searchContent.trim(),
+                                                        groupId = filterState.group?.id,
+                                                        feedId = filterState.feed?.id,
+                                                        isStarred = filterState.filter.isStarred(),
+                                                        isUnread = filterState.filter.isUnread(),
+                                                        sortAscending =
+                                                            settingsProvider.settings.flowSortUnreadArticles.value,
+                                                    )
+                                            } else {
+                                                rssService
+                                                    .get()
+                                                    .pullArticles(
+                                                        groupId = filterState.group?.id,
+                                                        feedId = filterState.feed?.id,
+                                                        isStarred = filterState.filter.isStarred(),
+                                                        isUnread = filterState.filter.isUnread(),
+                                                        sortAscending =
+                                                            settingsProvider.settings.flowSortUnreadArticles.value,
+                                                    )
+                                            }
+                                        }
+                                        .flow
+                                        .map { it.mapPagingFlowItem(androidStringsHelper) }
+                                        .cachedIn(applicationScope),
+                                    filterState = filterState,
+                                )
+                        }
+                    }
+                }
         }
     }
 }

@@ -42,11 +42,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpSize
@@ -54,10 +57,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.size.Precision
 import coil.size.Scale
 import me.ash.reader.R
 import me.ash.reader.domain.model.article.ArticleWithFeed
+import me.ash.reader.domain.model.theme.ColorTheme
 import me.ash.reader.infrastructure.preference.FlowArticleListDescPreference
 import me.ash.reader.infrastructure.preference.FlowArticleReadIndicatorPreference
 import me.ash.reader.infrastructure.preference.LocalArticleListSwipeEndAction
@@ -68,6 +73,16 @@ import me.ash.reader.infrastructure.preference.LocalFlowArticleListFeedName
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListImage
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListReadIndicator
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListTime
+// 2026-01-18: 新增文章列表样式相关的Preference导入
+import me.ash.reader.infrastructure.preference.LocalFlowArticleListTitleFontSize
+import me.ash.reader.infrastructure.preference.LocalFlowArticleListTitleLineHeight
+import me.ash.reader.infrastructure.preference.LocalFlowArticleListHorizontalPadding
+import me.ash.reader.infrastructure.preference.LocalFlowArticleListVerticalPadding
+import me.ash.reader.infrastructure.preference.LocalFlowArticleListImageRoundedCorners
+import me.ash.reader.infrastructure.preference.LocalFlowArticleListImageSize
+import me.ash.reader.infrastructure.preference.LocalFlowArticleListRoundedCorners
+import me.ash.reader.infrastructure.preference.LocalFlowArticleListColorThemes
+import me.ash.reader.infrastructure.preference.LocalReadingImageBrightness
 import me.ash.reader.infrastructure.preference.SwipeEndActionPreference
 import me.ash.reader.infrastructure.preference.SwipeStartActionPreference
 import me.ash.reader.ui.component.FeedIcon
@@ -76,10 +91,11 @@ import me.ash.reader.ui.component.base.SIZE_1000
 import me.ash.reader.ui.component.menu.AnimatedDropdownMenu
 import me.ash.reader.ui.component.swipe.SwipeAction
 import me.ash.reader.ui.component.swipe.SwipeableActionsBox
+import me.ash.reader.ui.ext.atElevation
 import me.ash.reader.ui.ext.requiresBidi
 import me.ash.reader.ui.ext.surfaceColorAtElevation
 import me.ash.reader.ui.page.settings.color.flow.generateArticleWithFeedPreview
-import me.ash.reader.ui.theme.Shape20
+
 import me.ash.reader.ui.theme.applyTextDirection
 import me.ash.reader.ui.theme.palette.onDark
 
@@ -90,8 +106,10 @@ fun ArticleItem(
     modifier: Modifier = Modifier,
     articleWithFeed: ArticleWithFeed,
     isUnread: Boolean = articleWithFeed.article.isUnread,
+    colorTheme: ColorTheme? = null,
     onClick: (ArticleWithFeed) -> Unit = {},
     onLongClick: (() -> Unit)? = null,
+    forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
 ) {
     val feed = articleWithFeed.feed
     val article = articleWithFeed.article
@@ -106,8 +124,10 @@ fun ArticleItem(
         imgData = article.img,
         isStarred = article.isStarred,
         isUnread = isUnread,
+        colorTheme = colorTheme,
         onClick = { onClick(articleWithFeed) },
         onLongClick = onLongClick,
+        forceShowFeedName = forceShowFeedName,
     )
 }
 
@@ -123,37 +143,147 @@ fun ArticleItem(
     imgData: Any? = null,
     isStarred: Boolean = false,
     isUnread: Boolean = false,
+    colorTheme: ColorTheme? = null,
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
+    forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
 ) {
     val articleListFeedIcon = LocalFlowArticleListFeedIcon.current
     val articleListFeedName = LocalFlowArticleListFeedName.current
+    // 2026-01-29: 计算是否显示订阅源名称（考虑强制显示标志）
+    val shouldShowFeedName = articleListFeedName.value || forceShowFeedName
     val articleListImage = LocalFlowArticleListImage.current
     val articleListDesc = LocalFlowArticleListDesc.current
     val articleListDate = LocalFlowArticleListTime.current
     val articleListReadIndicator = LocalFlowArticleListReadIndicator.current
+    // 2026-01-18: 新增文章列表样式相关的Preference
+    val titleFontSize = LocalFlowArticleListTitleFontSize.current
+    val titleLineHeight = LocalFlowArticleListTitleLineHeight.current
+    val horizontalPadding = LocalFlowArticleListHorizontalPadding.current
+    val verticalPadding = LocalFlowArticleListVerticalPadding.current
+    val imageRoundedCorners = LocalFlowArticleListImageRoundedCorners.current
+    val imageSize = LocalFlowArticleListImageSize.current
+    val roundedCorners = LocalFlowArticleListRoundedCorners.current
+    val colorThemes = LocalFlowArticleListColorThemes.current
+    val selectedColorTheme = colorThemes.firstOrNull { it.isDefault } ?: colorThemes.firstOrNull()
+    val imageBrightness = LocalReadingImageBrightness.current
 
     Column(
-        modifier =
-            modifier
-                .padding(horizontal = 12.dp)
-                .clip(Shape20)
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-                .padding(horizontal = 12.dp, vertical = 12.dp)
-                .alpha(
-                    when (articleListReadIndicator) {
-                        FlowArticleReadIndicatorPreference.None -> 1f
+        modifier = modifier
+            .padding(horizontal = horizontalPadding.dp)
+            .clip(RoundedCornerShape(roundedCorners.dp))
+            .background(
+                colorTheme?.backgroundColor
+                    ?: (if (selectedColorTheme != null) selectedColorTheme.backgroundColor else MaterialTheme.colorScheme.surface)
+            )
+            .background(
+                if (colorTheme != null) colorTheme.backgroundColor.atElevation(
+                    sourceColor = MaterialTheme.colorScheme.onSurface, elevation = 1.dp
+                )
+                else MaterialTheme.colorScheme.surface
+            )
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 12.dp, vertical = verticalPadding.dp)
+            .alpha(
+                when (articleListReadIndicator) {
+                    FlowArticleReadIndicatorPreference.None -> 1f
 
-                        FlowArticleReadIndicatorPreference.AllRead -> {
-                            if (isUnread) 1f else 0.5f
-                        }
+                    FlowArticleReadIndicatorPreference.AllRead -> {
+                        if (isUnread) 1f else 0.5f
+                    }
 
-                        FlowArticleReadIndicatorPreference.ExcludingStarred -> {
-                            if (isUnread || isStarred) 1f else 0.5f
+                    FlowArticleReadIndicatorPreference.ExcludingStarred -> {
+                        if (isUnread || isStarred) 1f else 0.5f
+                    }
+                }
+            )
+    ) {
+
+        // Bottom
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp)
+        ) {
+            // Feed icon
+            if (articleListFeedIcon.value) {
+                FeedIcon(feedName = feedName, iconUrl = feedIconUrl)
+                Spacer(modifier = Modifier.width(10.dp))
+            }
+
+            // Article
+            Column(modifier = Modifier.weight(1f)) {
+
+                // Title
+                Row {
+                    Text(
+                        text = title,
+                        color = if (selectedColorTheme != null) selectedColorTheme.textColor else MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleMedium.applyTextDirection(title.requiresBidi())
+                            .merge(
+                                fontSize = titleFontSize.sp,
+                                lineHeight = (titleFontSize * titleLineHeight).sp
+                            ),
+                        maxLines = if (articleListDesc != FlowArticleListDescPreference.NONE) 2 else 3,//不显示描述4行改为3行，显示描述2行
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Justify,
+                    )
+                    if (!shouldShowFeedName && !articleListDate.value) {
+                        if (isStarred) {
+                            StarredIcon()
+                        } else {
+//                            Spacer(modifier = Modifier.width(4.dp))
                         }
                     }
+                }
+
+                // Description
+                if (articleListDesc != FlowArticleListDescPreference.NONE && shortDescription.isNotBlank()) {
+                    Text(
+                        modifier = Modifier.padding(top = 4.dp),
+                        text = shortDescription,
+                        color = if (selectedColorTheme != null) selectedColorTheme.textColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall.applyTextDirection(
+                            shortDescription.requiresBidi()
+                        ),
+                        maxLines = when (articleListDesc) {
+                            FlowArticleListDescPreference.LONG -> 4
+                            FlowArticleListDescPreference.SHORT -> 2
+                            else -> throw IllegalStateException()
+                        },
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Justify,
+                    )
+                }
+            }
+
+            // Image
+            if (imgData != null && articleListImage.value) {
+                val brightnessFilter = if (imageBrightness < 100) {
+                    val brightnessValue = imageBrightness / 100f
+                    androidx.compose.ui.graphics.ColorFilter.lighting(
+                        multiply = androidx.compose.ui.graphics.Color(brightnessValue, brightnessValue, brightnessValue),
+                        add = androidx.compose.ui.graphics.Color.Transparent
+                    )
+                } else {
+                    null
+                }
+                RYAsyncImage(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(imageSize.dp)
+                        .clip(RoundedCornerShape(imageRoundedCorners.dp)),
+                    data = imgData,
+                    scale = Scale.FILL,
+                    precision = Precision.INEXACT,
+                    size = SIZE_1000,
+                    contentScale = ContentScale.Crop,
+                    colorFilter = brightnessFilter,
                 )
-    ) {
+            }
+        }
+
         // Top
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -161,16 +291,16 @@ fun ArticleItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Feed name
-            if (articleListFeedName.value) {
+            if (shouldShowFeedName) {
                 Text(
-                    modifier =
-                        Modifier.weight(1f)
-                            .padding(
-                                start = if (articleListFeedIcon.value) 30.dp else 0.dp,
-                                end = 10.dp,
-                            ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(
+                            start = if (articleListFeedIcon.value) 30.dp else 0.dp,
+                            end = 10.dp,
+                        ),
                     text = feedName,
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = if (selectedColorTheme != null) selectedColorTheme.textColor else MaterialTheme.colorScheme.tertiary,
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -187,7 +317,7 @@ fun ArticleItem(
                         Text(
                             modifier = Modifier,
                             text = timeString ?: "",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (selectedColorTheme != null) selectedColorTheme.textColor else MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelMedium,
                         )
                     }
@@ -201,7 +331,7 @@ fun ArticleItem(
                         Text(
                             modifier = Modifier.weight(1f),
                             text = timeString ?: "",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (selectedColorTheme != null) selectedColorTheme.textColor else MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelMedium,
                         )
                         // Starred
@@ -216,76 +346,6 @@ fun ArticleItem(
 
         }
 
-        // Bottom
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-            // Feed icon
-            if (articleListFeedIcon.value) {
-                FeedIcon(feedName = feedName, iconUrl = feedIconUrl)
-                Spacer(modifier = Modifier.width(10.dp))
-            }
-
-            // Article
-            Column(modifier = Modifier.weight(1f)) {
-
-                // Title
-                Row {
-                    Text(
-                        text = title,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style =
-                            MaterialTheme.typography.titleMedium
-                                .applyTextDirection(title.requiresBidi())
-                                .merge(lineHeight = 22.sp),
-                        maxLines =
-                            if (articleListDesc != FlowArticleListDescPreference.NONE) 2 else 4,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (!articleListFeedName.value && !articleListDate.value) {
-                        if (isStarred) {
-                            StarredIcon()
-                        } else {
-                            Spacer(modifier = Modifier.width(16.dp))
-                        }
-                    }
-                }
-
-                // Description
-                if (
-                    articleListDesc != FlowArticleListDescPreference.NONE &&
-                        shortDescription.isNotBlank()
-                ) {
-                    Text(
-                        modifier = Modifier.padding(top = 4.dp),
-                        text = shortDescription,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style =
-                            MaterialTheme.typography.bodySmall.applyTextDirection(
-                                shortDescription.requiresBidi()
-                            ),
-                        maxLines =
-                            when (articleListDesc) {
-                                FlowArticleListDescPreference.LONG -> 4
-                                FlowArticleListDescPreference.SHORT -> 2
-                                else -> throw IllegalStateException()
-                            },
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-
-            // Image
-            if (imgData != null && articleListImage.value) {
-                RYAsyncImage(
-                    modifier = Modifier.padding(start = 10.dp).size(80.dp).clip(Shape20),
-                    data = imgData,
-                    scale = Scale.FILL,
-                    precision = Precision.INEXACT,
-                    size = SIZE_1000,
-                    contentScale = ContentScale.Crop,
-                )
-            }
-        }
     }
 }
 
@@ -312,6 +372,7 @@ fun SwipeableArticleItem(
     articleWithFeed: ArticleWithFeed,
     isUnread: Boolean = articleWithFeed.article.isUnread,
     articleListTonalElevation: Int = 0,
+    colorTheme: ColorTheme? = null,
     onClick: (ArticleWithFeed) -> Unit = {},
     isSwipeEnabled: () -> Boolean = { false },
     isMenuEnabled: Boolean = true,
@@ -320,16 +381,16 @@ fun SwipeableArticleItem(
     onMarkAboveAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onMarkBelowAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onShare: ((ArticleWithFeed) -> Unit)? = null,
+    forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
 ) {
 
     var isMenuExpanded by remember { mutableStateOf(false) }
 
-    val onLongClick =
-        if (isMenuEnabled) {
-            { isMenuExpanded = true }
-        } else {
-            null
-        }
+    val onLongClick = if (isMenuEnabled) {
+        { isMenuExpanded = true }
+    } else {
+        null
+    }
     var menuOffset by remember { mutableStateOf(IntOffset.Zero) }
 
     SwipeActionBox(
@@ -339,30 +400,31 @@ fun SwipeableArticleItem(
         onToggleStarred = onToggleStarred,
         onToggleRead = onToggleRead,
     ) {
-        Box(
-            modifier =
-                Modifier.fillMaxSize()
-                    .pointerInput(isMenuExpanded) {
-                        awaitEachGesture {
-                            while (true) {
-                                awaitFirstDown(requireUnconsumed = false).let {
-                                    menuOffset = it.position.round()
-                                }
-                            }
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(isMenuExpanded) {
+                awaitEachGesture {
+                    while (true) {
+                        awaitFirstDown(requireUnconsumed = false).let {
+                            menuOffset = it.position.round()
                         }
                     }
-                    .background(
-                        MaterialTheme.colorScheme.surfaceColorAtElevation(
-                            articleListTonalElevation.dp
-                        ) onDark MaterialTheme.colorScheme.surface
-                    )
-                    .wrapContentSize()
-        ) {
+                }
+            }
+            .background(
+                colorTheme?.backgroundColor ?: (MaterialTheme.colorScheme.surfaceColorAtElevation(
+                    articleListTonalElevation.dp
+                ) onDark MaterialTheme.colorScheme.surface)
+            )
+
+            .wrapContentSize()) {
             ArticleItem(
                 articleWithFeed = articleWithFeed,
                 isUnread = isUnread,
+                colorTheme = colorTheme,
                 onClick = onClick,
                 onLongClick = onLongClick,
+                forceShowFeedName = forceShowFeedName,
             )
             with(articleWithFeed.article) {
                 if (isMenuEnabled) {
@@ -392,8 +454,7 @@ fun SwipeableArticleItem(
 }
 
 private enum class SwipeDirection {
-    StartToEnd,
-    EndToStart,
+    StartToEnd, EndToStart,
 }
 
 @Composable
@@ -411,72 +472,66 @@ private fun SwipeActionBox(
     val swipeToStartAction = LocalArticleListSwipeStartAction.current
     val swipeToEndAction = LocalArticleListSwipeEndAction.current
 
-    val onSwipeEndToStart =
-        when (swipeToStartAction) {
-            SwipeStartActionPreference.None -> null
-            SwipeStartActionPreference.ToggleRead -> onToggleRead
-            SwipeStartActionPreference.ToggleStarred -> onToggleStarred
-        }
+    val onSwipeEndToStart = when (swipeToStartAction) {
+        SwipeStartActionPreference.None -> null
+        SwipeStartActionPreference.ToggleRead -> onToggleRead
+        SwipeStartActionPreference.ToggleStarred -> onToggleStarred
+    }
 
-    val onSwipeStartToEnd =
-        when (swipeToEndAction) {
-            SwipeEndActionPreference.None -> null
-            SwipeEndActionPreference.ToggleRead -> onToggleRead
-            SwipeEndActionPreference.ToggleStarred -> onToggleStarred
-        }
+    val onSwipeStartToEnd = when (swipeToEndAction) {
+        SwipeEndActionPreference.None -> null
+        SwipeEndActionPreference.ToggleRead -> onToggleRead
+        SwipeEndActionPreference.ToggleStarred -> onToggleStarred
+    }
 
     if (onSwipeStartToEnd == null && onSwipeEndToStart == null) {
         content()
         return
     }
 
-    val startAction =
-        onSwipeStartToEnd?.let {
-            SwipeAction(
-                icon = {
-                    swipeActionIcon(
-                            direction = SwipeDirection.StartToEnd,
-                            isStarred = isStarred,
-                            isRead = isRead,
-                        )
-                        ?.let {
-                            Icon(
-                                imageVector = it,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.padding(horizontal = 24.dp),
-                            )
-                        }
-                },
-                background = containerColor,
-                isUndo = false,
-                onSwipe = { onSwipeStartToEnd.invoke(articleWithFeed) },
-            )
-        }
+    val startAction = onSwipeStartToEnd?.let {
+        SwipeAction(
+            icon = {
+                swipeActionIcon(
+                    direction = SwipeDirection.StartToEnd,
+                    isStarred = isStarred,
+                    isRead = isRead,
+                )?.let {
+                    Icon(
+                        imageVector = it,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
+                }
+            },
+            background = containerColor,
+            isUndo = false,
+            onSwipe = { onSwipeStartToEnd.invoke(articleWithFeed) },
+        )
+    }
 
-    val endAction =
-        onSwipeEndToStart?.let {
-            SwipeAction(
-                icon = {
-                    swipeActionIcon(
-                            direction = SwipeDirection.EndToStart,
-                            isStarred = isStarred,
-                            isRead = isRead,
-                        )
-                        ?.let {
-                            Icon(
-                                imageVector = it,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.padding(horizontal = 24.dp),
-                            )
-                        }
-                },
-                background = containerColor,
-                isUndo = false,
-                onSwipe = { onSwipeEndToStart.invoke(articleWithFeed) },
-            )
-        }
+    val endAction = onSwipeEndToStart?.let {
+        SwipeAction(
+            icon = {
+                swipeActionIcon(
+                    direction = SwipeDirection.EndToStart,
+                    isStarred = isStarred,
+                    isRead = isRead,
+                )?.let {
+                    Icon(
+                        imageVector = it,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
+                }
+            },
+            background = containerColor,
+            isUndo = false,
+            onSwipe = { onSwipeEndToStart.invoke(articleWithFeed) },
+        )
+    }
 
     SwipeableActionsBox(
         modifier = modifier,
@@ -576,10 +631,9 @@ fun ArticleItemMenuContent(
     val starImageVector =
         remember(isStarred) { if (isStarred) Icons.Outlined.StarOutline else Icons.Rounded.Star }
 
-    val readImageVector =
-        remember(isRead) {
-            if (isRead) Icons.Outlined.FiberManualRecord else Icons.Rounded.FiberManualRecord
-        }
+    val readImageVector = remember(isRead) {
+        if (isRead) Icons.Outlined.FiberManualRecord else Icons.Rounded.FiberManualRecord
+    }
 
     val starText =
         stringResource(if (isStarred) R.string.mark_as_unstar else R.string.mark_as_starred)

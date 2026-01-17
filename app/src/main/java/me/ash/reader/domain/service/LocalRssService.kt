@@ -5,6 +5,7 @@ import androidx.work.ListenableWorker
 import androidx.work.WorkManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Date
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -18,6 +19,7 @@ import me.ash.reader.domain.model.account.AccountType
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.model.feed.FeedWithArticle
 import me.ash.reader.domain.repository.ArticleDao
+import me.ash.reader.domain.repository.BlacklistKeywordDao
 import me.ash.reader.domain.repository.FeedDao
 import me.ash.reader.domain.repository.GroupDao
 import me.ash.reader.infrastructure.android.NotificationHelper
@@ -42,6 +44,7 @@ constructor(
     private val workManager: WorkManager,
     private val accountService: AccountService,
     private val syncLogger: SyncLogger,
+    private val blacklistKeywordDao: BlacklistKeywordDao,
 ) :
     AbstractRssRepository(
         articleDao,
@@ -76,8 +79,16 @@ constructor(
                     else -> feedDao.queryAll(accountId)
                 }
 
+            // 2026-01-25: 设置同步进度总数量
+            // 原因：用户反馈需要在更新订阅源时显示进度
+            // 时间：2026-01-25
+            val totalFeeds = feedsToSync.size
+            Timber.tag("SyncProgress").d("准备同步，总数量: $totalFeeds")
+            AbstractRssRepository.setSyncProgress(0, totalFeeds)
+
+            val completedCount = AtomicInteger(0)
             feedsToSync
-                .mapIndexed { _, currentFeed ->
+                .mapIndexed { index, currentFeed ->
                     async(Dispatchers.IO) {
                         semaphore.withPermit {
                             val archivedArticles =
@@ -86,10 +97,25 @@ constructor(
                                     .map { it.link }
                                     .toSet()
                             val fetchedFeed = syncFeed(currentFeed, preDate)
-                            val fetchedArticles =
+                            var fetchedArticles =
                                 fetchedFeed.articles.filterNot {
                                     archivedArticles.contains(it.link)
                                 }
+
+                            // 2026-01-24: 关键词过滤 - 过滤的文章不保存
+                            val blacklistKeywords = blacklistKeywordDao.getAllSync()
+                            if (blacklistKeywords.isNotEmpty()) {
+                                fetchedArticles = fetchedArticles.filterNot { article ->
+                                    blacklistKeywords.any { keyword ->
+                                        keyword.enabled && article.title.contains(
+                                            keyword.keyword,
+                                            ignoreCase = true
+                                        ) && (keyword.feedUrls.isNullOrBlank() || keyword.feedUrls.split(
+                                            ","
+                                        ).contains(currentFeed.url))
+                                    }
+                                }
+                            }
 
                             val newArticles =
                                 articleDao.insertListIfNotExist(
@@ -101,21 +127,36 @@ constructor(
                                     fetchedFeed.copy(articles = newArticles, feed = currentFeed)
                                 )
                             }
+
+                            // 2026-01-25: 更新同步进度
+                            // 原因：用户反馈需要在更新订阅源时显示进度
+                            // 时间：2026-01-25
+                            val current = completedCount.incrementAndGet()
+                            Timber.tag("SyncProgress").d("更新进度: $current/$totalFeeds")
+                            AbstractRssRepository.setSyncProgress(current, totalFeeds)
                         }
                     }
                 }
                 .awaitAll()
 
+            // 2026-01-25: 清除同步进度
+            clearSyncProgress()
+
             Timber.tag("RlOG").i("onCompletion: ${System.currentTimeMillis() - preTime}")
             accountService.update(currentAccount.copy(updateAt = Date()))
             ListenableWorker.Result.success()
         }
-            .onFailure { syncLogger.log(it) }
+            .onFailure {
+                // 2026-01-25: 同步失败时清除进度
+                AbstractRssRepository.clearSyncProgress()
+                syncLogger.log(it)
+            }
             .getOrNull() ?: ListenableWorker.Result.retry()
     }
 
     private suspend fun syncFeed(feed: Feed, preDate: Date = Date()): FeedWithArticle {
         val articles = rssHelper.queryRssXml(feed, "", preDate)
+
         if (feed.icon == null) {
             val iconLink = rssHelper.queryRssIconLink(feed.url)
             if (iconLink != null) {

@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "Serena Agent": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "iflow-mcp_serena-agent",
+        "serena-mcp-server",
+        "--project",
+        "D:\\Code\\ReadYou-main",
+        "--transport",
+        "stdio"
+      ],
+      "env": {
+        "PROJECT_PATH": "D:\\Code\\ReadYou-main"
+      }
+    }
+  }
+}

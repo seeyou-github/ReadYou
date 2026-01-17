@@ -11,6 +11,9 @@ import java.util.UUID
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOn
 import me.ash.reader.domain.model.account.Account
 import me.ash.reader.domain.model.article.ArchivedArticle
@@ -26,6 +29,7 @@ import me.ash.reader.infrastructure.android.NotificationHelper
 import me.ash.reader.infrastructure.preference.KeepArchivedPreference
 import me.ash.reader.infrastructure.preference.SyncIntervalPreference
 import me.ash.reader.infrastructure.rss.RssHelper
+import timber.log.Timber
 import me.ash.reader.ui.ext.decodeHTML
 import me.ash.reader.ui.ext.spacerDollar
 
@@ -46,6 +50,23 @@ abstract class AbstractRssRepository(
     open val moveSubscription: Boolean = true
     open val deleteSubscription: Boolean = true
     open val updateSubscription: Boolean = true
+
+    // 2026-01-25: 静态同步进度 StateFlow，用于跨实例共享进度
+    // 原因：WorkManager Worker 中的 LocalRssService 实例与 UI 层的实例不同，需要用静态变量共享
+    // 时间：2026-01-25
+    companion object {
+        private val _syncProgress = MutableStateFlow<Pair<Int, Int>?>(null)
+        val syncProgress: StateFlow<Pair<Int, Int>?> = _syncProgress.asStateFlow()
+
+        fun setSyncProgress(current: Int, total: Int) {
+            Timber.tag("SyncProgress").d("设置进度: $current/$total")
+            _syncProgress.value = Pair(current, total)
+        }
+
+        fun clearSyncProgress() {
+            _syncProgress.value = null
+        }
+    }
 
     open suspend fun validCredentials(account: Account): Boolean = true
 

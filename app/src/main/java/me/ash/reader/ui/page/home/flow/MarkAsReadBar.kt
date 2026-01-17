@@ -25,12 +25,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.ash.reader.R
 import me.ash.reader.domain.model.general.MarkAsReadConditions
+import me.ash.reader.domain.model.theme.ColorTheme
 import me.ash.reader.ui.component.base.AnimatedPopup
 import me.ash.reader.ui.component.base.RYExtensibleVisibility
 import me.ash.reader.ui.theme.palette.alwaysLight
 
 @Composable
 fun MarkAsReadBar(
+    colorTheme: ColorTheme? = null,
     onItemClick: (MarkAsReadConditions) -> Unit = {},
 ) {
     Row(
@@ -43,18 +45,21 @@ fun MarkAsReadBar(
         MarkAsReadBarItem(
             modifier = Modifier.width(56.dp),
             text = stringResource(R.string.seven_days),
+            colorTheme = colorTheme,
         ) {
             onItemClick(MarkAsReadConditions.SevenDays)
         }
         MarkAsReadBarItem(
             modifier = Modifier.width(56.dp),
             text = stringResource(R.string.three_days),
+            colorTheme = colorTheme,
         ) {
             onItemClick(MarkAsReadConditions.ThreeDays)
         }
         MarkAsReadBarItem(
             modifier = Modifier.width(56.dp),
             text = stringResource(R.string.one_day),
+            colorTheme = colorTheme,
         ) {
             onItemClick(MarkAsReadConditions.OneDay)
         }
@@ -62,6 +67,7 @@ fun MarkAsReadBar(
             modifier = Modifier.weight(1f),
             text = stringResource(R.string.mark_all_as_read),
             isPrimary = true,
+            colorTheme = colorTheme,
         ) {
             onItemClick(MarkAsReadConditions.All)
         }
@@ -73,6 +79,7 @@ fun MarkAsReadBarItem(
     modifier: Modifier = Modifier,
     text: String,
     isPrimary: Boolean = false,
+    colorTheme: ColorTheme? = null,
     onClick: () -> Unit = {},
 ) {
     val view = LocalView.current
@@ -91,7 +98,7 @@ fun MarkAsReadBarItem(
         color = if (isPrimary) {
             MaterialTheme.colorScheme.primaryContainer alwaysLight true
         } else {
-            MaterialTheme.colorScheme.surface
+            colorTheme?.backgroundColor ?: MaterialTheme.colorScheme.surface
         }
     ) {
         Box(

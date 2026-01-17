@@ -45,6 +45,7 @@ fun FeedOptionView(
     openInBrowserPresetOnClick: () -> Unit = {},
     clearArticlesOnClick: () -> Unit = {},
     unsubscribeOnClick: () -> Unit = {},
+    exportFeedAsOpmlOnClick: () -> Unit = {},
     onGroupClick: (groupId: String) -> Unit = {},
     onAddNewGroup: () -> Unit = {},
     onFeedUrlClick: () -> Unit = {},
@@ -66,6 +67,7 @@ fun FeedOptionView(
             openInBrowserPresetOnClick = openInBrowserPresetOnClick,
             clearArticlesOnClick = clearArticlesOnClick,
             unsubscribeOnClick = unsubscribeOnClick,
+            exportFeedAsOpmlOnClick = exportFeedAsOpmlOnClick,
         )
 
         if (showGroup) {
@@ -114,6 +116,7 @@ private fun Preset(
     openInBrowserPresetOnClick: () -> Unit = {},
     clearArticlesOnClick: () -> Unit = {},
     unsubscribeOnClick: () -> Unit = {},
+    exportFeedAsOpmlOnClick: () -> Unit = {},
 ) {
     Subtitle(text = stringResource(R.string.reading_page))
     Spacer(modifier = Modifier.height(10.dp))
@@ -177,6 +180,13 @@ private fun Preset(
             allowNotificationPresetOnClick()
         }
         if (notSubscribeMode) {
+            RYSelectionChip(
+                modifier = Modifier,
+                content = stringResource(R.string.export_feed_as_opml),
+                selected = false,
+            ) {
+                exportFeedAsOpmlOnClick()
+            }
             RYSelectionChip(
                 modifier = Modifier,
                 content = stringResource(R.string.clear_articles),

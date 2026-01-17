@@ -134,6 +134,12 @@ interface FeedDao {
     )
     suspend fun queryAll(accountId: Int): List<Feed>
 
+    /**
+     * 2026-01-24: 查询所有订阅源（不限制账户，用于关键词屏蔽功能）
+     */
+    @Query("SELECT * FROM feed")
+    suspend fun queryAllNoAccount(): List<Feed>
+
     @Query(
         """
         SELECT * FROM feed

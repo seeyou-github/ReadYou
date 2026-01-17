@@ -44,7 +44,7 @@ sealed class SyncIntervalPreference(
 
     companion object {
 
-        val default = Every30Minutes
+        val default = Manually
         val values = listOf(
             Manually,
             Every15Minutes,

@@ -53,6 +53,7 @@ class OPMLDataSource @Inject constructor(
                             id = targetAccountId.spacerDollar(UUID.randomUUID().toString()),
                             name = outline.extractName(),
                             url = outline.extractUrl() ?: continue,
+                            icon = outline.extractIcon(),
                             groupId = defaultGroup.id,
                             accountId = targetAccountId,
                             isNotification = outline.extractPresetNotification(),
@@ -80,6 +81,7 @@ class OPMLDataSource @Inject constructor(
                                 id = targetAccountId.spacerDollar(UUID.randomUUID().toString()),
                                 name = subOutline.extractName(),
                                 url = subOutline.extractUrl() ?: continue,
+                                icon = subOutline.extractIcon(),
                                 groupId = groupId,
                                 accountId = targetAccountId,
                                 isNotification = subOutline.extractPresetNotification(),
@@ -121,6 +123,14 @@ class OPMLDataSource @Inject constructor(
         val url = attributes.getOrDefault("xmlUrl", null)
             ?: attributes.getOrDefault("url", null)
         return if (url.isNullOrBlank()) null else url
+    }
+
+    // 2026-01-21: 新增从 OPML 提取图标 URL 的方法
+    // 修改目的：支持从 OPML 的 icon 属性获取 Feed 图标
+    private fun Outline?.extractIcon(): String? {
+        if (this == null) return null
+        val icon = attributes.getOrDefault("icon", null)
+        return if (icon.isNullOrBlank()) null else icon
     }
 
     private fun Outline?.extractPresetNotification(): Boolean =

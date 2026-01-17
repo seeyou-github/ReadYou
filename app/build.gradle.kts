@@ -14,15 +14,15 @@ plugins {
     alias(libs.plugins.kotlin.parcelize)
 }
 
-fun fetchGitCommitHash(): String {
-    val process =
-        ProcessBuilder("git", "rev-parse", "--verify", "--short", "HEAD")
-            .redirectErrorStream(true)
-            .start()
-    return process.inputStream.bufferedReader().use { it.readText().trim() }
-}
+//fun fetchGitCommitHash(): String {
+//    val process =
+//        ProcessBuilder("git", "rev-parse", "--verify", "--short", "HEAD")
+//            .redirectErrorStream(true)
+//            .start()
+//    return process.inputStream.bufferedReader().use { it.readText().trim() }
+//}
 
-val gitCommitHash = fetchGitCommitHash()
+//val gitCommitHash = fetchGitCommitHash()
 val keyProps = Properties()
 val releaseKeyPropsFile: File = rootProject.file("signature/keystore_release.properties")
 val debugKeyPropsFile: File = rootProject.file("signature/keystore.properties")
@@ -57,20 +57,26 @@ android {
         room { schemaDirectory("$projectDir/schemas") }
 
         ksp { arg("room.incremental", "true") }
-    }
 
-    flavorDimensions.add("channel")
-    productFlavors {
-        create("github") {
-            isDefault = true
-            dimension = "channel"
+        // NDK 架构过滤：仅保留 arm64
+        // 说明：只编译 arm64-v8a 架构，减少编译时间和 APK 体积
+        // 如果需要支持其他架构，可添加：armeabi-v7a, x86, x86_64
+        ndk {
+            abiFilters += "arm64-v8a"
         }
-        create("fdroid") { dimension = "channel" }
-        create("googlePlay") {
-            dimension = "channel"
-            applicationIdSuffix = ".google.play"
-        }
-    }
+
+//    flavorDimensions.add("channel")
+//    productFlavors {
+//        create("github") {
+//            isDefault = true
+//            dimension = "channel"
+//        }
+//        create("fdroid") { dimension = "channel" }
+//        create("googlePlay") {
+//            dimension = "channel"
+//            applicationIdSuffix = ".google.play"
+//        }
+//    }
     signingConfigs {
         create("release") {
             keyAlias = keyProps["keyAlias"] as String?
@@ -95,7 +101,7 @@ android {
     applicationVariants.all {
         outputs.all {
             (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
-                "ReadYou-${defaultConfig.versionName}-${gitCommitHash}.apk"
+                "ReadYou-${defaultConfig.versionName}.apk"
         }
     }
     kotlinOptions {
@@ -117,7 +123,9 @@ android {
 }
 
 aboutLibraries { excludeFields = arrayOf("generated") }
-
+configurations.configureEach {
+    exclude(group = "net.sf.kxml", module = "kxml2")
+}
 dependencies {
     // AboutLibraries
     implementation(libs.aboutlibraries.core)
@@ -201,10 +209,11 @@ dependencies {
     implementation(libs.timber)
 
     // Testing
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.junit.ext)
-    androidTestImplementation(libs.espresso)
-    testImplementation(libs.mockito.core)
-    testImplementation(libs.mockito.junit.jupiter)
-    testImplementation(libs.mockito.kotlin)
+//    testImplementation(libs.junit)
+//    androidTestImplementation(libs.junit.ext)
+//    androidTestImplementation(libs.espresso)
+//    testImplementation(libs.mockito.core)
+//    testImplementation(libs.mockito.junit.jupiter)
+//    testImplementation(libs.mockito.kotlin)
+
 }

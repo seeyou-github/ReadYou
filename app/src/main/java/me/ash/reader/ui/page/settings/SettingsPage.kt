@@ -16,6 +16,9 @@ import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.TipsAndUpdates
 import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.FilterAlt
+import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import me.ash.reader.R
+import me.ash.reader.infrastructure.preference.LocalFeedsPageColorThemes
 import me.ash.reader.infrastructure.preference.LocalNewVersionNumber
 import me.ash.reader.infrastructure.preference.LocalSkipVersionNumber
 import me.ash.reader.infrastructure.preference.toDisplayName
@@ -50,17 +54,22 @@ fun SettingsPage(
     navigateToAccounts: () -> Unit,
     navigateToColorAndStyle: () -> Unit,
     navigateToInteraction: () -> Unit,
-    navigateToLanguages: () -> Unit,
-    navigateToTroubleshooting: () -> Unit,
-    navigateToTipsAndSupport: () -> Unit,
+    navigateToBackupAndRestore: () -> Unit,
+    navigateToOther: () -> Unit,
+    navigateToBlacklist: () -> Unit,
 ) {
     val context = LocalContext.current
     val newVersion = LocalNewVersionNumber.current
     val skipVersion = LocalSkipVersionNumber.current
     val currentVersion by remember { mutableStateOf(context.getCurrentVersion()) }
+    
+    // 2026-01-26: 获取当前颜色主题
+    val colorThemes = LocalFeedsPageColorThemes.current
+    val selectedColorTheme = colorThemes.firstOrNull { it.isDefault } ?: colorThemes.firstOrNull()
 
     RYScaffold(
-        containerColor = MaterialTheme.colorScheme.surface onLight MaterialTheme.colorScheme.inverseOnSurface,
+        containerColor = selectedColorTheme?.backgroundColor ?: (MaterialTheme.colorScheme.surface onLight MaterialTheme.colorScheme.inverseOnSurface),
+        topBarColor = selectedColorTheme?.backgroundColor ?: (MaterialTheme.colorScheme.surface onLight MaterialTheme.colorScheme.inverseOnSurface),
         navigationIcon = {
             FeedbackIconButton(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
@@ -111,14 +120,16 @@ fun SettingsPage(
                         onClick = navigateToAccounts
                     )
                 }
-                item {
-                    SelectableSettingGroupItem(
-                        title = stringResource(R.string.color_and_style),
-                        desc = stringResource(R.string.color_and_style_desc),
-                        icon = Icons.Outlined.Palette,
-                        onClick = navigateToColorAndStyle
-                    )
-                }
+                // 2026-01-21: 隐藏颜色和样式页面
+                // 修改原因：相关功能已整合到 FeedsPageStylePage 和 ReadingPageStylePage 中
+                // item {
+                //     SelectableSettingGroupItem(
+                //         title = stringResource(R.string.color_and_style),
+                //         desc = stringResource(R.string.color_and_style_desc),
+                //         icon = Icons.Outlined.Palette,
+                //         onClick = navigateToColorAndStyle
+                //     )
+                // }
                 item {
                     SelectableSettingGroupItem(
                         title = stringResource(R.string.interaction),
@@ -127,28 +138,29 @@ fun SettingsPage(
                         onClick = navigateToInteraction
                     )
                 }
+                // 2026-01-24: 关键词屏蔽入口（在"使用偏好"下面）
                 item {
                     SelectableSettingGroupItem(
-                        title = stringResource(R.string.languages),
-                        desc = Locale.getDefault().toDisplayName(),
-                        icon = Icons.Outlined.Language,
-                        onClick = navigateToLanguages
+                        title = stringResource(R.string.blacklist),
+                        desc = stringResource(R.string.blacklist_desc),
+                        icon = Icons.Outlined.FilterAlt,
+                        onClick = navigateToBlacklist
                     )
                 }
                 item {
                     SelectableSettingGroupItem(
-                        title = stringResource(R.string.troubleshooting),
-                        desc = stringResource(R.string.troubleshooting_desc),
-                        icon = Icons.Outlined.BugReport,
-                        onClick = navigateToTroubleshooting
+                        title = stringResource(R.string.backup_and_restore),
+                        desc = stringResource(R.string.backup_and_restore_desc),
+                        icon = Icons.Outlined.CloudUpload,
+                        onClick = navigateToBackupAndRestore
                     )
                 }
                 item {
                     SelectableSettingGroupItem(
-                        title = stringResource(R.string.tips_and_support),
-                        desc = stringResource(R.string.tips_and_support_desc),
-                        icon = Icons.Outlined.TipsAndUpdates,
-                        onClick = navigateToTipsAndSupport
+                        title = stringResource(R.string.other),
+                        desc = stringResource(R.string.other_desc),
+                        icon = Icons.Outlined.MoreHoriz,
+                        onClick = navigateToOther
                     )
                 }
                 item {

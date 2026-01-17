@@ -45,8 +45,8 @@ sealed class InitialFilterPreference(val value: Int) : Preference() {
     }
 
     companion object {
-
-        val default = Unread
+        //默认值：默认刷选器
+        val default = All
         val values = listOf(Starred, Unread, All)
 
         fun fromPreferences(preferences: Preferences) =

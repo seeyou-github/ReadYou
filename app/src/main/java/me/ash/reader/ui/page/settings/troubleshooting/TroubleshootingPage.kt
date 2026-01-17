@@ -150,19 +150,7 @@ fun TroubleshootingPage(onBack: () -> Unit, viewModel: TroubleshootingViewModel 
                 }
                 item {
                     Spacer(modifier = Modifier.height(24.dp))
-                    Subtitle(
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        text = stringResource(R.string.app_preferences),
-                    )
-                    SettingItem(
-                        title = stringResource(R.string.import_from_json),
-                        onClick = { importLauncher.launch(arrayOf(MimeType.ANY)) },
-                    ) {}
-                    SettingItem(
-                        title = stringResource(R.string.export_as_json),
-                        onClick = { preferenceFileLauncher(context, exportLauncher) },
-                    ) {}
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Subtitle(modifier = Modifier.padding(horizontal = 24.dp), text = "Worker infos")
                 }
                 item {
                     Subtitle(modifier = Modifier.padding(horizontal = 24.dp), text = "Worker infos")

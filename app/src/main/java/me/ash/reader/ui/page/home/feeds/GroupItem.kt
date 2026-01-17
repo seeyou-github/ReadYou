@@ -24,8 +24,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import me.ash.reader.R
+import me.ash.reader.infrastructure.preference.LocalFeedsPageColorThemes
+// 2026-01-23: 导入列表视图列表边距设置
+import me.ash.reader.infrastructure.preference.LocalFeedsListItemPadding
 import me.ash.reader.domain.model.group.Group
 import me.ash.reader.domain.model.group.GroupWithFeed
+import me.ash.reader.ui.ext.atElevation
 import me.ash.reader.ui.page.home.feeds.drawer.group.GroupOptionViewModel
 import me.ash.reader.ui.theme.Shape32
 import me.ash.reader.ui.theme.ShapeTop32
@@ -40,7 +44,13 @@ fun GroupItem(
     onLongClick: () -> Unit = {},
     groupOnClick: () -> Unit = {},
 ) {
+    // 2026-01-23: 获取列表视图列表边距设置
+    // 修改原因：支持用户自定义分组名称的内边距
+    val listItemPadding = LocalFeedsListItemPadding.current
+    
     val view = LocalView.current
+    val colorThemes = LocalFeedsPageColorThemes.current
+    val selectedColorTheme = colorThemes.firstOrNull { it.isDefault } ?: colorThemes.firstOrNull()
 
     Column(
         modifier = Modifier
@@ -64,16 +74,18 @@ fun GroupItem(
             Text(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 28.dp),
+                    .padding(horizontal = listItemPadding.dp),
                 text = group.name,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                color = if (selectedColorTheme != null) selectedColorTheme.textColor else MaterialTheme.colorScheme.onSecondaryContainer,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Row(
                 modifier = Modifier
-                    .padding(end = 20.dp)
+                    // 2026-01-23: 修复箭头位置，使其随 listItemPadding 动态调整
+                    // 修改原因：保持箭头和文本之间的视觉间距一致
+                    .padding(end = (listItemPadding).dp)
                     .size(24.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
@@ -94,12 +106,22 @@ fun GroupItem(
 
 @Composable
 inline fun GroupWithFeedsContainer(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val colorThemes = LocalFeedsPageColorThemes.current
+    val selectedColorTheme = colorThemes.firstOrNull { it.isDefault } ?: colorThemes.firstOrNull()
     Column(
         modifier = modifier
             .padding(top = 16.dp)
             .padding(horizontal = 16.dp)
             .clip(Shape32)
-            .background(MaterialTheme.colorScheme.surfaceContainerLow),
+            .background(
+                if (selectedColorTheme != null)
+                    selectedColorTheme.backgroundColor.atElevation(
+                        sourceColor = MaterialTheme.colorScheme.onSurface,
+                        elevation = 1.dp
+                    )
+                else
+                    MaterialTheme.colorScheme.surfaceContainerLow
+            ),
         content = { content() }
     )
 }

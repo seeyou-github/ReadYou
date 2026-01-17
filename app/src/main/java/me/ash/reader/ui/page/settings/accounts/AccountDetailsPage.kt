@@ -248,10 +248,6 @@ fun AccountDetailsPage(
                         text = stringResource(R.string.advanced),
                     )
                     SettingItem(
-                        title = stringResource(R.string.export_as_opml),
-                        onClick = { exportOPMLModeDialogVisible = true },
-                    ) {}
-                    SettingItem(
                         title = stringResource(R.string.clear_all_articles),
                         onClick = { viewModel.showClearDialog() },
                     ) {}

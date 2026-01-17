@@ -1,5 +1,7 @@
 package me.ash.reader.ui.page.home.feeds.drawer.feed
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,7 +19,9 @@ import kotlinx.coroutines.withContext
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.model.group.Group
 import me.ash.reader.domain.repository.FeedDao
+import me.ash.reader.domain.service.OpmlService
 import me.ash.reader.domain.service.RssService
+import me.ash.reader.R
 import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.IODispatcher
 import me.ash.reader.infrastructure.di.MainDispatcher
@@ -34,6 +38,7 @@ constructor(
     @ApplicationScope private val applicationScope: CoroutineScope,
     private val rssHelper: RssHelper,
     private val feedDao: FeedDao,
+    private val opmlService: OpmlService,
 ) : ViewModel() {
 
     private val _feedOptionUiState = MutableStateFlow(FeedOptionUiState())
@@ -211,6 +216,32 @@ constructor(
         }
     }
 
+    fun showChangeIconDialog() {
+        _feedOptionUiState.update {
+            it.copy(
+                changeIconDialogVisible = true,
+                newIcon = _feedOptionUiState.value.feed?.icon ?: "",
+            )
+        }
+    }
+
+    fun hideChangeIconDialog() {
+        _feedOptionUiState.update { it.copy(changeIconDialogVisible = false, newIcon = "") }
+    }
+
+    fun inputNewIcon(content: String) {
+        _feedOptionUiState.update { it.copy(newIcon = content) }
+    }
+
+    fun changeIconUrl() {
+        _feedOptionUiState.value.feed?.let {
+            applicationScope.launch {
+                rssService.get().updateFeed(it.copy(icon = _feedOptionUiState.value.newIcon))
+                _feedOptionUiState.update { it.copy(changeIconDialogVisible = false) }
+            }
+        }
+    }
+
     fun reloadIcon() {
         _feedOptionUiState.value.feed?.let { feed ->
             viewModelScope.launch(ioDispatcher) {
@@ -219,6 +250,10 @@ constructor(
                 fetchFeed(feed.id)
             }
         }
+    }
+
+    suspend fun exportFeedAsOpml(feedId: String): String {
+        return opmlService.saveSingleFeedToString(feedId, attachInfo = true)
     }
 }
 
@@ -234,4 +269,6 @@ data class FeedOptionUiState(
     val renameDialogVisible: Boolean = false,
     val newUrl: String = "",
     val changeUrlDialogVisible: Boolean = false,
+    val newIcon: String = "",
+    val changeIconDialogVisible: Boolean = false,
 )

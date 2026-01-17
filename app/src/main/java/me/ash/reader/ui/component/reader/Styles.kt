@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.ash.reader.infrastructure.preference.*
 import me.ash.reader.ui.ext.alphaLN
+import me.ash.reader.ui.component.reader.LocalReaderPaints
 
 val MediumContentWidth = 600.dp
 val ExpandedContentWidth = 768.dp
@@ -61,19 +62,19 @@ fun imageShape(): RoundedCornerShape =
 @Stable
 @Composable
 @ReadOnlyComposable
-fun onSurfaceColor(): Color = MaterialTheme.colorScheme.onSurface
+fun onSurfaceColor(): Color = LocalReaderPaints.current.bodyText
 
 @Stable
 @Composable
 @ReadOnlyComposable
-fun onSurfaceVariantColor(): Color = MaterialTheme.colorScheme.onSurfaceVariant
+fun onSurfaceVariantColor(): Color = LocalReaderPaints.current.bodyText
 
 @Stable
 @Composable
 @ReadOnlyComposable
 fun textHorizontalPadding(): Int = LocalReadingTextHorizontalPadding.current
 
-@Stable @Composable @ReadOnlyComposable fun bodyForeground(): Color = onSurfaceVariantColor()
+@Stable @Composable @ReadOnlyComposable fun bodyForeground(): Color = LocalReaderPaints.current.bodyText
 
 @Stable
 @Composable
@@ -192,7 +193,7 @@ fun linkTextStyle(): TextStyle =
         TextStyle(
             fontFamily = LocalReadingFonts.current.asFontFamily(LocalContext.current),
             fontSize = LocalReadingTextFontSize.current.sp,
-            color = MaterialTheme.colorScheme.primary,
+            color = LocalReaderPaints.current.linkText,
             textDecoration = TextDecoration.Underline,
         )
     )
@@ -201,7 +202,7 @@ fun linkTextStyle(): TextStyle =
 @Composable
 @ReadOnlyComposable
 fun textLinkStyles(): TextLinkStyles {
-    val color = MaterialTheme.colorScheme.primary
+    val color = LocalReaderPaints.current.linkText
     val baseStyle =
         LocalTextStyle.current
             .merge(
@@ -221,23 +222,22 @@ fun textLinkStyles(): TextLinkStyles {
 @Composable
 fun codeBlockStyle(): TextStyle =
     MaterialTheme.typography.titleSmall.merge(
-        SpanStyle(color = bodyForeground(), fontFamily = FontFamily.Monospace)
+        SpanStyle(color = LocalReaderPaints.current.codeBlockText, fontFamily = FontFamily.Monospace)
     )
 
 @Stable
 @Composable
-fun codeBlockBackground(): Color =
-    MaterialTheme.colorScheme.secondary.copy(alpha = (0.dp).alphaLN(weight = 3.2f))
+fun codeBlockBackground(): Color = LocalReaderPaints.current.codeBlockBackground
 
 @Stable
 @Composable
 fun boldStyle(): TextStyle =
-    bodyStyle().merge(SpanStyle(fontWeight = FontWeight.SemiBold, color = onSurfaceColor()))
+    bodyStyle().merge(SpanStyle(fontWeight = FontWeight.SemiBold, color = LocalReaderPaints.current.bodyText))
 
 @Stable
 @Composable
 fun codeInlineStyle(): TextStyle =
     MaterialTheme.typography.titleSmall.merge(
-        color = bodyForeground(),
+        color = LocalReaderPaints.current.codeBlockText,
         fontFamily = FontFamily.Monospace,
     )

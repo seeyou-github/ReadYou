@@ -8,6 +8,7 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -25,8 +26,10 @@ import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -34,15 +37,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import java.util.concurrent.Executors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 import me.ash.reader.ui.component.reader.ExpandedContentWidth
+import me.ash.reader.ui.component.reader.LocalReaderPaints
 import me.ash.reader.ui.component.reader.LocalTextContentWidth
 import me.ash.reader.ui.component.reader.MediumContentWidth
+import me.ash.reader.ui.component.reader.colorThemeToReaderPaints
+import me.ash.reader.ui.component.reader.defaultReaderPaints
 import me.ash.reader.ui.page.home.flow.FlowPage
 import me.ash.reader.ui.page.home.reading.ReadingPage
+//import me.ash.reader.ui.page.settings.color.reading.theme.ColorThemeViewModel
+// 2026-01-21: 新增阅读界面样式设置对话框
+import me.ash.reader.ui.component.dialogs.ReadingPageStyleDialog
 import timber.log.Timber
 
 @Parcelize data class ArticleData(val articleId: String, val listIndex: Int? = null) : Parcelable
@@ -59,6 +69,15 @@ fun ArticleListReaderPage(
     onBack: () -> Unit,
     onNavigateToStylePage: () -> Unit,
 ) {
+//    val themeViewModel: ColorThemeViewModel = hiltViewModel()
+//    val allThemes by themeViewModel.allThemes.collectAsState(initial = emptyList())
+//    val selectedThemeId by themeViewModel.selectedThemeId.collectAsState()
+
+//    val currentTheme = allThemes.find { it.id == selectedThemeId }
+//        ?: allThemes.firstOrNull { it.id == "default_light" } // Fallback to a default
+//        ?: allThemes.firstOrNull()
+
+//    val currentReaderPaints = currentTheme?.let { colorThemeToReaderPaints(it) } ?: defaultReaderPaints()
 
     val scope = rememberCoroutineScope()
 
@@ -84,6 +103,9 @@ fun ArticleListReaderPage(
             get(ListDetailPaneScaffoldRole.List) == PaneAdaptedValue.Expanded &&
                 get(ListDetailPaneScaffoldRole.Detail) == PaneAdaptedValue.Expanded
         }
+
+    // 2026-01-21: 新增阅读界面样式设置对话框状态
+    var showReadingPageStyleDialog by remember { mutableStateOf(false) }
 
     val navigationAction =
         if (isTwoPane) {
@@ -145,6 +167,7 @@ fun ArticleListReaderPage(
                             viewModel = viewModel,
                             onNavigateUp = onBack,
                             isTwoPane = isTwoPane,
+
                             navigateToArticle = { id, index ->
                                 scope.launch {
                                     navigator.navigateTo(
@@ -162,6 +185,7 @@ fun ArticleListReaderPage(
             AnimatedPane(
                 enterTransition = motionDataProvider.calculateEnterTransition(paneRole),
                 exitTransition = motionDataProvider.calculateExitTransition(paneRole),
+//                modifier = Modifier.background(currentReaderPaints.background)
             ) {
                 val contentKey = navigator.currentDestination?.contentKey
                 LaunchedEffect(contentKey) {
@@ -175,8 +199,10 @@ fun ArticleListReaderPage(
                         )
                     }
                 }
-
-                CompositionLocalProvider(LocalTextContentWidth provides animatedContentWidth) {
+                CompositionLocalProvider(
+                    LocalTextContentWidth provides animatedContentWidth,
+//                    LocalReaderPaints provides currentReaderPaints
+                ) {
                     ReadingPage(
                         viewModel = viewModel,
                         navigationAction = navigationAction,
@@ -211,10 +237,19 @@ fun ArticleListReaderPage(
                                 }
                             }
                         },
-                        onNavigateToStylePage = onNavigateToStylePage,
+                        onNavigateToStylePage = { showReadingPageStyleDialog = true }, // 2026-01-21: 修改为显示对话框而不是导航
                     )
                 }
             }
         },
     )
+
+    // 2026-01-21: 新增阅读界面样式设置对话框
+    if (showReadingPageStyleDialog) {
+        ReadingPageStyleDialog(
+            onDismiss = { showReadingPageStyleDialog = false },
+            context = androidx.compose.ui.platform.LocalContext.current,
+            scope = scope
+        )
+    }
 }

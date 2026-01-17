@@ -94,14 +94,17 @@ fun FeedsPagePreview(
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
-        FilterBar(
-            filter = filter,
-            filterBarStyle = filterBarStyle,
-            filterBarFilled = filterBarFilled,
-            filterBarPadding = filterBarPadding,
-            filterBarTonalElevation = filterBarTonalElevation,
-        ) {
-            filter = it
+        // 当 filterBarStyle == 3 (Hide) 时，不显示 FilterBar
+        if (filterBarStyle != 3) {
+            FilterBar(
+                filter = filter,
+                filterBarStyle = filterBarStyle,
+                filterBarFilled = filterBarFilled,
+                filterBarPadding = filterBarPadding,
+                filterBarTonalElevation = filterBarTonalElevation,
+            ) {
+                filter = it
+            }
         }
     }
 }

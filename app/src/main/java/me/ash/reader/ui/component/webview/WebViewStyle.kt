@@ -33,6 +33,7 @@ object WebViewStyle {
         subheadUpperCase: Boolean,
         imgMargin: Int,
         imgBorderRadius: Int,
+        imgBrightness: Int,
         linkTextColor: Int,
         codeTextColor: Int,
         codeBgColor: Int,
@@ -58,6 +59,7 @@ ${applyFontFace(fontPath)}
     --subhead-upper-case: ${if (subheadUpperCase) "uppercase" else "none"};
     --img-margin: ${imgMargin}px;
     --img-border-radius: ${imgBorderRadius}px;
+    --img-brightness: ${imgBrightness / 100f};
     --content-padding;
     --bold-text-color;
     --image-caption-margin;
@@ -171,6 +173,7 @@ img {
     margin-right: calc(0px - var(--text-margin) + var(--img-margin)) !important;
     max-width: calc(100% + 2 * var(--text-margin) - 2 * var(--img-margin)) !important;
     border-radius: var(--img-border-radius) !important;
+    filter: brightness(var(--img-brightness)) !important;
 }
 
 img {

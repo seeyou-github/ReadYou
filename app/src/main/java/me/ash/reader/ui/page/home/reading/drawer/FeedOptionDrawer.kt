@@ -50,10 +50,11 @@ fun StyleOptionDrawer(
         drawerState = drawerState,
         sheetContent = {
             Info()
+        },
+        content = {
+            content()
         }
-    ) {
-        content()
-    }
+    )
 }
 
 @Composable

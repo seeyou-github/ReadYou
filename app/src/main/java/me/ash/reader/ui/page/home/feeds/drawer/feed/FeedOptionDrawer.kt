@@ -2,7 +2,11 @@ package me.ash.reader.ui.page.home.feeds.drawer.feed
 
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +35,7 @@ import kotlinx.coroutines.launch
 import me.ash.reader.R
 import me.ash.reader.infrastructure.preference.LocalOpenLink
 import me.ash.reader.infrastructure.preference.LocalOpenLinkSpecificBrowser
+import me.ash.reader.ui.component.ChangeIconDialog
 import me.ash.reader.ui.component.ChangeUrlDialog
 import me.ash.reader.ui.component.FeedIcon
 import me.ash.reader.ui.component.RenameDialog
@@ -58,6 +63,20 @@ fun FeedOptionDrawer(
     val feed = feedOptionUiState.feed
     val toastString = stringResource(R.string.rename_toast, feedOptionUiState.newName)
 
+    val exportFeedOpmlLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/xml")
+    ) { result ->
+        result?.let { uri ->
+            scope.launch {
+                val feedId = feed?.id ?: return@launch
+                val opmlString = feedOptionViewModel.exportFeedAsOpml(feedId)
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(opmlString.toByteArray())
+                }
+            }
+        }
+    }
+
 
     BackHandler(drawerState.isVisible) {
         scope.launch {
@@ -74,9 +93,17 @@ fun FeedOptionDrawer(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    FeedIcon(modifier = Modifier.clickable {
-                        feedOptionViewModel.reloadIcon()
-                    }, feedName = feed?.name, iconUrl = feed?.icon, size = 24.dp)
+                    FeedIcon(
+                        modifier = Modifier.clickable {
+                            if (feedOptionViewModel.rssService.get().updateSubscription) {
+                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                feedOptionViewModel.showChangeIconDialog()
+                            }
+                        },
+                        feedName = feed?.name,
+                        iconUrl = feed?.icon,
+                        size = 24.dp
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         modifier = Modifier.alphaIndicationClickable {
@@ -119,6 +146,11 @@ fun FeedOptionDrawer(
                     unsubscribeOnClick = {
                         feedOptionViewModel.showDeleteDialog()
                     },
+                    exportFeedAsOpmlOnClick = {
+                        if (feed == null) return@FeedOptionView
+                        val fileName = "Read-You-${feed.name ?: "feed"}-${System.currentTimeMillis()}.opml"
+                        exportFeedOpmlLauncher.launch(fileName)
+                    },
                     onGroupClick = {
                         feedOptionViewModel.selectedGroup(it)
                     },
@@ -136,10 +168,11 @@ fun FeedOptionDrawer(
                     }
                 )
             }
+        },
+        content = {
+            content()
         }
-    ) {
-        content()
-    }
+    )
 
     DeleteFeedDialog(
         feedName = feed?.name ?: "",
@@ -193,6 +226,21 @@ fun FeedOptionDrawer(
         },
         onConfirm = {
             feedOptionViewModel.changeFeedUrl()
+            scope.launch { drawerState.hide() }
+        }
+    )
+
+    ChangeIconDialog(
+        visible = feedOptionUiState.changeIconDialogVisible,
+        value = feedOptionUiState.newIcon,
+        onValueChange = {
+            feedOptionViewModel.inputNewIcon(it)
+        },
+        onDismissRequest = {
+            feedOptionViewModel.hideChangeIconDialog()
+        },
+        onConfirm = {
+            feedOptionViewModel.changeIconUrl()
             scope.launch { drawerState.hide() }
         }
     )

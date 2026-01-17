@@ -51,7 +51,7 @@ sealed class ReadingTitleAlignPreference(val value: Int) : Preference() {
 
     companion object {
 
-        val default = Start
+        val default = Justify
         val values = listOf(Start, End, Center, Justify)
 
         fun fromPreferences(preferences: Preferences): ReadingTitleAlignPreference =

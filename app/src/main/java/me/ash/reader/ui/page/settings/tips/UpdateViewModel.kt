@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import me.ash.reader.domain.service.AppService
 import me.ash.reader.infrastructure.net.Download
-import me.ash.reader.ui.ext.isGitHub
+//import me.ash.reader.ui.ext.isGitHub
 import javax.inject.Inject
 
 @HiltViewModel
@@ -21,26 +21,26 @@ class UpdateViewModel @Inject constructor(
 
     var updateJob: Job? = null
 
-    fun checkUpdate(
-        preProcessor: suspend () -> Unit = {},
-        postProcessor: suspend (Boolean) -> Unit = {},
-    ) {
-        if (!isGitHub) return
-        if (updateJob?.isActive == true) return
-        updateJob = viewModelScope.launch {
-            preProcessor()
-            appService.checkUpdate().let {
-                it?.let {
-                    if (it) {
-                        showDialog()
-                    } else {
-                        hideDialog()
-                    }
-                    postProcessor(it)
-                }
-            }
-        }
-    }
+//    fun checkUpdate(
+//        preProcessor: suspend () -> Unit = {},
+//        postProcessor: suspend (Boolean) -> Unit = {},
+//    ) {
+//        if (!isGitHub) return
+//        if (updateJob?.isActive == true) return
+//        updateJob = viewModelScope.launch {
+//            preProcessor()
+//            appService.checkUpdate().let {
+//                it?.let {
+//                    if (it) {
+//                        showDialog()
+//                    } else {
+//                        hideDialog()
+//                    }
+//                    postProcessor(it)
+//                }
+//            }
+//        }
+//    }
 
     fun showDialog() {
         _updateUiState.update {

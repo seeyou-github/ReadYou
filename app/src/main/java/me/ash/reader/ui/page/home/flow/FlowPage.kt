@@ -33,10 +33,13 @@ import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
@@ -46,6 +49,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,29 +74,44 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+
 import me.ash.reader.R
 import me.ash.reader.domain.data.PagerData
 import me.ash.reader.domain.model.article.ArticleFlowItem
 import me.ash.reader.domain.model.article.ArticleWithFeed
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListDateStickyHeader
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListFeedIcon
+import me.ash.reader.infrastructure.preference.LocalFlowArticleListItemSpacing
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListTonalElevation
 import me.ash.reader.infrastructure.preference.LocalFlowFilterBarPadding
 import me.ash.reader.infrastructure.preference.LocalFlowFilterBarStyle
 import me.ash.reader.infrastructure.preference.LocalFlowFilterBarTonalElevation
-import me.ash.reader.infrastructure.preference.LocalFlowTopBarTonalElevation
+// 2026-01-21: 新增过滤栏自动隐藏功能
+import me.ash.reader.infrastructure.preference.LocalFlowFilterBarAutoHide
+import me.ash.reader.infrastructure.preference.LocalFeedsTopBarTonalElevation
+import me.ash.reader.infrastructure.preference.LocalFeedsTopBarHeight
+import me.ash.reader.infrastructure.preference.LocalFeedsFilterBarHeight
 import me.ash.reader.infrastructure.preference.LocalMarkAsReadOnScroll
+import me.ash.reader.infrastructure.preference.FlowArticleListColorThemesPreference
+import me.ash.reader.infrastructure.preference.LocalFlowArticleListColorThemes
 import me.ash.reader.infrastructure.preference.LocalOpenLink
 import me.ash.reader.infrastructure.preference.LocalOpenLinkSpecificBrowser
 import me.ash.reader.infrastructure.preference.LocalSettings
 import me.ash.reader.infrastructure.preference.LocalSharedContent
 import me.ash.reader.infrastructure.preference.LocalSortUnreadArticles
+import me.ash.reader.infrastructure.preference.LocalFlowArticleListFirstItemLargeImage
 import me.ash.reader.infrastructure.preference.PullToLoadNextFeedPreference
 import me.ash.reader.infrastructure.preference.SortUnreadArticlesPreference
 import me.ash.reader.ui.component.FilterBar
 import me.ash.reader.ui.component.base.FeedbackIconButton
 import me.ash.reader.ui.component.base.RYExtensibleVisibility
 import me.ash.reader.ui.component.base.RYScaffold
+import me.ash.reader.ui.ext.atElevation
 import me.ash.reader.ui.component.scrollbar.VerticalScrollIndicatorFactory
 import me.ash.reader.ui.component.scrollbar.drawVerticalScrollIndicator
 import me.ash.reader.ui.component.scrollbar.scrollIndicator
@@ -126,19 +145,35 @@ fun FlowPage(
     val articleListTonalElevation = LocalFlowArticleListTonalElevation.current
     val articleListFeedIcon = LocalFlowArticleListFeedIcon.current
     val articleListDateStickyHeader = LocalFlowArticleListDateStickyHeader.current
-    val topBarTonalElevation = LocalFlowTopBarTonalElevation.current
+    val itemSpacing = LocalFlowArticleListItemSpacing.current
+    val topBarTonalElevation = LocalFeedsTopBarTonalElevation.current
+    val topBarHeight = LocalFeedsTopBarHeight.current
     val filterBarStyle = LocalFlowFilterBarStyle.current
     val filterBarPadding = LocalFlowFilterBarPadding.current
     val filterBarTonalElevation = LocalFlowFilterBarTonalElevation.current
+    val filterBarHeight = LocalFeedsFilterBarHeight.current
+    // 2026-01-21: 新增过滤栏自动隐藏功能
+    val filterBarAutoHide = LocalFlowFilterBarAutoHide.current
+    // 2026-01-27: 新增首行大图模式配置
+    val firstItemLargeImage = LocalFlowArticleListFirstItemLargeImage.current
     val sharedContent = LocalSharedContent.current
     val markAsReadOnScroll = LocalMarkAsReadOnScroll.current.value
     val context = LocalContext.current
+
+    // 2026-01-25: 获取当前颜色主题
+    val colorThemes = LocalFlowArticleListColorThemes.current
+    val selectedColorTheme = colorThemes.firstOrNull { it.isDefault } ?: colorThemes.firstOrNull()
 
     val openLink = LocalOpenLink.current
     val openLinkSpecificBrowser = LocalOpenLinkSpecificBrowser.current
 
     val settings = LocalSettings.current
     val pullToSwitchFeed = settings.pullToSwitchFeed
+    val scope = rememberCoroutineScope()
+    // 2026-01-18: 新增文章列表样式设置对话框状态
+    var showArticleListStyleDialog by remember { mutableStateOf(false) }
+
+
 
     val flowUiState = viewModel.flowUiState.collectAsStateValue()
     if (flowUiState == null) return
@@ -160,7 +195,7 @@ fun FlowPage(
             else -> filterUiState.filter.toName()
         }
 
-    val scope = rememberCoroutineScope()
+
     val focusRequester = remember { FocusRequester() }
     var markAsRead by remember { mutableStateOf(false) }
     var onSearch by rememberSaveable { mutableStateOf(false) }
@@ -175,6 +210,26 @@ fun FlowPage(
             snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
                 .filterNotNull()
         }
+
+    // 2026-01-21: 新增过滤栏自动隐藏功能
+    // 参考 ReadingStylePage.kt 中 autoHideToolbar 的实现逻辑
+    // 通过监听滚动偏移量 f 来判断滑动方向：f < 0 表示向上滑动（隐藏），f > 0 表示向下滑动（显示）
+    var isFilterBarScrollingDown by remember { mutableStateOf(false) }
+
+    // 2026-01-21: 新增 NestedScrollConnection 用于滑动检测，与 ReadingPage 保持一致
+    val filterBarNestedScrollConnection = remember(filterBarAutoHide) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // 2026-01-21: 当启用自动隐藏时，通过滚动偏移量判断滑动方向
+                // f < 0 表示向上滑动，触发隐藏；f > 0 表示向下滑动，触发显示
+                if (filterBarAutoHide.value && abs(available.y) > 2f) {
+                    isFilterBarScrollingDown = available.y < 0f
+                }
+                // 返回 Offset.Zero 以便其他 NestedScrollConnection（如 scrollBehavior）可以正常处理滚动
+                return Offset.Zero
+            }
+        }
+    }
 
     val onToggleStarred: (ArticleWithFeed) -> Unit = remember {
         { article ->
@@ -226,42 +281,6 @@ fun FlowPage(
         }
     }
 
-    val topAppBarState = rememberTopAppBarState()
-
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(topAppBarState)
-
-    val scrollAppBarToCollapsed =
-        remember(topAppBarState) {
-            {
-                scope.launch {
-                    val initial = topAppBarState.heightOffset
-                    val target = topAppBarState.heightOffsetLimit
-                    if (initial != target)
-                        animate(
-                            initialValue = initial,
-                            targetValue = target,
-                            initialVelocity = 0f,
-                            animationSpec = settleSpec,
-                        ) { value, _ ->
-                            topAppBarState.heightOffset = value
-                        }
-                }
-            }
-        }
-
-    val snapAppBarToCollapsed =
-        remember(topAppBarState) {
-            {
-                scope.launch {
-                    val initial = topAppBarState.heightOffset
-                    val target = topAppBarState.heightOffsetLimit
-                    if (initial != target) {
-                        topAppBarState.heightOffset = target
-                    }
-                }
-            }
-        }
-
     val readerState = viewModel.readerStateStateFlow.collectAsStateValue()
 
     var pagingItems: LazyPagingItems<ArticleFlowItem>? by remember { mutableStateOf(null) }
@@ -279,7 +298,6 @@ fun FlowPage(
                     } ?: -1
 
                 if (index != -1) {
-                    scrollAppBarToCollapsed()
                     listState.animateScrollToItem(index, scrollOffset = -200)
                 }
             }
@@ -297,7 +315,6 @@ fun FlowPage(
                     } ?: -1
 
                 if (index != -1) {
-                    snapAppBarToCollapsed()
                     listState.requestScrollToItem(index, scrollOffset = -400)
                 }
             }
@@ -308,6 +325,7 @@ fun FlowPage(
 
     Box(modifier = Modifier.fillMaxSize()) {
         RYScaffold(
+            containerColor = selectedColorTheme?.backgroundColor ?: MaterialTheme.colorScheme.surface,
             containerTonalElevation = articleListTonalElevation.value.dp,
             topBar = {
                 MaterialTheme(
@@ -322,50 +340,28 @@ fun FlowPage(
                                 ),
                         ),
                 ) {
-                    LargeTopAppBar(
+                    TopAppBar(
                         modifier =
-                            Modifier.clickable(
-                                onClick = {
-                                    scope.launch {
-                                        if (listState.firstVisibleItemIndex != 0) {
-                                            listState.animateScrollToItem(0)
+                            Modifier
+                                .height(topBarHeight.dp)
+                                .clickable(
+                                    onClick = {
+                                        scope.launch {
+                                            if (listState.firstVisibleItemIndex != 0) {
+                                                listState.animateScrollToItem(0)
+                                            }
                                         }
-                                    }
-                                },
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() },
-                            ),
+                                    },
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() },
+                                ),
                         title = {
-                            val textStyle = LocalTextStyle.current
-                            val color = LocalContentColor.current
-                            if (textStyle.fontSize.value > 18f) {
-                                BasicText(
-                                    modifier =
-                                        Modifier.padding(
-                                            start = if (articleListFeedIcon.value) 34.dp else 8.dp,
-                                            end = 24.dp,
-                                        ),
-                                    text = titleText,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                    style = textStyle,
-                                    color = { color },
-                                    autoSize =
-                                        TextAutoSize.StepBased(
-                                            minFontSize = 28.sp,
-                                            maxFontSize = textStyle.fontSize,
-                                        ),
-                                )
-                            } else {
-                                Text(
-                                    text = titleText,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
+                            Text(
+                                text = titleText,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         },
-                        expandedHeight = 172.dp,
-                        scrollBehavior = scrollBehavior,
                         navigationIcon = {
                             FeedbackIconButton(
                                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
@@ -433,15 +429,43 @@ fun FlowPage(
                                         }
                                 }
                             }
+                            // 2026-01-18: 新增文章列表样式设置按钮
+                            FeedbackIconButton(
+                                imageVector = Icons.Outlined.Palette,
+                                contentDescription = "文章列表样式",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                            ) {
+                                showArticleListStyleDialog = true
+                            }
                         },
                         colors =
                             TopAppBarDefaults.topAppBarColors(
-                                scrolledContainerColor = scrolledTopBarContainerColor
+                                containerColor = if (selectedColorTheme != null) {
+                                    selectedColorTheme.backgroundColor.atElevation(
+                                        sourceColor = MaterialTheme.colorScheme.onSurface,
+                                        elevation = topBarTonalElevation.value.dp
+                                    )
+                                } else {
+                                    scrolledTopBarContainerColor
+                                },
+                                scrolledContainerColor = if (selectedColorTheme != null) {
+                                    selectedColorTheme.backgroundColor.atElevation(
+                                        sourceColor = MaterialTheme.colorScheme.onSurface,
+                                        elevation = topBarTonalElevation.value.dp
+                                    )
+                                } else {
+                                    scrolledTopBarContainerColor
+                                }
                             ),
                     )
                 }
             },
             content = {
+                // 2026-01-25: 下拉更新时支持返回键取消同步
+                // 原因：用户反馈需要能取消正在进行的同步操作
+                // 时间：2026-01-25
+                BackHandler(isSyncing) { viewModel.cancelSync() }
+
                 RYExtensibleVisibility(modifier = Modifier.zIndex(1f), visible = onSearch) {
                     BackHandler(onSearch) { onSearch = false }
                     SearchBar(
@@ -469,6 +493,7 @@ fun FlowPage(
                                     )
                             },
                         focusRequester = focusRequester,
+                        colorTheme = selectedColorTheme,
                         onValueChange = { viewModel.inputSearchContent(it) },
                         onClose = {
                             onSearch = false
@@ -480,7 +505,7 @@ fun FlowPage(
                 RYExtensibleVisibility(markAsRead) {
                     BackHandler(markAsRead) { markAsRead = false }
 
-                    MarkAsReadBar {
+                    MarkAsReadBar(colorTheme = selectedColorTheme) {
                         markAsRead = false
                         viewModel.updateReadStatus(
                             groupId = filterUiState.group?.id,
@@ -660,39 +685,53 @@ fun FlowPage(
                                             }
                                         },
                                     )
-                                    .nestedScroll(scrollBehavior.nestedScrollConnection)
-                                    .fillMaxSize()
-                                    .drawVerticalScrollIndicator(listState),
+                                    // 2026-01-21: 新增过滤栏自动隐藏功能的滑动检测
+                                    // 参考 ReadingPage.kt 中 autoHideToolbar 的实现
+                                    // 使用 NestedScrollConnection 监听滚动方向，与 pullToLoad 修饰符配合使用
+                                    .nestedScroll(filterBarNestedScrollConnection)
+                                    .fillMaxSize(),
                             state = listState,
                         ) {
-                            ArticleList(
-                                pagingItems = pagingItems,
-                                diffMap = viewModel.diffMapHolder.diffMap,
-                                isShowFeedIcon = articleListFeedIcon.value,
-                                isShowStickyHeader = articleListDateStickyHeader.value,
-                                articleListTonalElevation = articleListTonalElevation.value,
-                                isSwipeEnabled = { listState.isScrollInProgress },
-                                onClick = { articleWithFeed, index ->
-                                    if (articleWithFeed.feed.isBrowser) {
-                                        viewModel.diffMapHolder.updateDiff(
-                                            articleWithFeed,
-                                            isUnread = false,
-                                        )
-                                        context.openURL(
-                                            articleWithFeed.article.link,
-                                            openLink,
-                                            openLinkSpecificBrowser,
-                                        )
-                                    } else {
-                                        navigateToArticle(articleWithFeed.article.id, index)
-                                    }
-                                },
-                                onToggleStarred = onToggleStarred,
-                                onToggleRead = onToggleRead,
-                                onMarkAboveAsRead = onMarkAboveAsRead,
-                                onMarkBelowAsRead = onMarkBelowAsRead,
-                                onShare = onShare,
-                            )
+                                                // 2026-01-29: 判断是否强制显示订阅源名称
+                                                // 当查看分组文章列表时（group != null && feed == null），强制显示订阅源名称
+                                                val forceShowFeedName = filterUiState.group != null && filterUiState.feed == null
+
+                                                ArticleList(
+                                                    pagingItems = pagingItems,
+                                                    diffMap = viewModel.diffMapHolder.diffMap,
+                                                    isShowFeedIcon = articleListFeedIcon.value,
+                                                    isShowStickyHeader = articleListDateStickyHeader.value,
+                                                    articleListTonalElevation = articleListTonalElevation.value,
+                                                    itemSpacing = itemSpacing,
+                                                    isSwipeEnabled = { listState.isScrollInProgress },
+                                                    colorTheme = selectedColorTheme,
+                                                    onClick = { articleWithFeed, index ->
+                                                        if (articleWithFeed.feed.isBrowser) {
+                                                            // 在浏览器中打开：立即更新已读状态
+                                                            viewModel.diffMapHolder.updateDiff(
+                                                                articleWithFeed,
+                                                                isUnread = false,
+                                                            )
+                                                            context.openURL(
+                                                                articleWithFeed.article.link,
+                                                                openLink,
+                                                                openLinkSpecificBrowser,
+                                                            )
+                                                        } else {
+                                                            // 在应用内阅读：不立即更新已读状态
+                                                            navigateToArticle(articleWithFeed.article.id, index)
+                                                        }
+                                                    },
+                                                    onToggleStarred = onToggleStarred,
+                                                    onToggleRead = onToggleRead,
+                                                    onMarkAboveAsRead = onMarkAboveAsRead,
+                                                    onMarkBelowAsRead = onMarkBelowAsRead,
+                                                    onShare = onShare,
+                                                    // 2026-01-27: 传递首行大图模式参数
+                                                    isFirstItemLargeImageEnabled = firstItemLargeImage.value,
+                                                    // 2026-01-29: 传递强制显示订阅源名称参数
+                                                    forceShowFeedName = forceShowFeedName,
+                                                )
                             item {
                                 Spacer(modifier = Modifier.height(128.dp))
                                 Spacer(
@@ -708,26 +747,40 @@ fun FlowPage(
             },
             floatingActionButtonPosition = FabPosition.Center,
             bottomBar = {
-                FilterBar(
-                    modifier =
-                        with(sharedTransitionScope) {
-                            Modifier.sharedElement(
-                                sharedContentState = rememberSharedContentState("filterBar"),
-                                animatedVisibilityScope = animatedVisibilityScope,
-                            )
-                        },
-                    filter = filterUiState.filter,
-                    filterBarStyle = filterBarStyle.value,
-                    filterBarFilled = true,
-                    filterBarPadding = filterBarPadding.dp,
-                    filterBarTonalElevation = filterBarTonalElevation.value.dp,
-                ) {
-                    if (filterUiState.filter != it) {
-                        viewModel.changeFilter(filterUiState.copy(filter = it))
-                    } else {
-                        scope.launch {
-                            if (listState.firstVisibleItemIndex != 0) {
-                                listState.animateScrollToItem(0)
+                // 2026-01-21: 新增过滤栏自动隐藏功能
+                // 当 filterBarStyle.value == 3 (Hide) 时，不显示 FilterBar
+                // 当 filterBarAutoHide 为 true 且 isFilterBarScrollingDown 为 true 时，隐藏 FilterBar
+                val shouldShowFilterBar = filterBarStyle.value != 3 &&
+                    !(filterBarAutoHide.value && isFilterBarScrollingDown)
+
+                if (shouldShowFilterBar) {
+                    FilterBar(
+                        modifier =
+                            with(sharedTransitionScope) {
+                                Modifier
+                                    .height(filterBarHeight.dp)
+                                    .sharedElement(
+                                        sharedContentState = rememberSharedContentState("filterBar"),
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                    )
+                            },
+                        filter = filterUiState.filter,
+                        filterBarStyle = filterBarStyle.value,
+                        filterBarFilled = true,
+                        filterBarPadding = filterBarPadding.dp,
+                        filterBarTonalElevation = topBarTonalElevation.value.dp, // 使用顶栏的海拔配置
+                        backgroundColor = selectedColorTheme?.backgroundColor?.atElevation(
+                            sourceColor = MaterialTheme.colorScheme.onSurface,
+                            elevation = topBarTonalElevation.value.dp
+                        ), // 2026-01-25: 使用当前主题的背景色，并应用色调海拔效果
+                    ) {
+                        if (filterUiState.filter != it) {
+                            viewModel.changeFilter(filterUiState.copy(filter = it))
+                        } else {
+                            scope.launch {
+                                if (listState.firstVisibleItemIndex != 0) {
+                                    listState.animateScrollToItem(0)
+                                }
                             }
                         }
                     }
@@ -746,5 +799,14 @@ fun FlowPage(
                         ),
             )
         }
+    }
+
+    // 2026-01-18: 新增文章列表样式设置对话框
+    if (showArticleListStyleDialog) {
+        me.ash.reader.ui.component.dialogs.ArticleListStyleDialog(
+            onDismiss = { showArticleListStyleDialog = false },
+            context = context,
+            scope = scope
+        )
     }
 }

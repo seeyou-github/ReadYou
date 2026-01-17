@@ -22,6 +22,7 @@ import me.ash.reader.domain.model.article.ArticleMeta
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.model.group.Group
 import me.ash.reader.domain.repository.ArticleDao
+import me.ash.reader.domain.repository.BlacklistKeywordDao
 import me.ash.reader.domain.repository.FeedDao
 import me.ash.reader.domain.repository.GroupDao
 import me.ash.reader.infrastructure.android.NotificationHelper
@@ -52,6 +53,7 @@ constructor(
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
     workManager: WorkManager,
     private val accountService: AccountService,
+    private val blacklistKeywordDao: BlacklistKeywordDao,
 ) :
     AbstractRssRepository(
         articleDao,
@@ -260,15 +262,36 @@ constructor(
             }
 
             if (allArticles.isNotEmpty()) {
-                articleDao.insert(*allArticles.toTypedArray())
-                val notificationFeeds =
-                    feedDao.queryNotificationEnabled(accountId).associateBy { it.id }
-                val notificationFeedIds = notificationFeeds.keys
-                allArticles
-                    .fastFilter { it.isUnread && it.feedId in notificationFeedIds }
-                    .groupBy { it.feedId }
-                    .mapKeys { (feedId, _) -> notificationFeeds[feedId]!! }
-                    .forEach { (feed, articles) -> notificationHelper.notify(feed, articles) }
+                // 2026-01-24: 关键词过滤 - 过滤的文章不保存
+                val blacklistKeywords = blacklistKeywordDao.getAllSync()
+                val feedUrlMap = feedDao.queryAll(accountId).associate { it.id to it.url }
+                val filteredArticles = if (blacklistKeywords.isNotEmpty()) {
+                    allArticles.filterNot { article ->
+                        val feedUrl = feedUrlMap[article.feedId]
+                        blacklistKeywords.any { keyword ->
+                            keyword.enabled && article.title.contains(
+                                keyword.keyword,
+                                ignoreCase = true
+                            ) && (keyword.feedUrls.isNullOrBlank() || feedUrl?.let {
+                                keyword.feedUrls.split(",").contains(it)
+                            } == true)
+                        }
+                    }
+                } else {
+                    allArticles
+                }
+
+                if (filteredArticles.isNotEmpty()) {
+                    articleDao.insert(*filteredArticles.toTypedArray())
+                    val notificationFeeds =
+                        feedDao.queryNotificationEnabled(accountId).associateBy { it.id }
+                    val notificationFeedIds = notificationFeeds.keys
+                    filteredArticles
+                        .fastFilter { it.isUnread && it.feedId in notificationFeedIds }
+                        .groupBy { it.feedId }
+                        .mapKeys { (feedId, _) -> notificationFeeds[feedId]!! }
+                        .forEach { (feed, articles) -> notificationHelper.notify(feed, articles) }
+                }
             }
 
             // 4. Synchronize read/unread and starred/un-starred

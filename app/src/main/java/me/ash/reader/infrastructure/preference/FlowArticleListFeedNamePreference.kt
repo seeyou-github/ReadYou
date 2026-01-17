@@ -28,7 +28,7 @@ sealed class FlowArticleListFeedNamePreference(val value: Boolean) : Preference(
 
     companion object {
 
-        val default = ON
+        val default = OFF
         val values = listOf(ON, OFF)
 
         fun fromPreferences(preferences: Preferences) =

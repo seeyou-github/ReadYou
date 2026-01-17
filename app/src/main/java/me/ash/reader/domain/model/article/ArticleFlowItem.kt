@@ -4,6 +4,7 @@ import androidx.paging.PagingData
 import androidx.paging.insertSeparators
 import androidx.paging.map
 import me.ash.reader.infrastructure.android.AndroidStringsHelper
+import me.ash.reader.ui.ext.formatAsRelativeTime
 
 /**
  * Provide paginated and inserted separator data types for article list view.
@@ -33,10 +34,7 @@ sealed class ArticleFlowItem {
 fun PagingData<ArticleWithFeed>.mapPagingFlowItem(androidStringsHelper: AndroidStringsHelper): PagingData<ArticleFlowItem> =
     map {
         ArticleFlowItem.Article(it.apply {
-            article.dateString = androidStringsHelper.formatAsString(
-                date = article.date,
-                onlyHourMinute = true
-            )
+            article.dateString = article.date.formatAsRelativeTime()
         })
     }.insertSeparators { before, after ->
         val beforeDate =

@@ -15,6 +15,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +41,7 @@ internal fun ArticleImage(
     fillMaxWidth: Boolean,
     contentPadding: PaddingValues,
     shape: Shape,
+    brightness: Int = 100,
     onClick: (() -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -51,6 +54,7 @@ internal fun ArticleImage(
             contentPadding = contentPadding,
             size = maxImageSize,
             shape = shape,
+            brightness = brightness,
             onClick = onClick,
         )
     }
@@ -64,6 +68,7 @@ internal fun ArticleImage(
     fillMaxWidth: Boolean,
     contentPadding: PaddingValues,
     shape: Shape,
+    brightness: Int = 100,
     onImageClick: ((String, String) -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -86,6 +91,7 @@ internal fun ArticleImage(
             contentPadding = contentPadding,
             size = maxImageSize,
             shape = shape,
+            brightness = brightness,
             onClick = onClick,
         )
     }
@@ -100,8 +106,19 @@ private fun ArticleImage(
     contentPadding: PaddingValues,
     shape: Shape,
     size: Size,
+    brightness: Int = 100,
     onClick: (() -> Unit)? = null,
 ) {
+    val brightnessFilter = if (brightness < 100) {
+        val brightnessValue = brightness / 100f
+        ColorFilter.lighting(
+            multiply = Color(brightnessValue, brightnessValue, brightnessValue),
+            add = Color.Transparent
+        )
+    } else {
+        null
+    }
+
     val painter =
         rememberAsyncImagePainter(
             model =
@@ -122,6 +139,7 @@ private fun ArticleImage(
         painter = painter,
         contentDescription = contentDescription,
         contentScale = if (fillMaxWidth) ContentScale.FillWidth else ContentScale.Inside,
+        colorFilter = brightnessFilter,
         modifier =
             modifier
                 .fillMaxWidth()

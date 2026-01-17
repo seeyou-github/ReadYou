@@ -57,6 +57,10 @@
     <string name="all_move_to_group_toast">已全部移动至 \"%1$s\" 分组</string>
     <string name="rename">重命名</string>
     <string name="change_url">更改链接</string>
+    <string name="change_icon">修改图标</string>
+    <string name="export_feed_as_opml">导出此订阅为 OPML</string>
+    <string name="export_group_as_opml">导出此分组内所有订阅为 OPML</string>
+    <string name="icon_url_placeholder" translatable="false">https://example.com/icon.png</string>
     <string name="rename_toast">已重命名为 \"%1$s\"</string>
     <string name="create_new_group">新建分组</string>
     <string name="name">名称</string>
@@ -120,13 +124,19 @@
     <string name="on">开启</string>
     <string name="off">关闭</string>
     <string name="amoled_dark_theme">黑色暗色主题</string>
+    <!-- 2026-01-21: 添加 Backup & restore 的中文翻译 -->
+    <string name="backup_and_restore">备份与恢复</string>
+    <string name="backup_and_restore_desc">导入/导出偏好设置和订阅</string>
     <string name="other">其他</string>
+    <!-- 2026-01-21: 添加 Other 的描述翻译 -->
+    <string name="other_desc">语言、故障排除、支持</string>
     <string name="tonal_elevation">色调海拔</string>
     <string name="reading_fonts">阅读字体</string>
     <string name="basic_fonts">基本字体</string>
     <string name="feeds_page">订阅源页面</string>
     <string name="flow_page">信息流页面</string>
     <string name="reading_page">阅读页面</string>
+    <string name="home_page">主页</string>
     <string name="sponsor">捐赠</string>
     <string name="open_source_licenses">开放源代码许可</string>
     <string name="update_link">https://api.github.com/repos/ReadYouApp/ReadYou/releases/latest</string>
@@ -150,6 +160,7 @@
     <string name="article_date">文章发布时间</string>
     <string name="article_desc">文章描述</string>
     <string name="article_images">文章插图</string>
+    <string name="first_item_large_image">首行大图</string>
     <string name="feed_names">订阅源名称</string>
     <string name="feed_favicons">订阅源图标</string>
     <string name="article_date_sticky_header">粘性发布日期标头</string>
@@ -164,6 +175,10 @@
     <string name="icons">图标</string>
     <string name="icons_and_labels">图标和标签</string>
     <string name="icons_and_label_only_selected">图标和标签（仅活跃）</string>
+    <string name="hide">隐藏</string>
+    <string name="list">列表</string>
+    <string name="grid">网格</string>
+    <string name="layout">布局</string>
     <string name="tips_top_bar_tonal_elevation">标题栏列表的色调海拔仅在滚动时可用</string>
     <string name="tips_article_list_tonal_elevation">文章列表的色调海拔仅在亮色主题时可用</string>
     <string name="tips_group_list_tonal_elevation">分组列表的色调海拔仅在亮色主题时可用</string>
@@ -220,7 +235,7 @@
     <string name="fever_desc">已过时，不推荐。</string>
     <string name="more">更多</string>
     <string name="add_accounts">添加账户</string>
-    <string name="list">列表</string>
+
     <string name="add_accounts_desc">本地、第三方服务、自托管</string>
     <string name="display">显示</string>
     <string name="synchronous">同步时</string>
@@ -298,6 +313,18 @@
     <string name="import_from_json">从 JSON 文件导入</string>
     <string name="export_as_json">导出为 JSON 文件</string>
     <string name="invalid_json_file_warning">该文件可能不是有效的 JSON 文件！导入该文件可能会损坏应用程序并导致当前偏好设置丢失，您确定要继续吗？</string>
+    <string name="keywords">关键字</string>
+    <string name="import_keywords_from_json">从 JSON 文件导入关键字</string>
+    <string name="export_keywords_as_json">导出关键字为 JSON 文件</string>
+    <string name="import_keywords_warning">这将向现有列表中添加 %1$d 个关键字，您确定要继续吗？</string>
+    <string name="invalid_keywords_json_warning">该文件可能不是有效的关键字 JSON 文件！您确定要继续吗？</string>
+    <string name="one_click_backup">一键备份</string>
+    <string name="one_click_backup_desc">备份订阅、关键字和应用设置</string>
+    <string name="backup_location">备份位置</string>
+    <string name="backup_not_set">未设置</string>
+    <string name="backup_success">备份成功</string>
+    <string name="backup_failed">备份失败：%1$s</string>
+    <string name="long_press_to_change_folder">长按可更改备份目录</string>
     <string name="unfold_more">全部展开</string>
     <string name="unfold_less">全部折叠</string>
     <string name="read_aloud">大声读出</string>

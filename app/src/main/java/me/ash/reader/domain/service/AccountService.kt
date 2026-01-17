@@ -153,4 +153,16 @@ constructor(
         context.dataStore.put(DataStoreKey.currentAccountId, account.id!!)
         context.dataStore.put(DataStoreKey.currentAccountType, account.type.id)
     }
+
+    // 2026-01-22: 新增 updateGroup 方法
+    // 修改原因：支持更新分组信息，包括排序
+    suspend fun updateGroup(group: Group) = groupDao.update(group)
+
+    // 2026-01-27: 新增 updateFeed 方法
+    // 修改原因：支持更新订阅源信息，包括排序
+    suspend fun updateFeed(feed: Feed) = feedDao.update(feed)
+
+    // 2026-01-27: 新增 updateAllFeed 方法
+    // 修改原因：支持批量更新订阅源排序
+    suspend fun updateAllFeed(feeds: List<Feed>) = feedDao.updateAll(feeds)
 }

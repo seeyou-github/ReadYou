@@ -34,11 +34,11 @@ sealed interface Route : NavKey {
     // Color & Style
     @Serializable data object ColorAndStyle : Route
 
+    @Serializable data object HomePageStyle : Route
+
     @Serializable data object DarkTheme : Route
 
     @Serializable data object FeedsPageStyle : Route
-
-    @Serializable data object FlowPageStyle : Route
 
     @Serializable data object ReadingPageStyle : Route
 
@@ -52,8 +52,19 @@ sealed interface Route : NavKey {
 
     @Serializable data object ReadingPageVideo : Route
 
+    @Serializable data object ReadingColorTheme : Route
+
     // Interaction
     @Serializable data object Interaction : Route
+
+    // Blacklist - 关键词屏蔽（与账户无关）
+    @Serializable data object Blacklist : Route
+
+    // Backup & Restore
+    @Serializable data object BackupAndRestore : Route
+
+    // Other
+    @Serializable data object Other : Route
 
     // Languages
     @Serializable data object Languages : Route

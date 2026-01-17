@@ -42,5 +42,13 @@
 
 # https://youtrack.jetbrains.com/issue/KTOR-5528
 -dontwarn org.slf4j.impl.StaticLoggerBinder
-
 -keep class me.ash.reader.R$font { *; }
+# Gson 泛型必须保留
+-keepattributes Signature
+
+# Gson TypeToken
+-keep class com.google.gson.reflect.TypeToken { *; }
+
+# 你自己的数据模型（推荐）
+-keep class me.ash.reader.domain.** { *; }
+-keep class com.google.gson.** { *; }

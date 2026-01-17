@@ -29,6 +29,7 @@ interface GroupDao {
         """
         SELECT * FROM `group`
         WHERE accountId = :accountId
+        ORDER BY sortOrder ASC
         """
     )
     fun queryAllGroupWithFeedAsFlow(accountId: Int): Flow<MutableList<GroupWithFeed>>
@@ -38,6 +39,7 @@ interface GroupDao {
         """
         SELECT * FROM `group`
         WHERE accountId = :accountId
+        ORDER BY sortOrder ASC
         """
     )
     suspend fun queryAllGroupWithFeed(accountId: Int): List<GroupWithFeed>
@@ -46,6 +48,7 @@ interface GroupDao {
         """
         SELECT * FROM `group`
         WHERE accountId = :accountId
+        ORDER BY sortOrder ASC
         """
     )
     fun queryAllGroup(accountId: Int): Flow<MutableList<Group>>
@@ -62,9 +65,18 @@ interface GroupDao {
         """
         SELECT * FROM `group`
         WHERE accountId = :accountId
+        ORDER BY sortOrder ASC
         """
     )
     suspend fun queryAll(accountId: Int): List<Group>
+
+    @Query(
+        """
+        SELECT * FROM `group`
+        WHERE accountId = :accountId AND name = :name
+        """
+    )
+    suspend fun queryByName(accountId: Int, name: String): Group?
 
     @Insert
     suspend fun insertAll(groups: List<Group>)

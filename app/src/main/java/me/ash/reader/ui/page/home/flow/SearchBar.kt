@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.ash.reader.R
 import me.ash.reader.domain.model.constant.ElevationTokens
+import me.ash.reader.domain.model.theme.ColorTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +35,7 @@ fun SearchBar(
     value: String,
     placeholder: String = "",
     focusRequester: FocusRequester = remember { FocusRequester() },
+    colorTheme: ColorTheme? = null,
     onValueChange: (String) -> Unit = {},
     onClose: () -> Unit = {},
 ) {
@@ -43,7 +45,7 @@ fun SearchBar(
 
     Surface(
         modifier = Modifier
-            .background(MaterialTheme.colorScheme.surface)
+            .background(colorTheme?.backgroundColor ?: MaterialTheme.colorScheme.surface)
             .padding(horizontal = 24.dp)
             .padding(vertical = 12.dp)
             .height(56.dp)

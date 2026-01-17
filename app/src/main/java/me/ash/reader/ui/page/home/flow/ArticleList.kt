@@ -3,6 +3,7 @@ package me.ash.reader.ui.page.home.flow
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -21,14 +22,18 @@ fun LazyListScope.ArticleList(
     isShowFeedIcon: Boolean,
     isShowStickyHeader: Boolean,
     articleListTonalElevation: Int,
+    itemSpacing: Int = 0,
     isSwipeEnabled: () -> Boolean = { false },
     isMenuEnabled: Boolean = true,
+    colorTheme: me.ash.reader.domain.model.theme.ColorTheme? = null,
     onClick: (ArticleWithFeed, Int) -> Unit = { _, _ -> },
     onToggleStarred: (ArticleWithFeed) -> Unit = {},
     onToggleRead: (ArticleWithFeed) -> Unit = {},
     onMarkAboveAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onMarkBelowAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onShare: ((ArticleWithFeed) -> Unit)? = null,
+    isFirstItemLargeImageEnabled: Boolean = false, // 2026-01-27: 新增首行大图模式参数
+    forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
 ) {
     // https://issuetracker.google.com/issues/193785330
     // FIXME: Using sticky header with paging-compose need to iterate through the entire list
@@ -42,44 +47,28 @@ fun LazyListScope.ArticleList(
             when (val item = pagingItems[index]) {
                 is ArticleFlowItem.Article -> {
                     val article = item.articleWithFeed.article
-                    SwipeableArticleItem(
-                        articleWithFeed = item.articleWithFeed,
-                        isUnread = diffMap[article.id]?.isUnread ?: article.isUnread,
-                        articleListTonalElevation = articleListTonalElevation,
-                        onClick = { onClick(it, index) },
-                        isSwipeEnabled = isSwipeEnabled,
-                        isMenuEnabled = isMenuEnabled,
-                        onToggleStarred = onToggleStarred,
-                        onToggleRead = onToggleRead,
-                        onMarkAboveAsRead =
-                            if (index == 1) null
-                            else onMarkAboveAsRead, // index == 0 -> ArticleFlowItem.Date
-                        onMarkBelowAsRead =
-                            if (index == pagingItems.itemCount - 1) null else onMarkBelowAsRead,
-                        onShare = onShare,
-                    )
-                }
+                    val hasImage = article.img != null
 
-                is ArticleFlowItem.Date -> {
-                    if (item.showSpacer) {
-                        Spacer(modifier = Modifier.height(32.dp))
-                    }
-                    StickyHeader(item.date, isShowFeedIcon, articleListTonalElevation)
-                }
+                    // 2026-01-27: 判断是否应该显示大图模式
+                    // 第一篇有图片的文章（index == 1，因为 index == 0 是 ArticleFlowItem.Date）
+                    val shouldShowLargeImage = isFirstItemLargeImageEnabled &&
+                        index == 1 &&
+                        hasImage
 
-                else -> {}
-            }
-        }
-    } else {
-        for (index in 0 until pagingItems.itemCount) {
-            when (val item = pagingItems.peek(index)) {
-                is ArticleFlowItem.Article -> {
-                    item(key = key(item), contentType = contentType(item)) {
-                        val article = item.articleWithFeed.article
+                    if (shouldShowLargeImage) {
+                        // 大图模式
+                        LargeImageArticleItem(
+                            modifier = Modifier.padding(horizontal = 1.dp, vertical = 1.dp),
+                            articleWithFeed = item.articleWithFeed,
+                            onClick = { onClick(it, index) }
+                        )
+                    } else {
+                        // 普通模式
                         SwipeableArticleItem(
                             articleWithFeed = item.articleWithFeed,
                             isUnread = diffMap[article.id]?.isUnread ?: article.isUnread,
                             articleListTonalElevation = articleListTonalElevation,
+                            colorTheme = colorTheme,
                             onClick = { onClick(it, index) },
                             isSwipeEnabled = isSwipeEnabled,
                             isMenuEnabled = isMenuEnabled,
@@ -91,7 +80,77 @@ fun LazyListScope.ArticleList(
                             onMarkBelowAsRead =
                                 if (index == pagingItems.itemCount - 1) null else onMarkBelowAsRead,
                             onShare = onShare,
+                            forceShowFeedName = forceShowFeedName,
                         )
+                    }
+                    // 添加项间距
+                    if (itemSpacing > 0 && index < pagingItems.itemCount - 1) {
+                        val nextItem = pagingItems[index + 1]
+                        if (nextItem !is ArticleFlowItem.Date) {
+                            Spacer(modifier = Modifier.height(itemSpacing.dp))
+                        }
+                    }
+                }
+
+                is ArticleFlowItem.Date -> {
+                    if (item.showSpacer) {
+                        Spacer(modifier = Modifier.height(32.dp))
+                    }
+                    StickyHeader(item.date, isShowFeedIcon, articleListTonalElevation, colorTheme)
+                }
+
+                else -> {}
+            }
+        }
+    } else {
+        for (index in 0 until pagingItems.itemCount) {
+            when (val item = pagingItems.peek(index)) {
+                is ArticleFlowItem.Article -> {
+                    item(key = key(item), contentType = contentType(item)) {
+                        val article = item.articleWithFeed.article
+                        val hasImage = article.img != null
+
+                        // 2026-01-27: 判断是否应该显示大图模式
+                        // 第一篇有图片的文章（index == 1，因为 index == 0 是 ArticleFlowItem.Date）
+                        val shouldShowLargeImage = isFirstItemLargeImageEnabled &&
+                            index == 1 &&
+                            hasImage
+
+                        if (shouldShowLargeImage) {
+                            // 大图模式
+                            LargeImageArticleItem(
+                                modifier = Modifier.padding(horizontal = 1.dp, vertical = 1.dp),
+                                articleWithFeed = item.articleWithFeed,
+                                onClick = { onClick(it, index) }
+                            )
+                        } else {
+                            // 普通模式
+                            SwipeableArticleItem(
+                                articleWithFeed = item.articleWithFeed,
+                                isUnread = diffMap[article.id]?.isUnread ?: article.isUnread,
+                                articleListTonalElevation = articleListTonalElevation,
+                                colorTheme = colorTheme,
+                                onClick = { onClick(it, index) },
+                                isSwipeEnabled = isSwipeEnabled,
+                                isMenuEnabled = isMenuEnabled,
+                                onToggleStarred = onToggleStarred,
+                                onToggleRead = onToggleRead,
+                                onMarkAboveAsRead =
+                                    if (index == 1) null
+                                    else onMarkAboveAsRead, // index == 0 -> ArticleFlowItem.Date
+                                onMarkBelowAsRead =
+                                    if (index == pagingItems.itemCount - 1) null else onMarkBelowAsRead,
+                                onShare = onShare,
+                                forceShowFeedName = forceShowFeedName,
+                            )
+                        }
+                        // 添加项间距
+                        if (itemSpacing > 0 && index < pagingItems.itemCount - 1) {
+                            val nextItem = pagingItems.peek(index + 1)
+                            if (nextItem !is ArticleFlowItem.Date) {
+                                Spacer(modifier = Modifier.height(itemSpacing.dp))
+                            }
+                        }
                     }
                 }
 
@@ -100,7 +159,7 @@ fun LazyListScope.ArticleList(
                         item { Spacer(modifier = Modifier.height(32.dp)) }
                     }
                     stickyHeader(key = key(item), contentType = contentType(item)) {
-                        StickyHeader(item.date, isShowFeedIcon, articleListTonalElevation)
+                        StickyHeader(item.date, isShowFeedIcon, articleListTonalElevation, colorTheme)
                     }
                 }
 

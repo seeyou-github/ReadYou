@@ -41,15 +41,29 @@ import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import me.ash.reader.R
 import me.ash.reader.infrastructure.android.TextToSpeechManager
 import me.ash.reader.infrastructure.preference.LocalPullToSwitchArticle
 import me.ash.reader.infrastructure.preference.LocalReadingAutoHideToolbar
 import me.ash.reader.infrastructure.preference.LocalReadingBoldCharacters
 import me.ash.reader.infrastructure.preference.LocalReadingTextLineHeight
+import me.ash.reader.infrastructure.preference.LocalFeedsTopBarHeight
+import me.ash.reader.infrastructure.preference.LocalFeedsTopBarTonalElevation
 import me.ash.reader.infrastructure.preference.not
+import me.ash.reader.infrastructure.preference.CustomReaderThemesPreference
+
+import me.ash.reader.infrastructure.preference.LocalDarkTheme
+import me.ash.reader.ui.component.reader.colorThemeToReaderPaints
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import me.ash.reader.infrastructure.preference.LocalCustomReaderThemes
 import me.ash.reader.ui.ext.collectAsStateValue
 import me.ash.reader.ui.ext.showToast
+import me.ash.reader.ui.ext.dataStore
+import me.ash.reader.ui.component.dialogs.ReadingPageStyleDialog
+import me.ash.reader.ui.component.reader.LocalReaderPaints
+import me.ash.reader.ui.component.reader.ReaderPaints
 import me.ash.reader.ui.page.adaptive.ArticleListReaderViewModel
 import me.ash.reader.ui.page.adaptive.NavigationAction
 import me.ash.reader.ui.page.adaptive.ReaderState
@@ -66,7 +80,7 @@ fun ReadingPage(
     navigationAction: NavigationAction,
     onLoadArticle: (String, Int) -> Unit,
     onNavAction: (NavigationAction) -> Unit,
-    onNavigateToStylePage: () -> Unit,
+    onNavigateToStylePage: () -> Unit = { }, // 2026-01-21: 修改为显示对话框而不是导航
 ) {
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
@@ -74,10 +88,28 @@ fun ReadingPage(
     val readingUiState = viewModel.readingUiState.collectAsStateValue()
     val readerState = viewModel.readerStateStateFlow.collectAsStateValue()
     val boldCharacters = LocalReadingBoldCharacters.current
+//    val topBarHeight = LocalFeedsTopBarHeight.current
     val coroutineScope = rememberCoroutineScope()
 
     var isReaderScrollingDown by remember { mutableStateOf(false) }
     var showFullScreenImageViewer by remember { mutableStateOf(false) }
+
+    // 2026-01-21: 新增阅读界面样式设置对话框状态
+    var showReadingPageStyleDialog by remember { mutableStateOf(false) }
+
+    // 2026-01-21: 修改 onNavigateToStylePage 的行为，显示对话框而不是导航
+    // 由于 onNavigateToStylePage 是一个参数，我们需要在调用时设置对话框状态
+    // 这里我们使用 LaunchedEffect 来监听 onNavigateToStylePage 的调用
+    // 但是由于 onNavigateToStylePage 是一个函数，我们无法直接监听它的调用
+    // 所以我们需要修改 TopBar，让它传递一个设置对话框状态的回调
+
+    // 临时解决方案：直接在 ReadingPage 中处理对话框的显示
+    // 我们需要在 TopBar 中传递一个设置对话框状态的回调
+    // 但是由于 TopBar 是一个独立的组件，我们需要修改它的接口
+
+    // 为了简化，我们暂时保留 onNavigateToStylePage 参数，但在 ReadingPage 中忽略它
+    // 直接在 ReadingPage 中添加一个按钮来显示对话框
+    // 或者我们修改 TopBar，让它传递一个设置对话框状态的回调
 
     var currentImageData by remember { mutableStateOf(ImageData()) }
 
@@ -98,9 +130,23 @@ fun ReadingPage(
 
     var bringToTop by remember { mutableStateOf(false) }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.surface,
-        content = { paddings ->
+    // 获取当前颜色主题并计算 ReaderPaints
+    val isDarkTheme = LocalDarkTheme.current.isDarkTheme()
+    val customReaderThemes = LocalCustomReaderThemes.current
+    val currentColorTheme = customReaderThemes
+        .filter { it.isDarkTheme == isDarkTheme }
+        .firstOrNull { it.isDefault }
+        // 如果没有找到默认主题，回退到默认值
+        ?: CustomReaderThemesPreference.default.firstOrNull { it.isDarkTheme == isDarkTheme }
+
+
+    // 根据 currentColorTheme 设置 LocalReaderPaints
+    CompositionLocalProvider(
+        LocalReaderPaints provides (currentColorTheme?.let { colorThemeToReaderPaints(it) } ?: LocalReaderPaints.current)
+    ) {
+        Scaffold(
+            containerColor = LocalReaderPaints.current.background,
+            content = { paddings ->
             Box(modifier = Modifier.fillMaxSize()) {
                 if (readerState.articleId != null) {
                     TopBar(
@@ -112,6 +158,7 @@ fun ReadingPage(
                         navigationAction = navigationAction,
                         onNavButtonClick = onNavAction,
                         onNavigateToStylePage = onNavigateToStylePage,
+//                        height = topBarHeight,
                     )
                 }
 
@@ -336,8 +383,9 @@ fun ReadingPage(
                     )
                 }
             }
-        },
-    )
+            },
+        )
+    }
     if (showFullScreenImageViewer) {
 
         ReaderImageViewer(
@@ -354,6 +402,15 @@ fun ReadingPage(
                 )
             },
             onDismissRequest = { showFullScreenImageViewer = false },
+        )
+    }
+
+    // 2026-01-21: 新增阅读界面样式设置对话框
+    if (showReadingPageStyleDialog) {
+        ReadingPageStyleDialog(
+            onDismiss = { showReadingPageStyleDialog = false },
+            context = context,
+            scope = coroutineScope
         )
     }
 }

@@ -24,14 +24,25 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import me.ash.reader.domain.model.feed.Feed
+import me.ash.reader.infrastructure.preference.LocalFeedsListItemHeight
+// 2026-01-23: 导入列表视图列表边距设置
+import me.ash.reader.infrastructure.preference.LocalFeedsListItemPadding
+import me.ash.reader.infrastructure.preference.LocalFeedsIconBrightness
+import me.ash.reader.infrastructure.preference.LocalFeedsPageColorThemes
 import me.ash.reader.ui.component.FeedIcon
 import me.ash.reader.ui.component.base.RYExtensibleVisibility
 import me.ash.reader.ui.page.home.feeds.drawer.feed.FeedOptionViewModel
 
+// 2026-01-23: 修改 contentPadding 函数签名，添加 listItemPadding 参数
+// 修改原因：支持用户自定义列表视图的左右边距
 @Composable
-private fun contentPadding(isLastItem: Boolean): PaddingValues = if (isLastItem) PaddingValues(
-    bottom = 22.dp, start = 14.dp, end = 14.dp, top = 14.dp
-) else PaddingValues(14.dp)
+private fun contentPadding(isLastItem: Boolean, listItemPadding: Int): PaddingValues = if (isLastItem) PaddingValues(
+    bottom = 22.dp, start = listItemPadding.dp, end = listItemPadding.dp, top = 14.dp
+) else PaddingValues(
+    start = listItemPadding.dp,
+    end = listItemPadding.dp,
+    top = 14.dp
+)
 
 @OptIn(
     ExperimentalFoundationApi::class,
@@ -43,8 +54,27 @@ private fun FeedItemImpl(
     onLongClickCallback: (String) -> Unit = {},
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {}
-) {
+    ) {
     val scope = rememberCoroutineScope()
+    val feedsListItemHeight = LocalFeedsListItemHeight.current
+    // 2026-01-23: 获取列表视图列表边距设置
+    // 修改原因：读取用户自定义的列表视图列表边距
+    val listItemPadding = LocalFeedsListItemPadding.current
+    val feedsIconBrightness = LocalFeedsIconBrightness.current
+    val colorThemes = LocalFeedsPageColorThemes.current
+    val selectedColorTheme = colorThemes.firstOrNull { it.isDefault } ?: colorThemes.firstOrNull()
+
+    // 根据列表项高度计算图标大小（约为高度的 60%）
+    val iconSize = (feedsListItemHeight * 0.6).dp
+    val feedNameFontSize = when {
+        feedsListItemHeight < 70 -> 15.sp
+        feedsListItemHeight >= 70 && feedsListItemHeight < 75 -> 16.sp
+        feedsListItemHeight >= 75 && feedsListItemHeight < 80 -> 17.sp
+        feedsListItemHeight >= 80 && feedsListItemHeight < 85 -> 18.sp
+        feedsListItemHeight >= 85 && feedsListItemHeight < 90 -> 19.sp
+        feedsListItemHeight >= 90 && feedsListItemHeight < 97 -> 20.sp
+        else -> 21.sp
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -56,18 +86,22 @@ private fun FeedItemImpl(
                     onLongClickCallback(feed.id)
                 }
             })
-            .padding(contentPadding(isLastItem())),
+            .padding(contentPadding(isLastItem(), listItemPadding)),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 14.dp, end = 6.dp),
+                .padding(start = 0.dp, end = 0.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 FeedIcon(
-                    feedName = feed.name, iconUrl = feed.icon, modifier = Modifier
+                    feedName = feed.name, 
+                    iconUrl = feed.icon, 
+                    modifier = Modifier,
+                    size = iconSize,
+                    brightness = feedsIconBrightness
                 )
                 Text(
                     modifier = Modifier.padding(start = 12.dp, end = 6.dp),
@@ -79,9 +113,10 @@ private fun FeedItemImpl(
                             alignment = LineHeightStyle.Alignment.Center
                         )
                     ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (selectedColorTheme != null) selectedColorTheme.textColor else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    fontSize = feedNameFontSize
                 )
             }
             if (feed.important != 0) {

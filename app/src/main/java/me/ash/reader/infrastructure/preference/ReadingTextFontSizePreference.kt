@@ -14,7 +14,7 @@ val LocalReadingTextFontSize = compositionLocalOf { ReadingTextFontSizePreferenc
 
 object ReadingTextFontSizePreference {
 
-    const val default = 17
+    const val default = 24
 
     fun put(context: Context, scope: CoroutineScope, value: Int) {
         scope.launch {

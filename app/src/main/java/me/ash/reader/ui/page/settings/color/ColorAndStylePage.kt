@@ -88,8 +88,8 @@ import me.ash.reader.ui.theme.palette.safeHexToColor
 fun ColorAndStylePage(
     onBack: () -> Unit,
     navigateToDarkTheme: () -> Unit,
+    navigateToHomePageStyle: () -> Unit,
     navigateToFeedsPageStyle: () -> Unit,
-    navigateToFlowPageStyle: () -> Unit,
     navigateToReadingPageStyle: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -106,8 +106,15 @@ fun ColorAndStylePage(
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let {
-            ExternalFonts(context, it, ExternalFonts.FontType.BasicFont).copyToInternalStorage()
-            BasicFontsPreference.External.put(context, scope)
+            try {
+                ExternalFonts(context, it, ExternalFonts.FontType.BasicFont).copyToInternalStorage()
+                // 2026-01-21: 先关闭对话框，避免在对话框显示时重启导致应用退出
+                fontsDialogVisible = false
+                BasicFontsPreference.External.put(context, scope)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                context.showToast("Failed to load font: ${e.message}")
+            }
         } ?: context.showToast("Cannot get activity result with launcher")
     }
 
@@ -216,17 +223,14 @@ fun ColorAndStylePage(
                         text = stringResource(R.string.style)
                     )
                     SettingItem(
+                        title = stringResource(R.string.home_page),
+                        onClick = navigateToHomePageStyle,
+                    ) {}
+                    SettingItem(
                         title = stringResource(R.string.feeds_page),
                         onClick = navigateToFeedsPageStyle,
                     ) {}
-                    SettingItem(
-                        title = stringResource(R.string.flow_page),
-                        onClick = navigateToFlowPageStyle,
-                    ) {}
-                    SettingItem(
-                        title = stringResource(R.string.reading_page),
-                        onClick = navigateToReadingPageStyle,
-                    ) {}
+                    // 2026-01-21: 移除阅读页面入口，改为在阅读页面中直接打开样式设置对话框
                 }
                 item {
                     Spacer(modifier = Modifier.height(24.dp))
@@ -246,6 +250,8 @@ fun ColorAndStylePage(
                 selected = it == fonts,
             ) {
                 if (it.value == BasicFontsPreference.External.value) {
+                    // 2026-01-21: 先关闭对话框，避免在对话框显示时重启导致应用退出
+                    fontsDialogVisible = false
                     launcher.launch(arrayOf(MimeType.FONT))
                 } else {
                     it.put(context, scope)

@@ -2,6 +2,8 @@ package me.ash.reader.ui.page.home.feeds.drawer.group
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -52,6 +54,20 @@ fun GroupOptionDrawer(
     val groupOptionUiState = viewModel.groupOptionUiState.collectAsStateValue()
     val group = groupOptionUiState.group
     val toastString = stringResource(R.string.rename_toast, groupOptionUiState.newName)
+
+    val exportGroupOpmlLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/xml")
+    ) { result ->
+        result?.let { uri ->
+            scope.launch {
+                val groupId = group?.id ?: return@launch
+                val opmlString = viewModel.exportGroupAsOpml(groupId)
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(opmlString.toByteArray())
+                }
+            }
+        }
+    }
 
     BackHandler(drawerState.isVisible) {
         scope.launch {
@@ -107,7 +123,7 @@ fun GroupOptionDrawer(
                     Subtitle(text = stringResource(R.string.preset))
 
                     Spacer(modifier = Modifier.height(10.dp))
-                    Preset(viewModel, group, context)
+                    Preset(viewModel, group, context, scope, exportGroupOpmlLauncher)
 
                     if (viewModel.rssService.get().moveSubscription && groupOptionUiState.groups.size != 1) {
                         Spacer(modifier = Modifier.height(26.dp))
@@ -124,10 +140,11 @@ fun GroupOptionDrawer(
                     Spacer(modifier = Modifier.height(6.dp))
                 }
             }
+        },
+        content = {
+            content()
         }
-    ) {
-        content()
-    }
+    )
 
     ClearGroupDialog(
         groupName = group?.name ?: "",
@@ -170,6 +187,8 @@ private fun Preset(
     viewModel: GroupOptionViewModel,
     group: Group?,
     context: Context,
+    scope: kotlinx.coroutines.CoroutineScope,
+    exportGroupOpmlLauncher: androidx.activity.result.ActivityResultLauncher<String>,
 ) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
@@ -222,6 +241,15 @@ private fun Preset(
             },
         ) {
             viewModel.showAllOpenInBrowserDialog()
+        }
+        RYSelectionChip(
+            modifier = Modifier,
+            content = stringResource(R.string.export_group_as_opml),
+            selected = false,
+        ) {
+            if (group == null) return@RYSelectionChip
+            val fileName = "Read-You-${group.name ?: "group"}-${System.currentTimeMillis()}.opml"
+            exportGroupOpmlLauncher.launch(fileName)
         }
         RYSelectionChip(
             modifier = Modifier,

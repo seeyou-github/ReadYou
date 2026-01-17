@@ -9,6 +9,7 @@
 package me.ash.reader.ui.page.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,7 @@ fun SettingItem(
     iconPainter: Painter? = null,
     separatedActions: Boolean = false,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
     val tonalPalettes = LocalTonalPalettes.current
@@ -55,7 +57,12 @@ fun SettingItem(
 
     Surface(
         modifier = modifier
-            .clickable(enabled = enabled, interactionSource = interactionSource) { onClick() }
+            .combinedClickable(
+                enabled = enabled,
+                interactionSource = interactionSource,
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .alpha(if (enabled) 1f else 0.5f),
         color = Color.Unspecified
     ) {
@@ -87,6 +94,7 @@ fun SettingItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = if (desc == null) 2 else 1,
                     style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp)
                 )
@@ -94,7 +102,7 @@ fun SettingItem(
                     Text(
                         text = it,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        maxLines = 3,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }

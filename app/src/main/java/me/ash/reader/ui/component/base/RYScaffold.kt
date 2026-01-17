@@ -25,6 +25,7 @@ fun RYScaffold(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     topBarTonalElevation: Dp = 0.dp,
+    topBarColor: Color = MaterialTheme.colorScheme.surfaceColorAtElevation(topBarTonalElevation),
     containerTonalElevation: Dp = 0.dp,
     floatingActionButtonPosition: FabPosition = FabPosition.End,
     navigationIcon: (@Composable () -> Unit)? = null,
@@ -35,18 +36,8 @@ fun RYScaffold(
     content: @Composable () -> Unit = {},
 ) {
     Scaffold(
-        modifier =
-            modifier.background(
-                MaterialTheme.colorScheme.surfaceColorAtElevation(
-                    topBarTonalElevation,
-                    color = containerColor,
-                )
-            ),
-        containerColor =
-            MaterialTheme.colorScheme.surfaceColorAtElevation(
-                containerTonalElevation,
-                color = containerColor,
-            ) onDark MaterialTheme.colorScheme.surface,
+        modifier = modifier,
+        containerColor = containerColor,
         topBar = {
             if (topBar != null) topBar()
             else if (navigationIcon != null || actions != null) {
@@ -56,10 +47,7 @@ fun RYScaffold(
                     actions = { actions?.invoke(this) },
                     colors =
                         TopAppBarDefaults.topAppBarColors(
-                            containerColor =
-                                MaterialTheme.colorScheme.surfaceColorAtElevation(
-                                    topBarTonalElevation
-                                )
+                            containerColor = topBarColor
                         ),
                 )
             }

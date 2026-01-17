@@ -16,4 +16,6 @@ data class Group(
     val name: String,
     @ColumnInfo(index = true)
     val accountId: Int,
+    @ColumnInfo(defaultValue = "0")
+    val sortOrder: Int = 0, // 2026-01-22: 新增排序字段，用于支持分组排序功能
 )

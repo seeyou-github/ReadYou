@@ -63,6 +63,21 @@ fun Date.formatAsString(
 private fun Date.toTimeString(context: Context): String =
     android.text.format.DateFormat.getTimeFormat(context).format(this)
 
+fun Date.formatAsRelativeTime(): String {
+    val now = Date()
+    val diff = now.time - this.time
+    val minutes = diff / (1000 * 60)
+    val hours = diff / (1000 * 60 * 60)
+    val days = diff / (1000 * 60 * 60 * 24)
+
+    return when {
+        minutes < 1 -> "刚刚"
+        minutes < 60 -> "${minutes}m 前"
+        hours < 24 -> "${hours}h 前"
+        else -> "${days}天前"
+    }
+}
+
 
 private fun String.parseToDate(
     patterns: Array<String> = arrayOf(
