@@ -35,11 +35,14 @@ import me.ash.reader.infrastructure.preference.LocalFlowArticleListTitleLineHeig
 import me.ash.reader.infrastructure.preference.LocalReadingImageBrightness
 import me.ash.reader.ui.component.base.RYAsyncImage
 import me.ash.reader.ui.component.base.SIZE_1000
+import me.ash.reader.ui.ext.requiresBidi
+import me.ash.reader.ui.theme.applyTextDirection
 
 @Composable
 fun LargeImageArticleItem(
     modifier: Modifier = Modifier,
     articleWithFeed: ArticleWithFeed,
+    translatedTitle: String? = articleWithFeed.article.translatedTitle,  // 2026-02-03: ????????
     onClick: (ArticleWithFeed) -> Unit = {},
 ) {
     val article = articleWithFeed.article
@@ -113,8 +116,8 @@ fun LargeImageArticleItem(
         ) {
             // 文章标题（最多2行）- 2026-01-28: 使用标题大小和行距设置
             Text(
-                text = article.title,
-                style = MaterialTheme.typography.titleMedium.copy(
+                text = translatedTitle ?: article.title,
+                style = MaterialTheme.typography.titleMedium.applyTextDirection((translatedTitle ?: article.title).requiresBidi()).copy(
                     fontSize = titleFontSize.sp,
                     lineHeight = (titleFontSize * titleLineHeight).sp
                 ),

@@ -63,6 +63,12 @@ sealed interface Route : NavKey {
     // Backup & Restore
     @Serializable data object BackupAndRestore : Route
 
+    // AI Translation
+    @Serializable data object AITranslation : Route
+    @Serializable data object AIProviderList : Route
+    @Serializable data class AIProviderConfig(val providerId: String) : Route
+    @Serializable data class AIModelList(val providerId: String) : Route
+
     // Other
     @Serializable data object Other : Route
 

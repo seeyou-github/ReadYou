@@ -2,32 +2,33 @@ package me.ash.reader.infrastructure.db
 
 import android.content.Context
 import androidx.room.*
-import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.room.migration.Migration
 import me.ash.reader.domain.model.account.*
-import me.ash.reader.domain.model.account.security.DESUtils
 import me.ash.reader.domain.model.article.ArchivedArticle
 import me.ash.reader.domain.model.article.Article
 import me.ash.reader.domain.model.blacklist.BlacklistKeyword
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.model.group.Group
+import me.ash.reader.infrastructure.translate.model.ArticleTranslationCache
 import me.ash.reader.domain.repository.AccountDao
 import me.ash.reader.domain.repository.ArticleDao
+import me.ash.reader.infrastructure.translate.cache.ArticleTranslationCacheDao
 import me.ash.reader.domain.repository.BlacklistKeywordDao
 import me.ash.reader.domain.repository.FeedDao
 import me.ash.reader.domain.repository.GroupDao
-import me.ash.reader.infrastructure.preference.*
-import me.ash.reader.ui.ext.toInt
 import java.util.*
 
 @Database(
-    entities = [Account::class, Feed::class, Article::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class],
-    version = 11,
+    entities = [Account::class, Feed::class, Article::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class],
+    version = 17,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 5, to = 7),
         AutoMigration(from = 6, to = 7),
-    ]
+        AutoMigration(from = 11, to = 12),
+    ],
+    exportSchema = true
 )
 @TypeConverters(
     AndroidDatabase.DateConverters::class,
@@ -46,18 +47,138 @@ abstract class AndroidDatabase : RoomDatabase() {
     abstract fun articleDao(): ArticleDao
     abstract fun groupDao(): GroupDao
     abstract fun blacklistKeywordDao(): BlacklistKeywordDao
+    abstract fun articleTranslationCacheDao(): ArticleTranslationCacheDao
 
     companion object {
 
         private var instance: AndroidDatabase? = null
 
+                /**
+                 * 数据库迁移：从版本12到版本13
+                 *
+                 * 1. 为 article 表添加 isTranslated 字段
+                 * 2. 删除 article_translation_cache 表的 isShowingTranslation 字段
+                 *
+                 * 修改日期：2026-02-01
+                 * 修改原因：简化翻译状态管理，移除 isShowingTranslation 字段
+                 */
+                private val MIGRATION_12_13 = object : Migration(12, 13) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        // 为 article 表添加 isTranslated 列，默认值为 false
+                        database.execSQL(
+                            "ALTER TABLE article ADD COLUMN isTranslated INTEGER NOT NULL DEFAULT 0"
+                        )
+                        
+                        // 删除 article_translation_cache 表的 isShowingTranslation 列
+                        // SQLite 不支持直接删除列，需要重新创建表
+                        database.execSQL("DROP TABLE IF EXISTS article_translation_cache_new")
+                        database.execSQL("""
+                            CREATE TABLE article_translation_cache_new (
+                                articleId TEXT PRIMARY KEY NOT NULL,
+                                feedId TEXT NOT NULL,
+                                isTranslated INTEGER NOT NULL DEFAULT 0,
+                                translatedTitle TEXT,
+                                fullHtmlContent TEXT,
+                                translateProvider TEXT,
+                                translateModel TEXT,
+                                translatedAt INTEGER NOT NULL
+                            )
+                        """.trimIndent())
+                        database.execSQL("INSERT INTO article_translation_cache_new SELECT articleId, feedId, isTranslated, translatedTitle, fullHtmlContent, translateProvider, translateModel, translatedAt FROM article_translation_cache")
+                        database.execSQL("DROP TABLE article_translation_cache")
+                        database.execSQL("ALTER TABLE article_translation_cache_new RENAME TO article_translation_cache")
+                    }
+                }
+        
+                /**
+                 * 数据库迁移：从版本13到版本14
+                 *
+                 * 1. 为 feed 表添加 isAutoTranslate 字段
+                 *
+                 * 修改日期：2026-02-02
+                 * 修改原因：添加自动翻译全文功能开关
+                 */
+                private val MIGRATION_13_14 = object : Migration(13, 14) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        // 为 feed 表添加 isAutoTranslate 列，默认值为 false
+                        database.execSQL(
+                            "ALTER TABLE feed ADD COLUMN isAutoTranslate INTEGER NOT NULL DEFAULT 0"
+                        )
+                    }
+                }
+
+                /**
+                 * 数据库迁移：从版本14到版本15
+                 *
+                 * 1. 为 feed 表添加 isAutoTranslateTitle 字段
+                 *
+                 * 修改日期：2026-02-02
+                 * 修改原因：添加自动翻译文章标题功能开关（独立字段）
+                 */
+                private val MIGRATION_14_15 = object : Migration(14, 15) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        // 为 feed 表添加 isAutoTranslateTitle 列，默认值为 false
+                        database.execSQL(
+                            "ALTER TABLE feed ADD COLUMN isAutoTranslateTitle INTEGER NOT NULL DEFAULT 0"
+                        )
+                    }
+                }
+
+                /**
+                 * 数据库迁移：从版本15到版本16
+                 *
+                 * 1. 为 article 表添加 translatedTitle 字段
+                 *
+                 * 修改日期：2026-02-03
+                 * 修改原因：添加文章标题翻译缓存字段，用于存储翻译后的标题
+                 */
+                private val MIGRATION_15_16 = object : Migration(15, 16) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        // 为 article 表添加 translatedTitle 列，默认值为 null
+                        database.execSQL(
+                            "ALTER TABLE article ADD COLUMN translatedTitle TEXT"
+                        )
+                    }
+                }
+
+                /**
+                 * 数据库迁移：从版本 16 到版本 17
+                 *
+                 * 1. 为 feed 表添加图片过滤相关字段
+                 *
+                 * 修改日期：2026-02-04
+                 * 修改原因：订阅源图片过滤功能
+                 */
+                private val MIGRATION_16_17 = object : Migration(16, 17) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE feed ADD COLUMN isImageFilterEnabled INTEGER NOT NULL DEFAULT 0"
+                        )
+                        database.execSQL(
+                            "ALTER TABLE feed ADD COLUMN imageFilterResolution TEXT NOT NULL DEFAULT ''"
+                        )
+                        database.execSQL(
+                            "ALTER TABLE feed ADD COLUMN imageFilterFileName TEXT NOT NULL DEFAULT ''"
+                        )
+                        database.execSQL(
+                            "ALTER TABLE feed ADD COLUMN imageFilterDomain TEXT NOT NULL DEFAULT ''"
+                        )
+                    }
+                }
         fun getInstance(context: Context): AndroidDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     AndroidDatabase::class.java,
                     "Reader"
-                ).addMigrations(*allMigrations).build().also {
+                ).addMigrations(
+                    MIGRATION_12_13,
+                    MIGRATION_13_14,
+                    MIGRATION_14_15,
+                    MIGRATION_15_16,
+                    MIGRATION_16_17
+                )
+                 .build().also {
                     instance = it
                 }
             }
@@ -65,180 +186,14 @@ abstract class AndroidDatabase : RoomDatabase() {
     }
 
     class DateConverters {
-
         @TypeConverter
-        fun toDate(dateLong: Long?): Date? {
-            return dateLong?.let { Date(it) }
+        fun fromTimestamp(value: Long?): Date? {
+            return value?.let { Date(it) }
         }
 
         @TypeConverter
-        fun fromDate(date: Date?): Long? {
+        fun dateToTimestamp(date: Date?): Long? {
             return date?.time
         }
-    }
-}
-
-val allMigrations = arrayOf(
-    MIGRATION_1_2,
-    MIGRATION_2_3,
-    MIGRATION_3_4,
-    MIGRATION_4_5,
-    MIGRATION_7_8,
-    MIGRATION_8_9,
-    MIGRATION_9_10,
-    MIGRATION_10_11,
-)
-
-@Suppress("ClassName")
-object MIGRATION_1_2 : Migration(1, 2) {
-
-    override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL(
-            """
-            ALTER TABLE article ADD COLUMN img TEXT DEFAULT NULL
-            """.trimIndent()
-        )
-    }
-}
-
-@Suppress("ClassName")
-object MIGRATION_2_3 : Migration(2, 3) {
-
-    override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL(
-            """
-            ALTER TABLE article ADD COLUMN updateAt INTEGER DEFAULT ${System.currentTimeMillis()}
-            """.trimIndent()
-        )
-        database.execSQL(
-            """
-            ALTER TABLE account ADD COLUMN syncInterval INTEGER NOT NULL DEFAULT ${SyncIntervalPreference.default.value}
-            """.trimIndent()
-        )
-        database.execSQL(
-            """
-            ALTER TABLE account ADD COLUMN syncOnStart INTEGER NOT NULL DEFAULT ${SyncOnStartPreference.default.value.toInt()}
-            """.trimIndent()
-        )
-        database.execSQL(
-            """
-            ALTER TABLE account ADD COLUMN syncOnlyOnWiFi INTEGER NOT NULL DEFAULT ${SyncOnlyOnWiFiPreference.default.value.toInt()}
-            """.trimIndent()
-        )
-        database.execSQL(
-            """
-            ALTER TABLE account ADD COLUMN syncOnlyWhenCharging INTEGER NOT NULL DEFAULT ${SyncOnlyWhenChargingPreference.default.value.toInt()}
-            """.trimIndent()
-        )
-        database.execSQL(
-            """
-            ALTER TABLE account ADD COLUMN keepArchived INTEGER NOT NULL DEFAULT ${KeepArchivedPreference.default.value}
-            """.trimIndent()
-        )
-        database.execSQL(
-            """
-            ALTER TABLE account ADD COLUMN syncBlockList TEXT NOT NULL DEFAULT ''
-            """.trimIndent()
-        )
-    }
-}
-
-@Suppress("ClassName")
-object MIGRATION_3_4 : Migration(3, 4) {
-
-    override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL(
-            """
-            ALTER TABLE account ADD COLUMN securityKey TEXT DEFAULT '${DESUtils.empty}'
-            """.trimIndent()
-        )
-    }
-}
-
-@Suppress("ClassName")
-object MIGRATION_4_5 : Migration(4, 5) {
-
-    override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL(
-            """
-            ALTER TABLE account ADD COLUMN lastArticleId TEXT DEFAULT NULL
-            """.trimIndent()
-        )
-    }
-}
-
-@Suppress("ClassName")
-object MIGRATION_7_8 : Migration(7, 8) {
-
-    override fun migrate(database: SupportSQLiteDatabase) {
-        // 2026-01-22: 添加 sortOrder 字段到 group 表，用于支持分组排序功能
-        database.execSQL(
-            """
-            ALTER TABLE `group` ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0
-            """.trimIndent()
-        )
-    }
-}
-
-@Suppress("ClassName")
-object MIGRATION_8_9 : Migration(8, 9) {
-
-    override fun migrate(database: SupportSQLiteDatabase) {
-        // 2026-01-24: 创建关键词黑名单表，用于文章标题过滤
-        // 与账户无关，仅和订阅源相关，支持多订阅源匹配（逗号分隔）
-        database.execSQL("DROP TABLE IF EXISTS `blacklist_keyword`")
-        database.execSQL(
-            """
-            CREATE TABLE IF NOT EXISTS `blacklist_keyword` (
-                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                `keyword` TEXT NOT NULL,
-                `enabled` INTEGER NOT NULL DEFAULT 1,
-                `feedUrls` TEXT,
-                `feedNames` TEXT,
-                `createdAt` INTEGER NOT NULL
-            )
-            """.trimIndent()
-        )
-        // 创建索引以优化查询
-        database.execSQL("CREATE INDEX IF NOT EXISTS `index_blacklist_keyword_keyword` ON `blacklist_keyword` (`keyword`)")
-        database.execSQL("CREATE INDEX IF NOT EXISTS `index_blacklist_keyword_enabled` ON `blacklist_keyword` (`enabled`)")
-    }
-}
-
-@Suppress("ClassName")
-object MIGRATION_9_10 : Migration(9, 10) {
-
-    override fun migrate(database: SupportSQLiteDatabase) {
-        // 2026-01-24: 修复数据库迁移问题
-        // 之前可能存在带外键约束的表，先删除再重建正确的表结构
-        database.execSQL("DROP TABLE IF EXISTS `blacklist_keyword`")
-        database.execSQL(
-            """
-            CREATE TABLE IF NOT EXISTS `blacklist_keyword` (
-                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                `keyword` TEXT NOT NULL,
-                `enabled` INTEGER NOT NULL DEFAULT 1,
-                `feedUrls` TEXT,
-                `feedNames` TEXT,
-                `createdAt` INTEGER NOT NULL
-            )
-            """.trimIndent()
-        )
-        // 创建索引以优化查询
-        database.execSQL("CREATE INDEX IF NOT EXISTS `index_blacklist_keyword_keyword` ON `blacklist_keyword` (`keyword`)")
-        database.execSQL("CREATE INDEX IF NOT EXISTS `index_blacklist_keyword_enabled` ON `blacklist_keyword` (`enabled`)")
-    }
-}
-
-@Suppress("ClassName")
-object MIGRATION_10_11 : Migration(10, 11) {
-
-    override fun migrate(database: SupportSQLiteDatabase) {
-        // 2026-01-27: 添加 sortOrder 字段到 feed 表，用于支持订阅源排序功能
-        database.execSQL(
-            """
-            ALTER TABLE `feed` ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0
-            """.trimIndent()
-        )
     }
 }

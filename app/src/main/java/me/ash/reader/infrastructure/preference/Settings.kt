@@ -2,6 +2,9 @@ package me.ash.reader.infrastructure.preference
 
 import androidx.compose.runtime.compositionLocalOf
 import me.ash.reader.domain.model.general.Version
+import me.ash.reader.infrastructure.translate.model.TranslateModelConfig
+import me.ash.reader.infrastructure.translate.model.TranslateProviderConfig
+import me.ash.reader.infrastructure.translate.preference.TranslateServiceIdPreference
 
 val LocalSettings = compositionLocalOf { Settings() }
 
@@ -101,6 +104,13 @@ data class Settings(
     val readingTitleFontSize: Int = ReadingTitleFontSizePreference.default,
     val readingTitleColor: String = ReadingTitleColorPreference.default,
     val readingTitleHorizontalPadding: Int = ReadingTitleHorizontalPaddingPreference.default,
+
+    // Translate
+    val translateServiceId: String = TranslateServiceIdPreference.default,
+    val quickTranslateModel: TranslateModelConfig? = null,
+    val longPressTranslateModel: TranslateModelConfig? = null,
+    val siliconFlowConfig: TranslateProviderConfig? = null,
+    val cerebrasConfig: TranslateProviderConfig? = null,
 
     // Interaction
     val initialPage: InitialPagePreference = InitialPagePreference.default,

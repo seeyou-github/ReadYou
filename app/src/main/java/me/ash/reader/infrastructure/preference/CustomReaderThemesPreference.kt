@@ -24,9 +24,9 @@ object CustomReaderThemesPreference {
     val default = listOf(
         ColorTheme(
             name = "暗黑",
-            textColor = androidx.compose.ui.graphics.Color(0xFFC9C9C9),
-            backgroundColor = androidx.compose.ui.graphics.Color(0xFF2D2D2D),
-            primaryColor = androidx.compose.ui.graphics.Color(0xFFFF9800),
+            textColor = androidx.compose.ui.graphics.Color(0xFFaba5a4),
+            backgroundColor = androidx.compose.ui.graphics.Color(0xFF192131),
+            primaryColor = androidx.compose.ui.graphics.Color(0xFF668653),
             isDefault = true,
             isDarkTheme = true
         ),

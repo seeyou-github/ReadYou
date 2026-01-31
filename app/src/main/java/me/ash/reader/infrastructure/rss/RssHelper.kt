@@ -35,6 +35,10 @@ import org.jsoup.Jsoup
 
 val enclosureRegex = """<enclosure\s+url="([^"]+)"\s+type=".*"\s*/>""".toRegex()
 val imgRegex = """img.*?src=(["'])((?!data).*?)\1""".toRegex(RegexOption.DOT_MATCHES_ALL)
+private val imgTagRegex = """<img[^>]*>""".toRegex(RegexOption.IGNORE_CASE)
+private val imgSrcRegex = """\bsrc=(["'])(.*?)\1""".toRegex(RegexOption.IGNORE_CASE)
+private val imgWidthRegex = """\bwidth=(["']?)(\d+)\1""".toRegex(RegexOption.IGNORE_CASE)
+private val imgHeightRegex = """\bheight=(["']?)(\d+)\1""".toRegex(RegexOption.IGNORE_CASE)
 
 /** Some operations on RSS. */
 class RssHelper
@@ -183,7 +187,16 @@ constructor(
             rawDescription = content ?: desc ?: "",
             shortDescription = Readability.parseToText(desc ?: content, syndEntry.link).take(280),
             //            fullContent = content,
-            img = findThumbnail(syndEntry) ?: findThumbnail(content ?: desc),
+            img = run {
+                val textThumbnail = findThumbnailWithFilter(content ?: desc, feed)
+                val syndThumbnail = findThumbnail(syndEntry)
+                if (feed.isImageFilterEnabled && shouldApplyImageFilter(feed) && syndThumbnail != null) {
+                    val candidate = ImageCandidate(src = syndThumbnail)
+                    if (shouldFilterImage(feed, candidate)) textThumbnail else syndThumbnail
+                } else {
+                    syndThumbnail ?: textThumbnail
+                }
+            },
             link = syndEntry.link ?: "",
             updateAt = preDate,
         )
@@ -224,6 +237,12 @@ constructor(
         return null
     }
 
+    data class ImageCandidate(
+        val src: String,
+        val width: Int? = null,
+        val height: Int? = null,
+    )
+
     fun findThumbnail(text: String?): String? {
         text ?: return null
         val enclosure = enclosureRegex.find(text)?.groupValues?.get(1)
@@ -235,6 +254,103 @@ constructor(
         // And capturing original quote to use as ending quote
         // Base64 encoded images can be quite large - and crash database cursors
         return imgRegex.find(text)?.groupValues?.get(2)?.takeIf { !it.startsWith("data:") }
+    }
+
+    fun findThumbnailWithFilter(text: String?, feed: Feed): String? {
+        text ?: return null
+        val candidates = extractImageCandidates(text)
+        if (candidates.isEmpty()) return null
+        if (!feed.isImageFilterEnabled || !shouldApplyImageFilter(feed)) {
+            return candidates.firstOrNull()?.src
+        }
+        return candidates.firstOrNull { !shouldFilterImage(feed, it) }?.src
+    }
+
+    fun removeImageFromContent(content: String, imageUrl: String): String {
+        val normalizedTarget = normalizeUrl(imageUrl)
+        return imgTagRegex.replace(content) { match ->
+            val tag = match.value
+            val src = imgSrcRegex.find(tag)?.groupValues?.get(2) ?: return@replace tag
+            val normalizedSrc = normalizeUrl(src)
+            if (normalizedSrc == normalizedTarget) "" else tag
+        }
+    }
+
+    fun removeFilteredImages(content: String, feed: Feed): String {
+        if (!feed.isImageFilterEnabled || !shouldApplyImageFilter(feed)) return content
+        return imgTagRegex.replace(content) { match ->
+            val tag = match.value
+            val src = imgSrcRegex.find(tag)?.groupValues?.get(2) ?: return@replace tag
+            if (src.startsWith("data:")) return@replace tag
+            val width = imgWidthRegex.find(tag)?.groupValues?.get(2)?.toIntOrNull()
+            val height = imgHeightRegex.find(tag)?.groupValues?.get(2)?.toIntOrNull()
+            val candidate = ImageCandidate(src = src, width = width, height = height)
+            if (shouldFilterImage(feed, candidate)) "" else tag
+        }
+    }
+
+    private fun extractImageCandidates(text: String): List<ImageCandidate> {
+        return imgTagRegex.findAll(text).mapNotNull { match ->
+            val tag = match.value
+            val src = imgSrcRegex.find(tag)?.groupValues?.get(2) ?: return@mapNotNull null
+            if (src.startsWith("data:")) return@mapNotNull null
+            val width = imgWidthRegex.find(tag)?.groupValues?.get(2)?.toIntOrNull()
+            val height = imgHeightRegex.find(tag)?.groupValues?.get(2)?.toIntOrNull()
+            ImageCandidate(src = src, width = width, height = height)
+        }.toList()
+    }
+
+    fun shouldApplyImageFilter(feed: Feed): Boolean {
+        return feed.imageFilterResolution.isNotBlank() ||
+            feed.imageFilterFileName.isNotBlank() ||
+            feed.imageFilterDomain.isNotBlank()
+    }
+
+    fun shouldFilterImage(feed: Feed, candidate: ImageCandidate): Boolean {
+        if (!feed.isImageFilterEnabled) return false
+        val matchesResolution = matchesResolutionRule(feed.imageFilterResolution, candidate)
+        val matchesFileName = matchesFileNameRule(feed.imageFilterFileName, candidate.src)
+        val matchesDomain = matchesDomainRule(feed.imageFilterDomain, candidate.src)
+        return matchesResolution || matchesFileName || matchesDomain
+    }
+
+    private fun matchesResolutionRule(rule: String, candidate: ImageCandidate): Boolean {
+        if (rule.isBlank()) return false
+        val (minWidth, minHeight) = parseResolution(rule) ?: return false
+        val width = candidate.width ?: return false
+        val height = candidate.height ?: return false
+        return width < minWidth || height < minHeight
+    }
+
+    private fun matchesFileNameRule(rule: String, src: String): Boolean {
+        if (rule.isBlank()) return false
+        val fileName = src.substringBefore("?").substringAfterLast("/")
+        return fileName.contains(rule, ignoreCase = true)
+    }
+
+    private fun matchesDomainRule(rule: String, src: String): Boolean {
+        if (rule.isBlank()) return false
+        val domain = src.extractDomain() ?: ""
+        return domain.contains(rule, ignoreCase = true)
+    }
+
+    private fun parseResolution(value: String): Pair<Int, Int>? {
+        val trimmed = value.trim()
+        if (trimmed.isBlank()) return null
+        val normalized = trimmed.replace("×", "x").replace("*", "x")
+        return if (normalized.contains("x", ignoreCase = true)) {
+            val parts = normalized.lowercase().split("x").map { it.trim() }
+            val w = parts.getOrNull(0)?.toIntOrNull() ?: return null
+            val h = parts.getOrNull(1)?.toIntOrNull() ?: return null
+            w to h
+        } else {
+            val size = normalized.toIntOrNull() ?: return null
+            size to size
+        }
+    }
+
+    private fun normalizeUrl(url: String): String {
+        return url.substringBefore("#").substringBefore("?")
     }
 
     suspend fun queryRssIconLink(feedLink: String?): String? {

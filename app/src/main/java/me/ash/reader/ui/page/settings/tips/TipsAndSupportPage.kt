@@ -237,6 +237,12 @@ fun TipsAndSupportPage(
                                 style = MaterialTheme.typography.displaySmall
                             )
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.modify_by),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
                 item {

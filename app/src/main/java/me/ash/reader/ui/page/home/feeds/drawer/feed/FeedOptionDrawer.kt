@@ -3,12 +3,14 @@ package me.ash.reader.ui.page.home.feeds.drawer.feed
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import timber.log.Timber
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,7 +21,11 @@ import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.rememberModalBottomSheetState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -47,6 +53,9 @@ import me.ash.reader.ui.ext.roundClick
 import me.ash.reader.ui.ext.showToast
 import me.ash.reader.ui.interaction.alphaIndicationClickable
 import me.ash.reader.ui.page.home.feeds.FeedOptionView
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun FeedOptionDrawer(
@@ -126,19 +135,37 @@ fun FeedOptionDrawer(
                         ?: false,
                     selectedParseFullContentPreset = feedOptionUiState.feed?.isFullContent ?: false,
                     selectedOpenInBrowserPreset = feedOptionUiState.feed?.isBrowser ?: false,
+                    selectedAutoTranslatePreset = feedOptionUiState.feed?.isAutoTranslate ?: false,
+                    selectedAutoTranslateTitlePreset = feedOptionUiState.feed?.isAutoTranslateTitle ?: false,
+                    showImageFilterOption = true,
+                    imageFilterEnabled = feedOptionUiState.feed?.isImageFilterEnabled ?: false,
                     isMoveToGroup = true,
                     showGroup = feedOptionViewModel.rssService.get().moveSubscription,
                     showUnsubscribe = feedOptionViewModel.rssService.get().deleteSubscription,
                     notSubscribeMode = true,
                     selectedGroupId = feedOptionUiState.feed?.groupId ?: "",
                     allowNotificationPresetOnClick = {
+                        Timber.tag("AutoTranslate").d("onClick: Allow notification button clicked")
                         feedOptionViewModel.changeAllowNotificationPreset()
                     },
                     parseFullContentPresetOnClick = {
+                        Timber.tag("AutoTranslate").d("onClick: Parse full content button clicked")
                         feedOptionViewModel.changeParseFullContentPreset()
                     },
                     openInBrowserPresetOnClick = {
+                        Timber.tag("AutoTranslate").d("onClick: Open in browser button clicked")
                         feedOptionViewModel.changeOpenInBrowserPreset()
+                    },
+                    autoTranslatePresetOnClick = {
+                        Timber.tag("AutoTranslate").d("onClick: Auto translate button clicked")
+                        feedOptionViewModel.changeAutoTranslatePreset()
+                    },
+                    autoTranslateTitlePresetOnClick = {
+                        Timber.tag("AutoTranslateTitle").d("onClick: Auto translate title button clicked")
+                        feedOptionViewModel.changeAutoTranslateTitlePreset()
+                    },
+                    onImageFilterClick = {
+                        feedOptionViewModel.showImageFilterDialog()
                     },
                     clearArticlesOnClick = {
                         feedOptionViewModel.showClearDialog()
@@ -148,7 +175,9 @@ fun FeedOptionDrawer(
                     },
                     exportFeedAsOpmlOnClick = {
                         if (feed == null) return@FeedOptionView
-                        val fileName = "Read-You-${feed.name ?: "feed"}-${System.currentTimeMillis()}.opml"
+                        val date = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date())
+                        val baseName = (feed.name ?: "feed").ifBlank { "feed" }
+                        val fileName = "${baseName}_${date}.xml"
                         exportFeedOpmlLauncher.launch(fileName)
                     },
                     onGroupClick = {
@@ -181,6 +210,71 @@ fun FeedOptionDrawer(
     ClearFeedDialog(
         feedName = feed?.name ?: "",
         onConfirm = { scope.launch { drawerState.hide() } })
+
+    if (feedOptionUiState.imageFilterDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { feedOptionViewModel.hideImageFilterDialog() },
+            title = { Text(text = stringResource(R.string.image_filter)) },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(text = stringResource(R.string.image_filter_enable))
+                        Switch(
+                            checked = feedOptionUiState.imageFilterEnabled,
+                            onCheckedChange = { feedOptionViewModel.inputImageFilterEnabled(it) },
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = feedOptionUiState.imageFilterResolution,
+                        onValueChange = { feedOptionViewModel.inputImageFilterResolution(it) },
+                        label = { Text(text = stringResource(R.string.image_filter_resolution)) },
+                        placeholder = { Text(text = stringResource(R.string.image_filter_resolution_hint)) },
+                        singleLine = true,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = feedOptionUiState.imageFilterFileName,
+                        onValueChange = { feedOptionViewModel.inputImageFilterFileName(it) },
+                        label = { Text(text = stringResource(R.string.image_filter_filename)) },
+                        placeholder = { Text(text = stringResource(R.string.image_filter_filename_hint)) },
+                        singleLine = true,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = feedOptionUiState.imageFilterDomain,
+                        onValueChange = { feedOptionViewModel.inputImageFilterDomain(it) },
+                        label = { Text(text = stringResource(R.string.image_filter_domain)) },
+                        placeholder = { Text(text = stringResource(R.string.image_filter_domain_hint)) },
+                        singleLine = true,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.image_filter_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { feedOptionViewModel.saveImageFilterSettings() }) {
+                    Text(text = stringResource(R.string.save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { feedOptionViewModel.hideImageFilterDialog() }) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
 
     TextFieldDialog(
         visible = feedOptionUiState.newGroupDialogVisible,

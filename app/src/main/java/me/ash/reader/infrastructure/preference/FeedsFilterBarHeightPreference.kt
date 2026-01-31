@@ -15,7 +15,7 @@ val LocalFeedsFilterBarHeight =
 
 object FeedsFilterBarHeightPreference {
 
-    const val default = 56
+    const val default = 50
 
     fun put(context: Context, scope: CoroutineScope, value: Int) {
         scope.launch {

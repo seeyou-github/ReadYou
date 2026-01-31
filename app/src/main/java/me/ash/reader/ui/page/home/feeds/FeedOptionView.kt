@@ -35,6 +35,10 @@ fun FeedOptionView(
     selectedAllowNotificationPreset: Boolean = false,
     selectedParseFullContentPreset: Boolean = false,
     selectedOpenInBrowserPreset: Boolean = false,
+    selectedAutoTranslatePreset: Boolean = false,
+    selectedAutoTranslateTitlePreset: Boolean = false,
+    showImageFilterOption: Boolean = false,
+    imageFilterEnabled: Boolean = false,
     isMoveToGroup: Boolean = false,
     showGroup: Boolean = true,
     showUnsubscribe: Boolean = true,
@@ -43,6 +47,9 @@ fun FeedOptionView(
     allowNotificationPresetOnClick: () -> Unit = {},
     parseFullContentPresetOnClick: () -> Unit = {},
     openInBrowserPresetOnClick: () -> Unit = {},
+    autoTranslatePresetOnClick: () -> Unit = {},
+    autoTranslateTitlePresetOnClick: () -> Unit = {},
+    onImageFilterClick: () -> Unit = {},
     clearArticlesOnClick: () -> Unit = {},
     unsubscribeOnClick: () -> Unit = {},
     exportFeedAsOpmlOnClick: () -> Unit = {},
@@ -60,6 +67,8 @@ fun FeedOptionView(
             selectedAllowNotificationPreset = selectedAllowNotificationPreset,
             selectedParseFullContentPreset = selectedParseFullContentPreset,
             selectedOpenInBrowserPreset = selectedOpenInBrowserPreset,
+            selectedAutoTranslatePreset = selectedAutoTranslatePreset,
+            selectedAutoTranslateTitlePreset = selectedAutoTranslateTitlePreset,
             showUnsubscribe = showUnsubscribe,
             notSubscribeMode = notSubscribeMode,
             allowNotificationPresetOnClick = allowNotificationPresetOnClick,
@@ -68,7 +77,36 @@ fun FeedOptionView(
             clearArticlesOnClick = clearArticlesOnClick,
             unsubscribeOnClick = unsubscribeOnClick,
             exportFeedAsOpmlOnClick = exportFeedAsOpmlOnClick,
+            autoTranslatePresetOnClick = autoTranslatePresetOnClick,
+            autoTranslateTitlePresetOnClick = autoTranslateTitlePresetOnClick,
         )
+
+        if (showImageFilterOption) {
+            Spacer(modifier = Modifier.height(26.dp))
+            Subtitle(text = stringResource(R.string.image_filter))
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onImageFilterClick() }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.image_filter_settings),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text =
+                        if (imageFilterEnabled) stringResource(R.string.on)
+                        else stringResource(R.string.off),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
+        }
 
         if (showGroup) {
             Spacer(modifier = Modifier.height(26.dp))
@@ -109,51 +147,84 @@ private fun Preset(
     selectedAllowNotificationPreset: Boolean = false,
     selectedParseFullContentPreset: Boolean = false,
     selectedOpenInBrowserPreset: Boolean = false,
+    selectedAutoTranslatePreset: Boolean = false,
+    selectedAutoTranslateTitlePreset: Boolean = false,
     showUnsubscribe: Boolean = true,
     notSubscribeMode: Boolean = false,
     allowNotificationPresetOnClick: () -> Unit = {},
     parseFullContentPresetOnClick: () -> Unit = {},
     openInBrowserPresetOnClick: () -> Unit = {},
+    autoTranslatePresetOnClick: () -> Unit = {},
+    autoTranslateTitlePresetOnClick: () -> Unit = {},
     clearArticlesOnClick: () -> Unit = {},
     unsubscribeOnClick: () -> Unit = {},
     exportFeedAsOpmlOnClick: () -> Unit = {},
 ) {
     Subtitle(text = stringResource(R.string.reading_page))
     Spacer(modifier = Modifier.height(10.dp))
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start)) {
-        item {
-            RYSelectionChip(
-                modifier = Modifier,
-                content = stringResource(R.string.parse_full_content),
-                selected = selectedParseFullContentPreset,
-                selectedIcon = {
-                    Icon(
-                        modifier = Modifier.padding(start = 8.dp).size(20.dp),
-                        imageVector = Icons.AutoMirrored.Outlined.Article,
-                        contentDescription = stringResource(R.string.parse_full_content),
-                        tint = MaterialTheme.colorScheme.onSurface alwaysLight true,
-                    )
-                },
-            ) {
-                parseFullContentPresetOnClick()
-            }
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
+        verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
+    ) {
+        RYSelectionChip(
+            modifier = Modifier,
+            content = stringResource(R.string.parse_full_content),
+            selected = selectedParseFullContentPreset,
+            selectedIcon = {
+                Icon(
+                    modifier = Modifier.padding(start = 8.dp).size(20.dp),
+                    imageVector = Icons.AutoMirrored.Outlined.Article,
+                    contentDescription = stringResource(R.string.parse_full_content),
+                    tint = MaterialTheme.colorScheme.onSurface alwaysLight true,
+                )
+            },
+        ) {
+            parseFullContentPresetOnClick()
         }
-        item {
-            RYSelectionChip(
-                modifier = Modifier,
-                content = stringResource(R.string.open_in_browser),
-                selected = selectedOpenInBrowserPreset,
-                selectedIcon = {
-                    Icon(
-                        modifier = Modifier.padding(start = 8.dp).size(20.dp),
-                        imageVector = Icons.Outlined.OpenInBrowser,
-                        contentDescription = stringResource(R.string.open_in_browser),
-                        tint = MaterialTheme.colorScheme.onSurface alwaysLight true,
-                    )
-                },
-            ) {
-                openInBrowserPresetOnClick()
-            }
+        RYSelectionChip(
+            modifier = Modifier,
+            content = stringResource(R.string.open_in_browser),
+            selected = selectedOpenInBrowserPreset,
+            selectedIcon = {
+                Icon(
+                    modifier = Modifier.padding(start = 8.dp).size(20.dp),
+                    imageVector = Icons.Outlined.OpenInBrowser,
+                    contentDescription = stringResource(R.string.open_in_browser),
+                    tint = MaterialTheme.colorScheme.onSurface alwaysLight true,
+                )
+            },
+        ) {
+            openInBrowserPresetOnClick()
+        }
+        RYSelectionChip(
+            modifier = Modifier,
+            content = stringResource(R.string.auto_translate_full_content),
+            selected = selectedAutoTranslatePreset,
+            selectedIcon = {
+                Icon(
+                    modifier = Modifier.padding(start = 8.dp).size(20.dp),
+                    imageVector = Icons.AutoMirrored.Outlined.Article,
+                    contentDescription = stringResource(R.string.auto_translate_full_content),
+                    tint = MaterialTheme.colorScheme.onSurface alwaysLight true,
+                )
+            },
+        ) {
+            autoTranslatePresetOnClick()
+        }
+        RYSelectionChip(
+            modifier = Modifier,
+            content = stringResource(R.string.auto_translate_title),
+            selected = selectedAutoTranslateTitlePreset,
+            selectedIcon = {
+                Icon(
+                    modifier = Modifier.padding(start = 8.dp).size(20.dp),
+                    imageVector = Icons.AutoMirrored.Outlined.Article,
+                    contentDescription = stringResource(R.string.auto_translate_title),
+                    tint = MaterialTheme.colorScheme.onSurface alwaysLight true,
+                )
+            },
+        ) {
+            autoTranslateTitlePresetOnClick()
         }
     }
     Spacer(modifier = Modifier.height(26.dp))

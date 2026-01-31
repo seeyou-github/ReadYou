@@ -53,6 +53,8 @@
     <string name="all_parse_full_content_tips">Full content parsing of all articles in the \"%1$s\" group</string>
     <string name="all_parse_full_content_toast">Full content parsing of all articles in the \"%1$s\" group is allowed</string>
     <string name="all_deny_parse_full_content_toast">Full content parsing of all articles in the \"%1$s\" group is denied</string>
+    <string name="auto_translate_full_content">Auto-translate full content</string>
+    <string name="auto_translate_title">Auto-translate title</string>
     <string name="open_in_browser">Open in browser</string>
     <string name="all_open_in_browser_tips">Open all articles in the \"%1$s\" group using the default browser</string>
     <string name="all_open_in_browser_toast">Opening all articles in the \"%1$s\" group in the default browser is allowed</string>
@@ -172,6 +174,7 @@
     <string name="home_page">Home page</string>
     <string name="sponsor">Sponsor</string>
     <string name="open_source_licenses">Open source licenses</string>
+    <string name="modify_by">MODIFY BY: seeyou-github</string>
     <string name="github_link" translatable="false">https://github.com/ReadYouApp/ReadYou</string>
     <string name="telegram_link" translatable="false">https://t.me/ReadYouApp</string>
     <string name="wiki_link" translatable="false">https://github.com/ReadYouApp/ReadYou/wiki/Getting-Started</string>
@@ -221,6 +224,7 @@
     <string name="tips_article_list_tonal_elevation">Tonal elevation for the article list is only available in the light theme</string>
     <string name="tips_group_list_tonal_elevation">Tonal elevation for the group list is only available in the light theme</string>
     <string name="share">Share</string>
+    <string name="save_article_to_local">Save article to local</string>
     <string name="touch_to_play_video">Tap to play a video</string>
     <string name="text">Text</string>
     <string name="font_size">Font size</string>
@@ -446,4 +450,30 @@
     <string name="parse_full_content_desc">Fetch full articles from webpages</string>
     <string name="enable">Enable</string>
     <string name="disable">Disable</string>
+    
+    <!-- AI Translation -->
+    <string name="ai_translation">AI翻译</string>
+    <string name="ai_translation_desc">配置翻译模型和API密钥</string>
+    <string name="quick_translate_model">默认翻译模型(快速)</string>
+    <string name="long_press_translate_model">长按翻译模型(高质量)</string>
+    <string name="select_provider">选择提供商</string>
+    <string name="enter_api_key">输入API密钥</string>
+    <string name="fetch_models">获取模型列表</string>
+    <string name="refresh_models">刷新模型列表</string>
+    <string name="rpm_limit">每分钟请求限制(RPM)</string>
+    <string name="model_not_configured">Not configured</string>
+    <string name="translation_error_not_configured">Translation failed: Model not configured</string>
+    <string name="translate_error_title">Translation Error</string>
+    <string name="translate_error_hint">Please check your translation settings and try again.</string>
+    <string name="go_to_settings">Go to Settings</string>
+    <string name="image_filter">Image filter</string>
+    <string name="image_filter_settings">Filter images</string>
+    <string name="image_filter_enable">Enable filter</string>
+    <string name="image_filter_resolution">Resolution limit</string>
+    <string name="image_filter_resolution_hint">e.g. 120x120 (filter smaller)</string>
+    <string name="image_filter_filename">Filename contains</string>
+    <string name="image_filter_filename_hint">e.g. logo, avatar</string>
+    <string name="image_filter_domain">Domain contains</string>
+    <string name="image_filter_domain_hint">e.g. example.com</string>
+    <string name="image_filter_note">Leave empty to ignore. If multiple rules are set, any match will filter.</string>
 </resources>

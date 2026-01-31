@@ -43,14 +43,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 import me.ash.reader.ui.component.reader.ExpandedContentWidth
-import me.ash.reader.ui.component.reader.LocalReaderPaints
+
 import me.ash.reader.ui.component.reader.LocalTextContentWidth
 import me.ash.reader.ui.component.reader.MediumContentWidth
-import me.ash.reader.ui.component.reader.colorThemeToReaderPaints
-import me.ash.reader.ui.component.reader.defaultReaderPaints
+
 import me.ash.reader.ui.page.home.flow.FlowPage
 import me.ash.reader.ui.page.home.reading.ReadingPage
-//import me.ash.reader.ui.page.settings.color.reading.theme.ColorThemeViewModel
+
+import me.ash.reader.infrastructure.translate.apistream.StreamTranslateServiceFactory
+
 // 2026-01-21: 新增阅读界面样式设置对话框
 import me.ash.reader.ui.component.dialogs.ReadingPageStyleDialog
 import timber.log.Timber
@@ -66,8 +67,11 @@ fun ArticleListReaderPage(
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
     viewModel: ArticleListReaderViewModel,
+
+    streamTranslateServiceFactory: StreamTranslateServiceFactory,
     onBack: () -> Unit,
     onNavigateToStylePage: () -> Unit,
+    onNavigateToAITranslation: () -> Unit = { },
 ) {
 //    val themeViewModel: ColorThemeViewModel = hiltViewModel()
 //    val allThemes by themeViewModel.allThemes.collectAsState(initial = emptyList())
@@ -238,6 +242,8 @@ fun ArticleListReaderPage(
                             }
                         },
                         onNavigateToStylePage = { showReadingPageStyleDialog = true }, // 2026-01-21: 修改为显示对话框而不是导航
+                        onNavigateToAITranslation = onNavigateToAITranslation,
+                        streamTranslateServiceFactory = streamTranslateServiceFactory,
                     )
                 }
             }

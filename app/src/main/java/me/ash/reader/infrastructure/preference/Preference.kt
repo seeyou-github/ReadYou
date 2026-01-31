@@ -3,6 +3,10 @@ package me.ash.reader.infrastructure.preference
 import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import kotlinx.coroutines.CoroutineScope
+import me.ash.reader.infrastructure.translate.preference.CerebrasConfigPreference
+
+import me.ash.reader.infrastructure.translate.preference.QuickTranslateModelPreference
+import me.ash.reader.infrastructure.translate.preference.SiliconFlowConfigPreference
 
 sealed class Preference {
 
@@ -124,5 +128,11 @@ fun Preferences.toSettings(): Settings {
 
         // Languages
         languages = LanguagesPreference.fromPreferences(this),
+
+        // Translate
+        quickTranslateModel = QuickTranslateModelPreference.fromPreferences(this),
+
+        siliconFlowConfig = SiliconFlowConfigPreference.fromPreferences(this),
+        cerebrasConfig = CerebrasConfigPreference.fromPreferences(this),
     )
 }

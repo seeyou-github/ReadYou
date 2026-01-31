@@ -48,7 +48,11 @@ data class Article(
     @ColumnInfo
     var isReadLater: Boolean = false,
     @ColumnInfo
+    var isTranslated: Boolean? = null,  // 是否已翻译
+    @ColumnInfo
     var updateAt: Date? = null,
+    @ColumnInfo
+    var translatedTitle: String? = null,  // 翻译后的标题
 ) {
 
     @Ignore

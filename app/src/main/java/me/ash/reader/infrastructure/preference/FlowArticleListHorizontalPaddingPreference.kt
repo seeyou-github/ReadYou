@@ -17,7 +17,7 @@ val LocalFlowArticleListHorizontalPadding =
 object FlowArticleListHorizontalPaddingPreference {
 
     // 默认值：12dp
-    const val default = 5
+    const val default = 8
 
     fun put(context: Context, scope: CoroutineScope, value: Int) {
         scope.launch {

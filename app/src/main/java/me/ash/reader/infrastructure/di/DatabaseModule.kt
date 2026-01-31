@@ -8,6 +8,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import me.ash.reader.domain.repository.AccountDao
 import me.ash.reader.domain.repository.ArticleDao
+import me.ash.reader.infrastructure.translate.cache.ArticleTranslationCacheDao
 import me.ash.reader.domain.repository.BlacklistKeywordDao
 import me.ash.reader.domain.repository.FeedDao
 import me.ash.reader.domain.repository.GroupDao
@@ -50,6 +51,11 @@ object DatabaseModule {
     @Singleton
     fun provideBlacklistKeywordDao(androidDatabase: AndroidDatabase): BlacklistKeywordDao =
         androidDatabase.blacklistKeywordDao()
+
+    @Provides
+    @Singleton
+    fun provideArticleTranslationCacheDao(androidDatabase: AndroidDatabase): ArticleTranslationCacheDao =
+        androidDatabase.articleTranslationCacheDao()
 
     @Provides
     @Singleton

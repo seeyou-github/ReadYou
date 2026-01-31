@@ -33,7 +33,7 @@ sealed class KeepArchivedPreference(
 
     companion object {
 
-        val default = For1Month
+        val default = For2Weeks
         val values = listOf(
             Always,
             For1Day,

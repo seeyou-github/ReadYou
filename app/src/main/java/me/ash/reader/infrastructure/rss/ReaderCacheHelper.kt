@@ -10,6 +10,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import me.ash.reader.domain.model.article.Article
+import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.service.AccountService
 import me.ash.reader.infrastructure.di.IODispatcher
 
@@ -108,6 +109,15 @@ constructor(
                 }
                 .fold(onSuccess = { true }, onFailure = { false })
         }
+    }
+
+    fun removeCoverImageIfNeeded(content: String, feed: Feed, coverUrl: String?): String {
+        return content
+    }
+
+    fun removeFilteredImagesIfNeeded(content: String, feed: Feed): String {
+        if (!feed.isImageFilterEnabled || !rssHelper.shouldApplyImageFilter(feed)) return content
+        return rssHelper.removeFilteredImages(content, feed)
     }
 
     suspend fun clearCache(): Boolean {

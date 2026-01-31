@@ -53,10 +53,14 @@ import me.ash.reader.ui.page.settings.languages.LanguagesPage
 import me.ash.reader.ui.page.settings.other.OtherPage
 import me.ash.reader.ui.page.settings.backup.BackupAndRestorePage
 import me.ash.reader.ui.page.settings.blacklist.BlacklistPage
-import me.ash.reader.ui.page.settings.blacklist.BlacklistViewModel
+import me.ash.reader.infrastructure.translate.ui.AITranslationPage
 import me.ash.reader.ui.page.settings.tips.LicenseListPage
 import me.ash.reader.ui.page.settings.tips.TipsAndSupportPage
 import me.ash.reader.ui.page.settings.troubleshooting.TroubleshootingPage
+import me.ash.reader.infrastructure.translate.ui.ProviderListPage
+import me.ash.reader.infrastructure.translate.ui.ProviderConfigPage
+import me.ash.reader.infrastructure.translate.ui.ModelListPage
+import me.ash.reader.infrastructure.translate.ui.ModelSelectionViewModel
 import me.ash.reader.ui.page.startup.StartupPage
 
 private const val INITIAL_OFFSET_FACTOR = 0.10f
@@ -151,9 +155,13 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                                 sharedTransitionScope = this@SharedTransitionLayout,
                                 animatedVisibilityScope = LocalNavAnimatedContentScope.current,
                                 viewModel = viewModel,
+
+                                streamTranslateServiceFactory = viewModel.streamTranslateServiceFactory,
                                 onBack = onBack,
                                 // 2026-01-21: 移除对 Route.ReadingPageStyle 的引用，改为在 ArticleListReadingPage 中显示对话框
                                 onNavigateToStylePage = { },
+                                // 2026-01-30: 添加导航到AI翻译设置页面
+                                onNavigateToAITranslation = { backStack.add(Route.AITranslation) },
                             )
                         }
                     }
@@ -192,6 +200,7 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                                 navigateToBackupAndRestore = { backStack.add(Route.BackupAndRestore) },
                                 navigateToOther = { backStack.add(Route.Other) },
                                 navigateToBlacklist = { backStack.add(Route.Blacklist) },
+                                navigateToAITranslation = { backStack.add(Route.AITranslation) },
                             )
                         }
                     Route.Accounts ->
@@ -287,6 +296,38 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                         }
                     Route.LicenseList -> NavEntry(key) { LicenseListPage(onBack = onBack) }
                     Route.BackupAndRestore -> NavEntry(key) { BackupAndRestorePage(onBack = onBack) }
+                    Route.AITranslation ->
+                        NavEntry(key) {
+                            AITranslationPage(
+                                onBack = onBack,
+                                onNavigateToProviderList = { backStack.add(Route.AIProviderList) },
+                                onNavigateToProviderConfig = { providerId -> backStack.add(Route.AIProviderConfig(providerId)) },
+                                onNavigateToModelList = { providerId -> backStack.add(Route.AIModelList(providerId)) },
+                            )
+                        }
+                    Route.AIProviderList ->
+                        NavEntry(key) {
+                            ProviderListPage(
+                                onBack = onBack,
+                                onProviderClick = { providerId -> backStack.add(Route.AIProviderConfig(providerId)) },
+                            )
+                        }
+                    is Route.AIProviderConfig ->
+                        NavEntry(key) {
+                            ProviderConfigPage(
+                                providerId = key.providerId,
+                                onBack = onBack,
+                                onFetchModels = { backStack.add(Route.AIModelList(key.providerId)) },
+                            )
+                        }
+                    is Route.AIModelList ->
+                        NavEntry(key) {
+                            ModelListPage(
+                                providerId = key.providerId,
+                                onBack = onBack,
+                                modelFetchService = hiltViewModel<ModelSelectionViewModel>().modelFetchService,
+                            )
+                        }
                     Route.Other ->
                         NavEntry(key) {
                             OtherPage(

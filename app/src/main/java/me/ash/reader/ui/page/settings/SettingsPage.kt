@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -57,6 +58,7 @@ fun SettingsPage(
     navigateToBackupAndRestore: () -> Unit,
     navigateToOther: () -> Unit,
     navigateToBlacklist: () -> Unit,
+    navigateToAITranslation: () -> Unit,
 ) {
     val context = LocalContext.current
     val newVersion = LocalNewVersionNumber.current
@@ -105,11 +107,6 @@ fun SettingsPage(
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                         }
-                        // Banner(
-                        //     title = stringResource(R.string.in_coding),
-                        //     desc = stringResource(R.string.coming_soon),
-                        //     icon = Icons.Outlined.Lightbulb,
-                        // )
                     }
                 }
                 item {
@@ -120,16 +117,6 @@ fun SettingsPage(
                         onClick = navigateToAccounts
                     )
                 }
-                // 2026-01-21: 隐藏颜色和样式页面
-                // 修改原因：相关功能已整合到 FeedsPageStylePage 和 ReadingPageStylePage 中
-                // item {
-                //     SelectableSettingGroupItem(
-                //         title = stringResource(R.string.color_and_style),
-                //         desc = stringResource(R.string.color_and_style_desc),
-                //         icon = Icons.Outlined.Palette,
-                //         onClick = navigateToColorAndStyle
-                //     )
-                // }
                 item {
                     SelectableSettingGroupItem(
                         title = stringResource(R.string.interaction),
@@ -153,6 +140,15 @@ fun SettingsPage(
                         desc = stringResource(R.string.backup_and_restore_desc),
                         icon = Icons.Outlined.CloudUpload,
                         onClick = navigateToBackupAndRestore
+                    )
+                }
+                // 2026-01-30: 新增AI翻译入口
+                item {
+                    SelectableSettingGroupItem(
+                        title = stringResource(R.string.ai_translation),
+                        desc = stringResource(R.string.ai_translation_desc),
+                        icon = Icons.Outlined.Translate,
+                        onClick = navigateToAITranslation
                     )
                 }
                 item {

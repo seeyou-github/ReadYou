@@ -19,7 +19,6 @@ import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.outlined.FiberManualRecord
-import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarOutline
@@ -39,10 +38,9 @@ import me.ash.reader.infrastructure.preference.LocalFeedsTopBarTonalElevation
 import me.ash.reader.infrastructure.preference.LocalReadingPageTonalElevation
 import me.ash.reader.infrastructure.preference.LocalReadingRenderer
 import me.ash.reader.infrastructure.preference.ReadingPageTonalElevationPreference
-import me.ash.reader.infrastructure.preference.ReadingRendererPreference
+
 import me.ash.reader.ui.component.base.CanBeDisabledIconButton
 import me.ash.reader.ui.component.reader.LocalReaderPaints
-import me.ash.reader.ui.component.webview.BoldCharactersIcon
 import me.ash.reader.ui.ext.atElevation
 
 private val sizeSpec = spring<IntSize>(stiffness = 700f)
@@ -56,8 +54,9 @@ fun BottomBar(
     isFullContent: Boolean,
     isBoldCharacters: Boolean,
     ttsButton: @Composable () -> Unit,
-    onUnread: (isUnread: Boolean) -> Unit = {},
-    onStarred: (isStarred: Boolean) -> Unit = {},
+    translateButton: @Composable () -> Unit = {},
+//    onUnread: (isUnread: Boolean) -> Unit = {},
+//    onStarred: (isStarred: Boolean) -> Unit = {},
     onNextArticle: () -> Unit = {},
     onFullContent: (isFullContent: Boolean) -> Unit = {},
     onBoldCharacters: () -> Unit = {},
@@ -111,24 +110,24 @@ fun BottomBar(
                         horizontalArrangement = Arrangement.SpaceAround,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        CanBeDisabledIconButton(
-                            modifier = Modifier.size(40.dp),
-                            disabled = false,
-                            imageVector = if (isUnread) {
-                                Icons.Filled.FiberManualRecord
-                            } else {
-                                Icons.Outlined.FiberManualRecord
-                            },
-                            contentDescription = stringResource(if (isUnread) R.string.mark_as_read else R.string.mark_as_unread),
-                            tint = if (isUnread) {
-                                MaterialTheme.colorScheme.onSecondaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.outline
-                            },
-                        ) {
-                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            onUnread(!isUnread)
-                        }
+//                        CanBeDisabledIconButton(
+//                            modifier = Modifier.size(40.dp),
+//                            disabled = false,
+//                            imageVector = if (isUnread) {
+//                                Icons.Filled.FiberManualRecord
+//                            } else {
+//                                Icons.Outlined.FiberManualRecord
+//                            },
+//                            contentDescription = stringResource(if (isUnread) R.string.mark_as_read else R.string.mark_as_unread),
+//                            tint = if (isUnread) {
+//                                MaterialTheme.colorScheme.onSecondaryContainer
+//                            } else {
+//                                MaterialTheme.colorScheme.outline
+//                            },
+//                        ) {
+//                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+//                            onUnread(!isUnread)
+//                        }
                         CanBeDisabledIconButton(
                             disabled = false,
                             modifier = Modifier.size(40.dp),
@@ -157,25 +156,27 @@ fun BottomBar(
                             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                             onNextArticle()
                         }
+
+                        translateButton()
                         ttsButton()
-                        CanBeDisabledIconButton(
-                            modifier = Modifier.size(40.dp),
-                            disabled = false,
-                            imageVector = if (isStarred) {
-                                Icons.Rounded.Star
-                            } else {
-                                Icons.Rounded.StarOutline
-                            },
-                            contentDescription = stringResource(if (isStarred) R.string.mark_as_unstar else R.string.mark_as_starred),
-                            tint = if (isStarred) {
-                                MaterialTheme.colorScheme.onSecondaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.outline
-                            },
-                        ) {
-                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            onStarred(!isStarred)
-                        }
+//                        CanBeDisabledIconButton(
+//                            modifier = Modifier.size(40.dp),
+//                            disabled = false,
+//                            imageVector = if (isStarred) {
+//                                Icons.Rounded.Star
+//                            } else {
+//                                Icons.Rounded.StarOutline
+//                            },
+//                            contentDescription = stringResource(if (isStarred) R.string.mark_as_unstar else R.string.mark_as_starred),
+//                            tint = if (isStarred) {
+//                                MaterialTheme.colorScheme.onSecondaryContainer
+//                            } else {
+//                                MaterialTheme.colorScheme.outline
+//                            },
+//                        ) {
+//                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+//                            onStarred(!isStarred)
+//                        }
                     }
                 }
             }

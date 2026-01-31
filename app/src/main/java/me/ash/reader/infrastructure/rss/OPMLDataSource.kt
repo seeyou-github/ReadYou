@@ -53,12 +53,18 @@ class OPMLDataSource @Inject constructor(
                             id = targetAccountId.spacerDollar(UUID.randomUUID().toString()),
                             name = outline.extractName(),
                             url = outline.extractUrl() ?: continue,
-                            icon = outline.extractIcon(),
+                            icon = outline.extractIconBase64() ?: outline.extractIcon(),
                             groupId = defaultGroup.id,
                             accountId = targetAccountId,
                             isNotification = outline.extractPresetNotification(),
                             isFullContent = outline.extractPresetFullContent(),
                             isBrowser = outline.extractPresetBrowser(),
+                            isAutoTranslate = outline.extractPresetAutoTranslate(),
+                            isAutoTranslateTitle = outline.extractPresetAutoTranslateTitle(),
+                            isImageFilterEnabled = outline.extractPresetImageFilterEnabled(),
+                            imageFilterResolution = outline.extractPresetImageFilterResolution(),
+                            imageFilterFileName = outline.extractPresetImageFilterFileName(),
+                            imageFilterDomain = outline.extractPresetImageFilterDomain(),
                         )
                     )
                 }
@@ -81,12 +87,18 @@ class OPMLDataSource @Inject constructor(
                                 id = targetAccountId.spacerDollar(UUID.randomUUID().toString()),
                                 name = subOutline.extractName(),
                                 url = subOutline.extractUrl() ?: continue,
-                                icon = subOutline.extractIcon(),
+                                icon = subOutline.extractIconBase64() ?: subOutline.extractIcon(),
                                 groupId = groupId,
                                 accountId = targetAccountId,
                                 isNotification = subOutline.extractPresetNotification(),
                                 isFullContent = subOutline.extractPresetFullContent(),
                                 isBrowser = subOutline.extractPresetBrowser(),
+                                isAutoTranslate = subOutline.extractPresetAutoTranslate(),
+                                isAutoTranslateTitle = subOutline.extractPresetAutoTranslateTitle(),
+                                isImageFilterEnabled = subOutline.extractPresetImageFilterEnabled(),
+                                imageFilterResolution = subOutline.extractPresetImageFilterResolution(),
+                                imageFilterFileName = subOutline.extractPresetImageFilterFileName(),
+                                imageFilterDomain = subOutline.extractPresetImageFilterDomain(),
                             )
                         )
                     }
@@ -133,6 +145,13 @@ class OPMLDataSource @Inject constructor(
         return if (icon.isNullOrBlank()) null else icon
     }
 
+    // 2026-02-04: 优先从 OPML 的 iconBase64 属性获取 Feed 图标（data URI 或 base64）
+    private fun Outline?.extractIconBase64(): String? {
+        if (this == null) return null
+        val iconBase64 = attributes.getOrDefault("iconBase64", null)
+        return if (iconBase64.isNullOrBlank()) null else iconBase64
+    }
+
     private fun Outline?.extractPresetNotification(): Boolean =
         this?.attributes?.getOrDefault("isNotification", null).toBoolean()
 
@@ -141,6 +160,24 @@ class OPMLDataSource @Inject constructor(
 
     private fun Outline?.extractPresetBrowser(): Boolean =
         this?.attributes?.getOrDefault("isBrowser", null).toBoolean()
+
+    private fun Outline?.extractPresetAutoTranslate(): Boolean =
+        this?.attributes?.getOrDefault("isAutoTranslate", null).toBoolean()
+
+    private fun Outline?.extractPresetAutoTranslateTitle(): Boolean =
+        this?.attributes?.getOrDefault("isAutoTranslateTitle", null).toBoolean()
+
+    private fun Outline?.extractPresetImageFilterEnabled(): Boolean =
+        this?.attributes?.getOrDefault("isImageFilterEnabled", null).toBoolean()
+
+    private fun Outline?.extractPresetImageFilterResolution(): String =
+        this?.attributes?.getOrDefault("imageFilterResolution", null) ?: ""
+
+    private fun Outline?.extractPresetImageFilterFileName(): String =
+        this?.attributes?.getOrDefault("imageFilterFileName", null) ?: ""
+
+    private fun Outline?.extractPresetImageFilterDomain(): String =
+        this?.attributes?.getOrDefault("imageFilterDomain", null) ?: ""
 
     private fun Outline?.isDefaultGroup(): Boolean =
         this?.attributes?.getOrDefault("isDefault", null).toBoolean()

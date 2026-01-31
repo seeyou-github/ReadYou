@@ -48,6 +48,7 @@ ${applyFontFace(fontPath)}
     --line-height: ${lineHeight * 1.5f};
     --letter-spacing: ${letterSpacing}px;
     --text-margin: ${textMargin}px;
+    --translated-text-margin: 5px;
     --text-color: ${argbToCssColor(textColor)};
     --text-bold: ${if (textBold) "600" else "normal"};
     --text-align: ${textAlign};
@@ -94,6 +95,11 @@ article {
     font-size: var(--font-size) !important;
     font-weight: var(--text-bold) !important;
     color: var(--text-color) !important;
+}
+
+html[data-translation-mode="on"] article {
+    margin-left: var(--translated-text-margin) !important;
+    margin-right: var(--translated-text-margin) !important;
 }
 
 /* Page  */

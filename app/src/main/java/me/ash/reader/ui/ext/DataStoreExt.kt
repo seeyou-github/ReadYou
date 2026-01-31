@@ -241,6 +241,13 @@ sealed interface PreferencesKey {
         // Backup
         const val backupFolder = "backupFolder"
 
+        // Translate
+        const val translateServiceId = "translate_service_id"
+        const val quickTranslateModel = "quick_translate_model"
+        const val longPressTranslateModel = "long_press_translate_model"
+        const val siliconFlowConfig = "siliconflow_config"
+        const val cerebrasConfig = "cerebras_config"
+
         private val keyList =
             listOf(
                 // Version
@@ -351,6 +358,12 @@ sealed interface PreferencesKey {
                 IntKey(languages),
                 // Backup
                 StringKey(backupFolder),
+                // Translate
+                StringKey(translateServiceId),
+                StringKey(quickTranslateModel),
+                StringKey(longPressTranslateModel),
+                StringKey(siliconFlowConfig),
+                StringKey(cerebrasConfig),
             )
 
         val keys = keyList.associateBy { it.name }
@@ -473,6 +486,13 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
 
         // Languages
         const val languages = "languages"
+
+        // Translate
+        const val translateServiceId = "translate_service_id"
+        const val quickTranslateModel = "quick_translate_model"
+        const val longPressTranslateModel = "long_press_translate_model"
+        const val siliconFlowConfig = "siliconflow_config"
+        const val cerebrasConfig = "cerebras_config"
 
         val keys: MutableMap<String, DataStoreKey<*>> =
             mutableMapOf(
@@ -688,6 +708,17 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                 sharedContent to DataStoreKey(intPreferencesKey(sharedContent), Int::class.java),
                 // Languages
                 languages to DataStoreKey(intPreferencesKey(languages), Int::class.java),
+                // Translate
+                translateServiceId to
+                    DataStoreKey(stringPreferencesKey(translateServiceId), String::class.java),
+                quickTranslateModel to
+                    DataStoreKey(stringPreferencesKey(quickTranslateModel), String::class.java),
+                longPressTranslateModel to
+                    DataStoreKey(stringPreferencesKey(longPressTranslateModel), String::class.java),
+                siliconFlowConfig to
+                    DataStoreKey(stringPreferencesKey(siliconFlowConfig), String::class.java),
+                cerebrasConfig to
+                    DataStoreKey(stringPreferencesKey(cerebrasConfig), String::class.java),
             )
     }
 }

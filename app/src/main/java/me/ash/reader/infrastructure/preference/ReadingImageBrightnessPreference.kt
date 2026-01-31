@@ -14,7 +14,7 @@ val LocalReadingImageBrightness =
 
 object ReadingImageBrightnessPreference {
 
-    const val default = 100
+    const val default = 80
 
     fun put(context: Context, scope: CoroutineScope, value: Int) {
         scope.launch {

@@ -45,6 +45,7 @@
     <string name="all_parse_full_content_tips">對「%1$s」群組中的所有文章進行全文解析</string>
     <string name="all_parse_full_content_toast">全文解析「%1$s」群組中的所有文章</string>
     <string name="all_deny_parse_full_content_toast">不再全文解析「%1$s」群組中的所有文章</string>
+    <string name="auto_translate_full_content">自動翻譯全文</string>
     <string name="clear_articles">清除文章</string>
     <string name="clear_articles_in_feed_toast">已全部清除來源「%1$s」的文章存檔</string>
     <string name="clear_articles_in_group_toast">已全部清除「%1$s」群組的文章存檔</string>
@@ -128,6 +129,7 @@
     <string name="reading_page">閱讀頁面</string>
     <string name="sponsor">贊助</string>
     <string name="open_source_licenses">開放原始碼授權</string>
+    <string name="modify_by">MODIFY BY: seeyou-github</string>
     <string name="update_link">https://api.github.com/repos/ReadYouApp/ReadYou/releases/latest</string>
     <string name="change_log">更新日誌</string>
     <string name="update">更新</string>
@@ -167,6 +169,7 @@
     <string name="tips_article_list_tonal_elevation">文章清單的色調海拔僅適用於淺色主題</string>
     <string name="tips_group_list_tonal_elevation">群組清單的色調海拔僅適用於淺色主題</string>
     <string name="share">分享</string>
+    <string name="save_article_to_local">儲存文章到本地</string>
     <string name="touch_to_play_video">輕觸即可播放影片</string>
     <string name="text">內文</string>
     <string name="font_size">字型大小</string>
@@ -330,4 +333,14 @@
     <string name="short_desc">短</string>
     <string name="long_desc">長</string>
     <string name="none_desc">无</string>
+    <string name="image_filter">過濾圖片</string>
+    <string name="image_filter_settings">圖片過濾設定</string>
+    <string name="image_filter_enable">啟用過濾</string>
+    <string name="image_filter_resolution">解析度限制</string>
+    <string name="image_filter_resolution_hint">例如 120x120（過濾更小的）</string>
+    <string name="image_filter_filename">檔名包含</string>
+    <string name="image_filter_filename_hint">例如 logo, avatar</string>
+    <string name="image_filter_domain">網域包含</string>
+    <string name="image_filter_domain_hint">例如 example.com</string>
+    <string name="image_filter_note">未填寫則不生效；多個條件任一符合即過濾。</string>
 </resources>

@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -41,33 +40,40 @@ import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.first
+import android.net.Uri
 import me.ash.reader.R
 import me.ash.reader.infrastructure.android.TextToSpeechManager
 import me.ash.reader.infrastructure.preference.LocalPullToSwitchArticle
 import me.ash.reader.infrastructure.preference.LocalReadingAutoHideToolbar
 import me.ash.reader.infrastructure.preference.LocalReadingBoldCharacters
 import me.ash.reader.infrastructure.preference.LocalReadingTextLineHeight
-import me.ash.reader.infrastructure.preference.LocalFeedsTopBarHeight
-import me.ash.reader.infrastructure.preference.LocalFeedsTopBarTonalElevation
+
 import me.ash.reader.infrastructure.preference.not
 import me.ash.reader.infrastructure.preference.CustomReaderThemesPreference
 
+
+import android.webkit.WebView
+
 import me.ash.reader.infrastructure.preference.LocalDarkTheme
 import me.ash.reader.ui.component.reader.colorThemeToReaderPaints
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import me.ash.reader.infrastructure.preference.LocalCustomReaderThemes
 import me.ash.reader.ui.ext.collectAsStateValue
 import me.ash.reader.ui.ext.showToast
-import me.ash.reader.ui.ext.dataStore
+import timber.log.Timber
+import me.ash.reader.infrastructure.preference.LocalSettings
+import me.ash.reader.infrastructure.translate.model.TranslateModelConfig
+import me.ash.reader.infrastructure.translate.TranslateProvider
 import me.ash.reader.ui.component.dialogs.ReadingPageStyleDialog
 import me.ash.reader.ui.component.reader.LocalReaderPaints
-import me.ash.reader.ui.component.reader.ReaderPaints
 import me.ash.reader.ui.page.adaptive.ArticleListReaderViewModel
 import me.ash.reader.ui.page.adaptive.NavigationAction
 import me.ash.reader.ui.page.adaptive.ReaderState
 import me.ash.reader.ui.page.home.reading.tts.TtsButton
+import me.ash.reader.infrastructure.translate.ui.TranslateButton
+import me.ash.reader.infrastructure.translate.ui.TranslateErrorDialog
+import me.ash.reader.infrastructure.translate.apistream.StreamTranslateServiceFactory
+import me.ash.reader.infrastructure.translate.apistream.StreamTranslateManager
+import me.ash.reader.infrastructure.translate.ui.TranslateState
 
 private const val UPWARD = 1
 private const val DOWNWARD = -1
@@ -81,12 +87,15 @@ fun ReadingPage(
     onLoadArticle: (String, Int) -> Unit,
     onNavAction: (NavigationAction) -> Unit,
     onNavigateToStylePage: () -> Unit = { }, // 2026-01-21: 修改为显示对话框而不是导航
+    onNavigateToAITranslation: () -> Unit = { }, // 2026-01-30: 导航到AI翻译设置页面
+    streamTranslateServiceFactory: StreamTranslateServiceFactory,
 ) {
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
     val isPullToSwitchArticleEnabled = LocalPullToSwitchArticle.current.value
     val readingUiState = viewModel.readingUiState.collectAsStateValue()
     val readerState = viewModel.readerStateStateFlow.collectAsStateValue()
+    val translationState = viewModel.translationStateStateFlow.collectAsStateValue()
     val boldCharacters = LocalReadingBoldCharacters.current
 //    val topBarHeight = LocalFeedsTopBarHeight.current
     val coroutineScope = rememberCoroutineScope()
@@ -112,6 +121,12 @@ fun ReadingPage(
     // 或者我们修改 TopBar，让它传递一个设置对话框状态的回调
 
     var currentImageData by remember { mutableStateOf(ImageData()) }
+    
+    // 2026-01-31: WebView引用（用于翻译等功能）
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+
+    // 2026-02-02: 标记是否已触发过自动翻译（避免重复触发）
+    var hasTriggeredAutoTranslate by remember { mutableStateOf(false) }
 
     val isShowToolBar =
         if (LocalReadingAutoHideToolbar.current.value) {
@@ -140,6 +155,10 @@ fun ReadingPage(
         ?: CustomReaderThemesPreference.default.firstOrNull { it.isDarkTheme == isDarkTheme }
 
 
+    // 2026-02-02: 在Composable上下文获取Settings和翻译服务ID（避免在LaunchedEffect中调用@Composable函数）
+    val settings = LocalSettings.current
+    val currentTranslateServiceId = viewModel.currentTranslateServiceId.value
+
     // 根据 currentColorTheme 设置 LocalReaderPaints
     CompositionLocalProvider(
         LocalReaderPaints provides (currentColorTheme?.let { colorThemeToReaderPaints(it) } ?: LocalReaderPaints.current)
@@ -148,11 +167,17 @@ fun ReadingPage(
             containerColor = LocalReaderPaints.current.background,
             content = { paddings ->
             Box(modifier = Modifier.fillMaxSize()) {
+                val displayTitle = when {
+                    translationState.translateState != TranslateState.Idle &&
+                        translationState.translatedTitle != null -> translationState.translatedTitle
+                    else -> readerState.title
+                }
+
                 if (readerState.articleId != null) {
                     TopBar(
                         isShow = isShowToolBar,
                         isScrolled = showTopDivider,
-                        title = readerState.title,
+                        title = displayTitle,
                         link = readerState.link,
                         onClick = { bringToTop = true },
                         navigationAction = navigationAction,
@@ -166,9 +191,24 @@ fun ReadingPage(
                 val isPreviousArticleAvailable = readerState.previousArticle != null
 
                 if (readerState.articleId != null) {
+                    // ContentKey 用于控制 AnimatedContent 的动画
+                    // 只有当文章ID或内容变化时才触发动画，翻译状态变化不会触发
+                    data class ContentKey(
+                        val articleId: String?,
+                        val content: ReaderState.ContentState,
+                        val nextArticle: ReaderState.PrefetchResult?,
+                        val previousArticle: ReaderState.PrefetchResult?
+                    )
+                    val contentKey = ContentKey(
+                        readerState.articleId,
+                        readerState.content,
+                        readerState.nextArticle,
+                        readerState.previousArticle
+                    )
+
                     // Content
                     AnimatedContent(
-                        targetState = readerState,
+                        targetState = contentKey,
                         transitionSpec = {
                             val direction =
                                 when {
@@ -265,6 +305,77 @@ fun ReadingPage(
                                     }
                                 }
 
+                                // 2026-02-02: 自动翻译触发逻辑
+                                // 只在文章ID变化时触发（打开文章、切换文章）
+                                LaunchedEffect(readerState.articleId) {
+                                    Timber.tag("AutoTranslate").d("=== 自动翻译触发检查 ===")
+                                    Timber.tag("AutoTranslate").d("文章ID: ${readerState.articleId}")
+                                    
+                                    // 检查文章ID
+                                    val currentArticleId = readerState.articleId
+                                    if (currentArticleId == null) {
+                                        Timber.tag("AutoTranslate").d("文章ID为空，跳过")
+                                        return@LaunchedEffect
+                                    }
+                                    
+                                    // 重置标记
+                                    hasTriggeredAutoTranslate = false
+                                    Timber.tag("AutoTranslate").d("重置自动翻译标记")
+                                    
+                                    // 获取Feed信息
+                                    val currentFeed = readingUiState.articleWithFeed?.feed
+                                    val feedId = currentFeed?.id
+                                    val feedName = currentFeed?.name
+                                    val isAutoTranslate = currentFeed?.isAutoTranslate ?: false
+                                    Timber.tag("AutoTranslate").d("isAutoTranslate = $isAutoTranslate")
+                                    
+                                    // 检查isAutoTranslate
+                                    if (!isAutoTranslate) {
+                                        Timber.tag("AutoTranslate").d("isAutoTranslate为false，跳过")
+                                        return@LaunchedEffect
+                                    }
+                                    
+                                    // 检查WebView
+                                    val webView = webViewRef
+                                    Timber.tag("AutoTranslate").d("webView != null = ${webView != null}")
+                                    if (webView == null) {
+                                        Timber.tag("AutoTranslate").d("WebView未就绪，跳过")
+                                        return@LaunchedEffect
+                                    }
+                                    
+                                    // 触发翻译
+                                    Timber.tag("AutoTranslate").d("触发自动翻译")
+                                    Timber.tag("AutoTranslate").d("Article ID: $currentArticleId")
+                                    Timber.tag("AutoTranslate").d("Feed ID: $feedId")
+                                    Timber.tag("AutoTranslate").d("Feed Name: $feedName")
+                                    
+                                    try {
+                                        Timber.tag("AutoTranslate").d("currentTranslateServiceId = $currentTranslateServiceId")
+                                        
+                                        val streamService = streamTranslateServiceFactory.getService(currentTranslateServiceId)
+                                        Timber.tag("AutoTranslate").d("streamService = ${streamService.javaClass.simpleName}")
+                                        
+                                        val currentConfig = settings.quickTranslateModel ?: TranslateModelConfig(
+                                            provider = TranslateProvider.SILICONFLOW.serviceId,
+                                            model = "",
+                                            apiKey = ""
+                                        )
+                                        Timber.tag("AutoTranslate").d("TranslateModelConfig provider = ${currentConfig.provider}")
+                                        Timber.tag("AutoTranslate").d("TranslateModelConfig model = ${currentConfig.model}")
+                                        
+                                        val manager = StreamTranslateManager(webView, streamService, currentConfig)
+                                        Timber.tag("AutoTranslate").d("StreamTranslateManager created successfully")
+                                        
+                                        viewModel.startTranslation(manager)
+                                        hasTriggeredAutoTranslate = true
+                                        Timber.tag("AutoTranslate").d("调用 viewModel.startTranslation() 成功")
+                                        Timber.tag("AutoTranslate").d("=== 自动翻译触发完成 ===")
+                                    } catch (e: Exception) {
+                                        Timber.tag("AutoTranslate").e(e, "自动翻译触发失败")
+                                        Timber.tag("AutoTranslate").d("=== 自动翻译触发失败 ===")
+                                    }
+                                }
+
                                 showTopDivider =
                                     snapshotFlow {
                                             scrollState.value >= 120 ||
@@ -289,6 +400,13 @@ fun ReadingPage(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center,
                                     ) {
+                                        // 打开文章时，只要有译文的dom就加载
+                                        val displayContent = when {
+                                            translationState.translateState == TranslateState.Translated &&
+                                                translationState.translatedContent != null -> translationState.translatedContent
+                                            else -> readerState.content
+                                        }
+
                                         Content(
                                             modifier =
                                                 Modifier.pullToLoad(
@@ -300,18 +418,22 @@ fun ReadingPage(
                                                     enabled = isPullToSwitchArticleEnabled,
                                                 ),
                                             contentPadding = paddings,
-                                            content = content.text ?: "",
-                                            feedName = feedName,
-                                            title = title.toString(),
-                                            author = author,
-                                            link = link,
-                                            publishedDate = publishedDate,
-                                            isLoading = content is ReaderState.Loading,
+                                            content = displayContent.text ?: "",
+                                            feedName = readerState.feedName,
+                                            title = displayTitle ?: "",
+                                            author = readerState.author,
+                                            link = readerState.link,
+                                            publishedDate = readerState.publishedDate,
+                                            isLoading = readerState.content is ReaderState.Loading,
                                             scrollState = scrollState,
                                             listState = listState,
                                             onImageClick = { imgUrl, altText ->
                                                 currentImageData = ImageData(imgUrl, altText)
                                                 showFullScreenImageViewer = true
+                                            },
+                                            onWebViewReady = { webView ->
+                                                webViewRef = webView
+                                                // 2026-01-31: WebView准备就绪，后续缓存恢复由TranslateButton处理
                                             },
                                         )
                                         PullToLoadIndicator(
@@ -335,8 +457,8 @@ fun ReadingPage(
                             readerState.content is ReaderState.FullContent ||
                                 readerState.content is ReaderState.Error,
                         isBoldCharacters = boldCharacters.value,
-                        onUnread = { viewModel.updateReadStatus(it) },
-                        onStarred = { viewModel.updateStarredStatus(it) },
+//                        onUnread = { viewModel.updateReadStatus(it) },
+//                        onStarred = { viewModel.updateStarredStatus(it) },
                         onNextArticle = {
                             readerState.nextArticle?.let {
                                 val (id, index) = it
@@ -351,6 +473,20 @@ fun ReadingPage(
                         onReadAloud = {
                             viewModel.textToSpeechManager.readHtml(
                                 readerState.content.text ?: return@BottomBar
+                            )
+                        },
+                        // 2026-01-31: 使用新的TranslateButton组件，封装所有翻译逻辑
+                        translateButton = {
+                            TranslateButton(
+                                webView = webViewRef,
+                                streamTranslateServiceFactory = streamTranslateServiceFactory,
+                                currentTranslateServiceId = viewModel.currentTranslateServiceId.collectAsStateValue(),
+                                translateState = translationState.translateState,
+                                articleId = readerState.articleId,
+                                onNavigateToAITranslation = onNavigateToAITranslation,
+                                onShowOriginal = { viewModel.showOriginal() },
+                                onStartTranslation = { manager -> viewModel.startTranslation(manager) },
+                                onCancelTranslation = { viewModel.cancelTranslation() }
                             )
                         },
                         ttsButton = {
@@ -380,7 +516,9 @@ fun ReadingPage(
                                     viewModel.textToSpeechManager.stateFlow.collectAsStateValue(),
                             )
                         },
-                    )
+
+
+                        )
                 }
             }
             },
@@ -390,14 +528,14 @@ fun ReadingPage(
 
         ReaderImageViewer(
             imageData = currentImageData,
-            onDownloadImage = {
+            onDownloadImage = { url ->
                 viewModel.downloadImage(
-                    it,
-                    onSuccess = { context.showToast(context.getString(R.string.image_saved)) },
-                    onFailure = {
-                        // FIXME: crash the app for error report
-                        th ->
-                        throw th
+                    url,
+                    onSuccess = { uri: Uri -> 
+                        context.showToast(context.getString(R.string.image_saved)) 
+                    },
+                    onFailure = { throwable: Throwable ->
+                        throw throwable
                     },
                 )
             },
@@ -411,6 +549,15 @@ fun ReadingPage(
             onDismiss = { showReadingPageStyleDialog = false },
             context = context,
             scope = coroutineScope
+        )
+    }
+
+    // 2026-01-30: 翻译错误对话框
+    translationState.translateError?.let { error ->
+        TranslateErrorDialog(
+            errorMessage = error,
+            onDismiss = { viewModel.dismissTranslateError() },
+            onNavigateToSettings = onNavigateToAITranslation
         )
     }
 }

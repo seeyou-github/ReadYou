@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.CheckCircleOutline
 import androidx.compose.material.icons.rounded.FiberManualRecord
+import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.DropdownMenuItem
@@ -106,6 +107,7 @@ fun ArticleItem(
     modifier: Modifier = Modifier,
     articleWithFeed: ArticleWithFeed,
     isUnread: Boolean = articleWithFeed.article.isUnread,
+    translatedTitle: String? = articleWithFeed.article.translatedTitle,  // 2026-02-03: 新增翻译标题参数
     colorTheme: ColorTheme? = null,
     onClick: (ArticleWithFeed) -> Unit = {},
     onLongClick: (() -> Unit)? = null,
@@ -119,6 +121,7 @@ fun ArticleItem(
         feedName = feed.name,
         feedIconUrl = feed.icon,
         title = article.title,
+        translatedTitle = translatedTitle,  // 2026-02-03: 传递翻译标题
         shortDescription = article.shortDescription,
         timeString = article.dateString,
         imgData = article.img,
@@ -138,6 +141,7 @@ fun ArticleItem(
     feedName: String = "",
     feedIconUrl: String? = null,
     title: String = "",
+    translatedTitle: String? = null,  // 2026-02-03: 新增翻译标题参数
     shortDescription: String = "",
     timeString: String? = null,
     imgData: Any? = null,
@@ -217,9 +221,9 @@ fun ArticleItem(
                 // Title
                 Row {
                     Text(
-                        text = title,
+                        text = translatedTitle ?: title,  // 2026-02-03: 优先使用翻译后的标题
                         color = if (selectedColorTheme != null) selectedColorTheme.textColor else MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.titleMedium.applyTextDirection(title.requiresBidi())
+                        style = MaterialTheme.typography.titleMedium.applyTextDirection((translatedTitle ?: title).requiresBidi())  // 2026-02-03: 使用翻译后的标题进行文本方向检测
                             .merge(
                                 fontSize = titleFontSize.sp,
                                 lineHeight = (titleFontSize * titleLineHeight).sp
@@ -371,6 +375,7 @@ private const val SwipeActionDelay = 300L
 fun SwipeableArticleItem(
     articleWithFeed: ArticleWithFeed,
     isUnread: Boolean = articleWithFeed.article.isUnread,
+    translatedTitle: String? = articleWithFeed.article.translatedTitle,  // 2026-02-03: 新增翻译标题参数
     articleListTonalElevation: Int = 0,
     colorTheme: ColorTheme? = null,
     onClick: (ArticleWithFeed) -> Unit = {},
@@ -381,6 +386,7 @@ fun SwipeableArticleItem(
     onMarkAboveAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onMarkBelowAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onShare: ((ArticleWithFeed) -> Unit)? = null,
+    onSaveToLocal: ((ArticleWithFeed) -> Unit)? = null,
     forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
 ) {
 
@@ -421,6 +427,7 @@ fun SwipeableArticleItem(
             ArticleItem(
                 articleWithFeed = articleWithFeed,
                 isUnread = isUnread,
+                translatedTitle = translatedTitle,  // 2026-02-03: 传递翻译标题
                 colorTheme = colorTheme,
                 onClick = onClick,
                 onLongClick = onLongClick,
@@ -443,6 +450,7 @@ fun SwipeableArticleItem(
                             onMarkAboveAsRead = onMarkAboveAsRead,
                             onMarkBelowAsRead = onMarkBelowAsRead,
                             onShare = onShare,
+                            onSaveToLocal = onSaveToLocal,
                         ) {
                             isMenuExpanded = false
                         }
@@ -626,6 +634,7 @@ fun ArticleItemMenuContent(
     onMarkAboveAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onMarkBelowAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onShare: ((ArticleWithFeed) -> Unit)? = null,
+    onSaveToLocal: ((ArticleWithFeed) -> Unit)? = null,
     onItemClick: (() -> Unit)? = null,
 ) {
     val starImageVector =
@@ -721,6 +730,23 @@ fun ArticleItemMenuContent(
             },
         )
     }
+    onSaveToLocal?.let {
+        HorizontalDivider()
+        DropdownMenuItem(
+            text = { Text(text = stringResource(id = R.string.save_article_to_local)) },
+            onClick = {
+                onSaveToLocal(articleWithFeed)
+                onItemClick?.invoke()
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Rounded.Save,
+                    contentDescription = null,
+                    modifier = Modifier.size(iconSize),
+                )
+            },
+        )
+    }
 }
 
 @Preview
@@ -734,6 +760,7 @@ fun MenuContentPreview() {
                     onMarkBelowAsRead = {},
                     onMarkAboveAsRead = {},
                     onShare = {},
+                    onSaveToLocal = {},
                 )
             }
         }

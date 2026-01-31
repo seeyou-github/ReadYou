@@ -46,6 +46,8 @@
     <string name="all_parse_full_content_tips">对 \"%1$s\" 分组中的所有文章进行全文解析</string>
     <string name="all_parse_full_content_toast">已允许全文解析 \"%1$s\" 分组的所有文章</string>
     <string name="all_deny_parse_full_content_toast">已拒绝全文解析\"%1$s\" 分组内所有文章</string>
+    <string name="auto_translate_full_content">自动翻译全文</string>
+    <string name="auto_translate_title">自动翻译标题</string>
     <string name="clear_articles">清空文章</string>
     <string name="clear_articles_in_feed_toast">已清空 \"%1$s\" 订阅源中所有已归档文章</string>
     <string name="clear_articles_in_group_toast">已清空 \"%1$s\" 分组中所有已归档的文章</string>
@@ -139,6 +141,7 @@
     <string name="home_page">主页</string>
     <string name="sponsor">捐赠</string>
     <string name="open_source_licenses">开放源代码许可</string>
+    <string name="modify_by">MODIFY BY: seeyou-github</string>
     <string name="update_link">https://api.github.com/repos/ReadYouApp/ReadYou/releases/latest</string>
     <string name="change_log">更新日志</string>
     <string name="update">更新</string>
@@ -183,6 +186,7 @@
     <string name="tips_article_list_tonal_elevation">文章列表的色调海拔仅在亮色主题时可用</string>
     <string name="tips_group_list_tonal_elevation">分组列表的色调海拔仅在亮色主题时可用</string>
     <string name="share">分享</string>
+    <string name="save_article_to_local">保存文章到本地</string>
     <string name="touch_to_play_video">轻触播放视频</string>
     <string name="text">文本</string>
     <string name="font_size">字体大小</string>
@@ -377,4 +381,14 @@
     <string name="parse_full_content_desc">从网页获取完整内容</string>
     <string name="enable">启用</string>
     <string name="disable">停用</string>
+    <string name="image_filter">过滤图片</string>
+    <string name="image_filter_settings">图片过滤设置</string>
+    <string name="image_filter_enable">启用过滤</string>
+    <string name="image_filter_resolution">分辨率限制</string>
+    <string name="image_filter_resolution_hint">例如 120x120（过滤更小的）</string>
+    <string name="image_filter_filename">文件名包含</string>
+    <string name="image_filter_filename_hint">例如 logo, avatar</string>
+    <string name="image_filter_domain">域名包含</string>
+    <string name="image_filter_domain_hint">例如 example.com</string>
+    <string name="image_filter_note">不填写则不生效；多个条件任一满足即过滤。</string>
 </resources>

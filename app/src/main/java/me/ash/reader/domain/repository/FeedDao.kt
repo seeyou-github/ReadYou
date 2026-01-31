@@ -195,6 +195,7 @@ interface FeedDao {
                         isNotification = existing.isNotification,
                         isFullContent = existing.isFullContent,
                         isBrowser = existing.isBrowser,
+                        isAutoTranslate = existing.isAutoTranslate,
                     )
                 if (updated == existing) {
                     null

@@ -283,11 +283,12 @@ class DiffMapHolder @Inject constructor(
 }
 
 data class Diff(
-    val isUnread: Boolean, val articleId: String, val feedId: String
+    val isUnread: Boolean, val articleId: String, val feedId: String, val translatedTitle: String? = null
 ) {
     constructor(isUnread: Boolean, articleWithFeed: ArticleWithFeed) : this(
         isUnread = isUnread,
         articleId = articleWithFeed.article.id,
         feedId = articleWithFeed.feed.id,
+        translatedTitle = articleWithFeed.article.translatedTitle,
     )
 }

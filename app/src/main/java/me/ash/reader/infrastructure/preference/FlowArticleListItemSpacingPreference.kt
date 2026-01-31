@@ -17,7 +17,7 @@ val LocalFlowArticleListItemSpacing =
 object FlowArticleListItemSpacingPreference {
 
     // 默认值：0dp
-    const val default = 0
+    const val default = 3
 
     fun put(context: Context, scope: CoroutineScope, value: Int) {
         scope.launch {

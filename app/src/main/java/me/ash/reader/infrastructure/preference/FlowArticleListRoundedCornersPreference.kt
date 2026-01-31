@@ -17,7 +17,7 @@ val LocalFlowArticleListRoundedCorners =
 object FlowArticleListRoundedCornersPreference {
 
     // 默认值：20dp
-    const val default = 0
+    const val default = 10
 
     fun put(context: Context, scope: CoroutineScope, value: Int) {
         scope.launch {

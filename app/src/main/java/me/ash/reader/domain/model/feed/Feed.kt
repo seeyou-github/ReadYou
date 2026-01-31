@@ -36,6 +36,18 @@ data class Feed(
     @ColumnInfo(defaultValue = "0")
     val isBrowser: Boolean = false,
     @ColumnInfo(defaultValue = "0")
+    val isAutoTranslate: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val isAutoTranslateTitle: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val isImageFilterEnabled: Boolean = false,
+    @ColumnInfo(defaultValue = "")
+    val imageFilterResolution: String = "",
+    @ColumnInfo(defaultValue = "")
+    val imageFilterFileName: String = "",
+    @ColumnInfo(defaultValue = "")
+    val imageFilterDomain: String = "",
+    @ColumnInfo(defaultValue = "0")
     val sortOrder: Int = 0,
     @Ignore val important: Int = 0
 ) {
@@ -49,6 +61,12 @@ data class Feed(
         isNotification: Boolean,
         isFullContent: Boolean,
         isBrowser: Boolean,
+        isAutoTranslate: Boolean = false,
+        isAutoTranslateTitle: Boolean = false,
+        isImageFilterEnabled: Boolean = false,
+        imageFilterResolution: String = "",
+        imageFilterFileName: String = "",
+        imageFilterDomain: String = "",
         sortOrder: Int = 0
     ) : this(
         id = id,
@@ -60,6 +78,12 @@ data class Feed(
         isNotification = isNotification,
         isFullContent = isFullContent,
         isBrowser = isBrowser,
+        isAutoTranslate = isAutoTranslate,
+        isAutoTranslateTitle = isAutoTranslateTitle,
+        isImageFilterEnabled = isImageFilterEnabled,
+        imageFilterResolution = imageFilterResolution,
+        imageFilterFileName = imageFilterFileName,
+        imageFilterDomain = imageFilterDomain,
         sortOrder = sortOrder,
         important = 0
     )

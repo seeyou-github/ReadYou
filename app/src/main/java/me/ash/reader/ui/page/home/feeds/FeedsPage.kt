@@ -329,6 +329,8 @@ fun FeedsPage(
                         groupOptionViewModel = groupOptionViewModel,
                         navigationToFlow = navigationToFlow,
                         onGroupClick = { groupId ->
+                            val groupName = groupWithFeedList.find { it.group.id == groupId }?.group?.name
+                            Timber.tag("TitleTranslate").d("FeedsPage: Group click (Grid) -> groupId=$groupId, groupName=$groupName")
                             feedsViewModel.changeFilter(
                                 filterState.copy(group = groupWithFeedList
                                     .find { it.group.id == groupId }?.group, feed = null)
@@ -336,6 +338,7 @@ fun FeedsPage(
                             navigationToFlow()
                         },
                         onFeedClick = { feed ->
+                            Timber.tag("TitleTranslate").d("FeedsPage: Feed click (Grid) -> feedId=${feed.id}, feedName=${feed.name}, isAutoTranslateTitle=${feed.isAutoTranslateTitle}")
                             feedsViewModel.changeFilter(filterState.copy(feed = feed, group = null))
                             navigationToFlow()
                         },

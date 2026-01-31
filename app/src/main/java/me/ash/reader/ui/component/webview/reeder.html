@@ -14,6 +14,7 @@
     --line-height: 1.5;
     --letter-spacing: 0.5px;
     --text-margin: 24px;
+    --translated-text-margin: 5px;
     --text-color: #343434
     --bold-text-color: #000000;
     --link-text-color: #222222;
@@ -53,6 +54,11 @@ article {
     font-family: var(--font-family) !important;
     font-size: var(--font-size) !important;
     color: var(--text-color) !important;
+}
+
+html[data-translation-mode="on"] article {
+    margin-left: var(--translated-text-margin) !important;
+    margin-right: var(--translated-text-margin) !important;
 }
 
 /* Page  */

@@ -522,7 +522,7 @@ interface ArticleDao {
     @RewriteQueriesToDropUnusedColumns
     @Query(
         """
-        SELECT a.id, a.date, a.title, a.author, a.rawDescription, 
+        SELECT a.id, a.date, a.title, a.translatedTitle, a.author, a.rawDescription, 
         a.shortDescription, a.fullContent, a.img, a.link, a.feedId, 
         a.accountId, a.isUnread, a.isStarred, a.isReadLater, a.updateAt 
         FROM article AS a
@@ -543,7 +543,7 @@ interface ArticleDao {
     @RewriteQueriesToDropUnusedColumns
     @Query(
         """
-        SELECT a.id, a.date, a.title, a.author, a.rawDescription, 
+        SELECT a.id, a.date, a.title, a.translatedTitle, a.author, a.rawDescription, 
         a.shortDescription, a.fullContent, a.img, a.link, a.feedId, 
         a.accountId, a.isUnread, a.isStarred, a.isReadLater, a.updateAt 
         FROM article AS a
@@ -565,7 +565,7 @@ interface ArticleDao {
     @RewriteQueriesToDropUnusedColumns
     @Query(
         """
-        SELECT a.id, a.date, a.title, a.author, a.rawDescription, 
+        SELECT a.id, a.date, a.title, a.translatedTitle, a.author, a.rawDescription, 
         a.shortDescription, a.fullContent, a.img, a.link, a.feedId, 
         a.accountId, a.isUnread, a.isStarred, a.isReadLater, a.updateAt 
         FROM article AS a
@@ -634,7 +634,7 @@ interface ArticleDao {
     @RewriteQueriesToDropUnusedColumns
     @Query(
         """
-        SELECT a.id, a.date, a.title, a.author, a.rawDescription, 
+        SELECT a.id, a.date, a.title, a.translatedTitle, a.author, a.rawDescription, 
         a.shortDescription, a.fullContent, a.img, a.link, a.feedId, 
         a.accountId, a.isUnread, a.isStarred, a.isReadLater, a.updateAt 
         FROM article AS a LEFT JOIN feed AS b 
@@ -904,6 +904,62 @@ interface ArticleDao {
 
     @Update
     suspend fun update(vararg article: Article)
+
+    /**
+     * 更新文章翻译状态
+     *
+     * @param articleId 文章ID
+     * @param isTranslated 是否已翻译
+     * 修改日期：2026-01-31
+     * 修改原因：标记文章的翻译状态，用于后续判断和恢复
+     */
+    @Query("UPDATE article SET isTranslated = :isTranslated WHERE id = :articleId")
+    suspend fun updateTranslationStatus(articleId: String, isTranslated: Boolean?)
+
+    /**
+     * 更新文章的翻译标题
+     *
+     * @param articleId 文章ID
+     * @param translatedTitle 翻译后的标题
+     * 修改日期：2026-02-03
+     * 修改原因：存储文章标题的翻译结果
+     */
+    @Query("UPDATE article SET translatedTitle = :translatedTitle WHERE id = :articleId")
+    suspend fun updateTranslatedTitle(articleId: String, translatedTitle: String)
+
+    /**
+     * 批量更新文章的翻译标题
+     *
+     * @param translations 文章ID到翻译标题的映射
+     * 修改日期：2026-02-03
+     * 修改原因：批量更新多篇文章的翻译标题，提高效率
+     */
+    @Transaction
+    suspend fun batchUpdateTranslatedTitle(translations: Map<String, String>) {
+        translations.forEach { (articleId, translatedTitle) ->
+            updateTranslatedTitle(articleId, translatedTitle)
+        }
+    }
+
+    /**
+     * 查询 Feed 下的所有文章（直接返回 List，用于标题翻译）
+     *
+     * @param accountId 账户 ID
+     * @param feedId Feed ID
+     * @return 文章列表
+     * 修改日期：2026-02-03
+     * 修改原因：为标题翻译功能提供直接查询文章列表的方法
+     */
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM article
+        WHERE feedId = :feedId
+        AND accountId = :accountId
+        ORDER BY date DESC
+        """
+    )
+    suspend fun queryAllByFeedId(accountId: Int, feedId: String): List<Article>
 
     @Transaction
     suspend fun insertListIfNotExist(articles: List<Article>, feed: Feed): List<Article> {

@@ -1,5 +1,30 @@
 package me.ash.reader.ui.page.home.flow
 
+import me.ash.reader.ui.theme.palette.alwaysLight
+import me.ash.reader.ui.ext.ExternalFonts
+import me.ash.reader.ui.component.webview.WebViewStyle
+import me.ash.reader.ui.component.webview.WebViewScript
+import me.ash.reader.ui.component.webview.WebViewHtml
+import me.ash.reader.ui.component.reader.LocalReaderPaints
+import me.ash.reader.infrastructure.preference.ReadingFontsPreference
+import me.ash.reader.infrastructure.preference.LocalReadingTextLineHeight
+import me.ash.reader.infrastructure.preference.LocalReadingTextLetterSpacing
+import me.ash.reader.infrastructure.preference.LocalReadingTextHorizontalPadding
+import me.ash.reader.infrastructure.preference.LocalReadingTextFontSize
+import me.ash.reader.infrastructure.preference.LocalReadingTextBold
+import me.ash.reader.infrastructure.preference.LocalReadingTextAlign
+import me.ash.reader.infrastructure.preference.LocalReadingSubheadUpperCase
+import me.ash.reader.infrastructure.preference.LocalReadingSubheadBold
+import me.ash.reader.infrastructure.preference.LocalReadingImageRoundedCorners
+import me.ash.reader.infrastructure.preference.LocalReadingImageHorizontalPadding
+import me.ash.reader.infrastructure.preference.LocalReadingImageBrightness
+import me.ash.reader.infrastructure.preference.LocalReadingFonts
+import me.ash.reader.infrastructure.preference.LocalReadingBoldCharacters
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.Color
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -19,6 +44,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
@@ -34,9 +60,13 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.TopAppBar
@@ -48,6 +78,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -126,6 +157,7 @@ import me.ash.reader.ui.page.home.reading.PullToLoadDefaults.ContentOffsetMultip
 import me.ash.reader.ui.page.home.reading.PullToLoadState
 import me.ash.reader.ui.page.home.reading.pullToLoad
 import me.ash.reader.ui.page.home.reading.rememberPullToLoadState
+import timber.log.Timber
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -159,6 +191,51 @@ fun FlowPage(
     val sharedContent = LocalSharedContent.current
     val markAsReadOnScroll = LocalMarkAsReadOnScroll.current.value
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val boldCharacters = LocalReadingBoldCharacters.current
+    val readingFonts = LocalReadingFonts.current
+    val fontSize = LocalReadingTextFontSize.current
+    val lineHeight = LocalReadingTextLineHeight.current
+    val letterSpacing = LocalReadingTextLetterSpacing.current
+    val textMargin = LocalReadingTextHorizontalPadding.current
+    val textAlign = LocalReadingTextAlign.current.toTextAlignCSS()
+    val textBold = LocalReadingTextBold.current.value
+    val subheadBold = LocalReadingSubheadBold.current.value
+    val subheadUpperCase = LocalReadingSubheadUpperCase.current.value
+    val imgMargin = LocalReadingImageHorizontalPadding.current
+    val imgBorderRadius = LocalReadingImageRoundedCorners.current
+    val imgBrightness = LocalReadingImageBrightness.current
+    val readerPaints = LocalReaderPaints.current
+    val textColor = readerPaints.bodyText.toArgb()
+    val boldTextColor = readerPaints.bodyText.toArgb()
+    val linkTextColor = readerPaints.linkText.toArgb()
+    val codeTextColor = readerPaints.codeBlockText.toArgb()
+    val codeBgColor = readerPaints.codeBlockBackground.toArgb()
+    val selectionTextColor = Color.Black.toArgb()
+    val selectionBgColor = (MaterialTheme.colorScheme.tertiaryContainer alwaysLight true).toArgb()
+
+    var pendingSaveHtml by remember { mutableStateOf<String?>(null) }
+    var pendingSaveName by remember { mutableStateOf("article.html") }
+
+    fun buildSaveFileName(title: String): String {
+        val safe = title.replace(Regex("[\\/:*?\"<>|]"), "_").trim()
+        val short = if (safe.length > 80) safe.substring(0, 80) else safe
+        return if (short.isBlank()) "article.html" else "$short.html"
+    }
+
+    val saveHtmlLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/html")
+    ) { uri ->
+        val html = pendingSaveHtml ?: return@rememberLauncherForActivityResult
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch(Dispatchers.IO) {
+            context.contentResolver.openOutputStream(uri)?.use { output ->
+                output.write(html.toByteArray(Charsets.UTF_8))
+            }
+            pendingSaveHtml = null
+        }
+    }
+
 
     // 2026-01-25: 获取当前颜色主题
     val colorThemes = LocalFlowArticleListColorThemes.current
@@ -169,7 +246,6 @@ fun FlowPage(
 
     val settings = LocalSettings.current
     val pullToSwitchFeed = settings.pullToSwitchFeed
-    val scope = rememberCoroutineScope()
     // 2026-01-18: 新增文章列表样式设置对话框状态
     var showArticleListStyleDialog by remember { mutableStateOf(false) }
 
@@ -274,6 +350,15 @@ fun FlowPage(
         }
     }
 
+    // 2026-02-03: 页面销毁时取消所有翻译任务
+    DisposableEffect(Unit) {
+        onDispose {
+            Timber.tag("AutoTranslateTitle").d("FlowPage: 页面销毁，取消所有翻译任务")
+            viewModel.titleTranslateQueue.cancelAllPendingTasks()
+            viewModel.titleTranslateEntry.cancelAllTranslations()
+        }
+    }
+
     LaunchedEffect(onSearch) {
         if (!onSearch) {
             keyboardController?.hide()
@@ -282,6 +367,24 @@ fun FlowPage(
     }
 
     val readerState = viewModel.readerStateStateFlow.collectAsStateValue()
+
+    LaunchedEffect(filterUiState.feed?.id, filterUiState.group?.id) {
+        Timber.tag("TitleTranslate").d(
+            "FlowPage: filterState feedId=${filterUiState.feed?.id}, feedName=${filterUiState.feed?.name}, " +
+                "feedAuto=${filterUiState.feed?.isAutoTranslateTitle}, groupId=${filterUiState.group?.id}, groupName=${filterUiState.group?.name}"
+        )
+    }
+
+    LaunchedEffect(filterUiState.group?.id, filterUiState.feed?.id) {
+        val groupId = filterUiState.group?.id
+        val feedId = filterUiState.feed?.id
+        if (groupId != null && feedId == null) {
+            Timber.tag("AutoTranslateTitle").d(
+                "FlowPage: ?????????? -> groupId=$groupId, groupName=${filterUiState.group?.name}"
+            )
+            viewModel.triggerTitleTranslationForGroup(groupId)
+        }
+    }
 
     var pagingItems: LazyPagingItems<ArticleFlowItem>? by remember { mutableStateOf(null) }
 
@@ -322,6 +425,12 @@ fun FlowPage(
     }
 
     val isSyncing = viewModel.isSyncingFlow.collectAsStateValue()
+
+    // 2026-02-03: 收集标题翻译状态
+    val isTranslatingTitle = viewModel.titleTranslateEntry.isTranslating
+    val titleTranslationProgress = viewModel.titleTranslateEntry.translationProgress.value
+    val titleTranslationTotal = viewModel.titleTranslateEntry.translationTotal.value
+    val titleTranslationError = viewModel.titleTranslateEntry.translationError.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         RYScaffold(
@@ -437,6 +546,27 @@ fun FlowPage(
                             ) {
                                 showArticleListStyleDialog = true
                             }
+                            // 2026-02-02: 新增自动翻译标题按钮
+                            // 仅在有选中 Feed 时显示
+                            // 2026-02-02: 获取当前 Feed 的自动翻译标题设置
+                            val isTitleTranslateEnabled = filterUiState.feed?.isAutoTranslateTitle ?: false
+
+                            RYExtensibleVisibility(visible = filterUiState.feed != null) {
+                                FeedbackIconButton(
+                                    imageVector = Icons.Outlined.Translate,
+                                    contentDescription = stringResource(R.string.auto_translate_title),
+                                    tint =
+                                        if (isTitleTranslateEnabled) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            selectedColorTheme?.textColor
+                                                ?: MaterialTheme.colorScheme.onSurface
+                                        },
+                                ) {
+                                    Timber.tag("AutoTranslateTitle").d("FlowPage: 用户点击自动翻译标题按钮，当前状态 = $isTitleTranslateEnabled")
+                                    viewModel.toggleTitleTranslate()
+                                }
+                            }
                         },
                         colors =
                             TopAppBarDefaults.topAppBarColors(
@@ -465,6 +595,28 @@ fun FlowPage(
                 // 原因：用户反馈需要能取消正在进行的同步操作
                 // 时间：2026-01-25
                 BackHandler(isSyncing) { viewModel.cancelSync() }
+
+                // 2026-02-03: 显示标题翻译进度条
+                if (isTranslatingTitle.value) {
+                    LinearProgressIndicator(
+                        progress = { if (titleTranslationTotal > 0) titleTranslationProgress / titleTranslationTotal.toFloat() else 0f },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                // 2026-02-03: 显示标题翻译错误对话框
+                titleTranslationError.value?.let { error ->
+                    AlertDialog(
+                        onDismissRequest = { viewModel.titleTranslateEntry.translationError.value = null },
+                        title = { Text(stringResource(R.string.translate_error_title)) },
+                        text = { Text(error.message ?: stringResource(R.string.translate_error_hint)) },
+                        confirmButton = {
+                            TextButton(onClick = { viewModel.titleTranslateEntry.translationError.value = null }) {
+                                Text(stringResource(R.string.confirm))
+                            }
+                        },
+                    )
+                }
 
                 RYExtensibleVisibility(modifier = Modifier.zIndex(1f), visible = onSearch) {
                     BackHandler(onSearch) { onSearch = false }
@@ -601,6 +753,16 @@ fun FlowPage(
                             }
                     }
 
+                    // 2026-02-03: 监听 filterState 变化，触发自动标题翻译
+                    LaunchedEffect(filterState) {
+                        val feed = filterState.feed
+                        if (feed?.isAutoTranslateTitle == true) {
+                            Timber.tag("AutoTranslateTitle").d("FlowPage: Feed ${feed.id} 开启了自动翻译标题，触发翻译")
+                            // 直接调用 TitleTranslateEntry，传入触发来源
+                            viewModel.titleTranslateEntry.triggerTranslation(feed.id, "flow_page")
+                        }
+                    }
+
                     val loadAction =
                         remember(pager, flowUiState, pullToSwitchFeed) {
                                 when (pullToSwitchFeed) {
@@ -705,6 +867,10 @@ fun FlowPage(
                                                     itemSpacing = itemSpacing,
                                                     isSwipeEnabled = { listState.isScrollInProgress },
                                                     colorTheme = selectedColorTheme,
+                                                    translatedTitleProvider = { articleWithFeed ->
+                                                        val feed = filterUiState.feed ?: articleWithFeed.feed
+                                                        if (feed.isAutoTranslateTitle) articleWithFeed.article.translatedTitle else null
+                                                    },
                                                     onClick = { articleWithFeed, index ->
                                                         if (articleWithFeed.feed.isBrowser) {
                                                             // 在浏览器中打开：立即更新已读状态
@@ -727,6 +893,44 @@ fun FlowPage(
                                                     onMarkAboveAsRead = onMarkAboveAsRead,
                                                     onMarkBelowAsRead = onMarkBelowAsRead,
                                                     onShare = onShare,
+                                                    onSaveToLocal = { articleWithFeed ->
+                                                        scope.launch {
+                                                            val content = viewModel.getArticleContentForSave(articleWithFeed)
+                                                            val fontPath = if (readingFonts is ReadingFontsPreference.External)
+                                                                ExternalFonts.FontType.ReadingFont.toPath(context)
+                                                            else null
+                                                            val html = WebViewHtml.HTML.format(
+                                                                WebViewStyle.get(
+                                                                    fontSize = fontSize,
+                                                                    fontPath = fontPath,
+                                                                    lineHeight = lineHeight,
+                                                                    letterSpacing = letterSpacing,
+                                                                    textMargin = textMargin,
+                                                                    textColor = textColor,
+                                                                    textBold = textBold,
+                                                                    textAlign = textAlign,
+                                                                    boldTextColor = boldTextColor,
+                                                                    subheadBold = subheadBold,
+                                                                    subheadUpperCase = subheadUpperCase,
+                                                                    imgMargin = imgMargin,
+                                                                    imgBorderRadius = imgBorderRadius,
+                                                                    imgBrightness = imgBrightness,
+                                                                    linkTextColor = linkTextColor,
+                                                                    codeTextColor = codeTextColor,
+                                                                    codeBgColor = codeBgColor,
+                                                                    tableMargin = textMargin,
+                                                                    selectionTextColor = selectionTextColor,
+                                                                    selectionBgColor = selectionBgColor,
+                                                                ),
+                                                                articleWithFeed.article.link,
+                                                                content,
+                                                                WebViewScript.get(boldCharacters.value),
+                                                            )
+                                                            pendingSaveHtml = html
+                                                            pendingSaveName = buildSaveFileName(articleWithFeed.article.title)
+                                                            saveHtmlLauncher.launch(pendingSaveName)
+                                                        }
+                                                    },
                                                     // 2026-01-27: 传递首行大图模式参数
                                                     isFirstItemLargeImageEnabled = firstItemLargeImage.value,
                                                     // 2026-01-29: 传递强制显示订阅源名称参数

@@ -129,6 +129,15 @@ constructor(
         }
     }
 
+    fun toggleAutoTranslatePreset() {
+        _subscribeState.update { state ->
+            when (state) {
+                is SubscribeState.Configure -> state.copy(autoTranslate = !state.autoTranslate)
+                else -> state
+            }
+        }
+    }
+
     fun searchFeed() {
         val currentState = _subscribeState.value
         if (currentState !is SubscribeState.Idle) return
@@ -192,6 +201,7 @@ constructor(
                     isNotification = state.notification,
                     isFullContent = state.fullContent,
                     isBrowser = state.browser,
+                    isAutoTranslate = state.autoTranslate,
                 )
             hideDrawer()
         }
@@ -293,6 +303,7 @@ sealed interface SubscribeState {
         val notification: Boolean = false,
         val fullContent: Boolean = false,
         val browser: Boolean = false,
+        val autoTranslate: Boolean = false,
         val selectedGroupId: String,
     ) : SubscribeState, Visible
 }

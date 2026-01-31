@@ -24,15 +24,11 @@ plugins {
 
 //val gitCommitHash = fetchGitCommitHash()
 val keyProps = Properties()
-val releaseKeyPropsFile: File = rootProject.file("signature/keystore_release.properties")
-val debugKeyPropsFile: File = rootProject.file("signature/keystore.properties")
+val keyPropsFile: File = rootProject.file("signature/keystore.properties")
 
-
-if (releaseKeyPropsFile.exists()) {
-    println("Loading keystore properties from ${releaseKeyPropsFile.absolutePath}")
-    keyProps.load(FileInputStream(releaseKeyPropsFile))
-} else if (debugKeyPropsFile.exists()) {
-    keyProps.load(FileInputStream(debugKeyPropsFile))
+if (keyPropsFile.exists()) {
+    println("Loading keystore properties from ${keyPropsFile.absolutePath}")
+    keyProps.load(FileInputStream(keyPropsFile))
 }
 
 android {
@@ -43,7 +39,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = 46
-        versionName = "0.16.1"
+        versionName = "2.00.0"
 
         buildConfigField(
             "String",
@@ -171,6 +167,7 @@ dependencies {
     implementation(libs.telephoto)
     implementation(libs.okhttp)
     implementation(libs.okhttp.coroutines)
+    implementation(libs.okhttp.sse)
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
     implementation(libs.profileinstaller)

@@ -42,6 +42,7 @@ fun RYWebView(
     content: String,
     refererDomain: String? = null,
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
+    onWebViewReady: ((android.webkit.WebView) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val maxWidth = LocalConfiguration.current.screenWidthDp.dp.value
@@ -105,7 +106,7 @@ fun RYWebView(
             it.apply {
                 Log.i("RLog", "maxWidth: ${maxWidth}")
                 Log.i("RLog", "readingFont: ${context.filesDir.absolutePath}")
-                Log.i("RLog", "CustomWebView: ${content}")
+//                Log.i("RLog", "CustomWebView: ${content}")
                 settings.defaultFontSize = fontSize
                 loadDataWithBaseURL(
                     null,
@@ -140,6 +141,8 @@ fun RYWebView(
                     "UTF-8",
                     null,
                 )
+                // 通知 WebView 已准备就绪
+                onWebViewReady?.invoke(it)
             }
         },
     )

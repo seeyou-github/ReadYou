@@ -62,8 +62,8 @@ fun FeedIcon(
             ImageIcon(modifier, placeholderIcon, feedName ?: "", brightnessFilter)
         }
     }
-    // e.g. image/gif;base64,R0lGODlh...
-    else if ("^image/.*;base64,.*".toRegex().matches(iconUrl)) {
+    // e.g. data:image/gif;base64,R0lGODlh... or image/gif;base64,R0lGODlh...
+    else if ("^(data:)?image/.*;base64,.*".toRegex().matches(iconUrl)) {
         Base64Image(
             modifier = modifier
                 .size(size)

@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.model.group.Group
+import timber.log.Timber
 import me.ash.reader.domain.repository.FeedDao
 import me.ash.reader.domain.service.OpmlService
 import me.ash.reader.domain.service.RssService
@@ -56,7 +57,16 @@ constructor(
 
     suspend fun fetchFeed(feedId: String) {
         val feed = rssService.get().findFeedById(feedId)
-        _feedOptionUiState.update { it.copy(feed = feed, selectedGroupId = feed?.groupId ?: "") }
+        _feedOptionUiState.update {
+            it.copy(
+                feed = feed,
+                selectedGroupId = feed?.groupId ?: "",
+                imageFilterEnabled = feed?.isImageFilterEnabled ?: false,
+                imageFilterResolution = feed?.imageFilterResolution ?: "",
+                imageFilterFileName = feed?.imageFilterFileName ?: "",
+                imageFilterDomain = feed?.imageFilterDomain ?: "",
+            )
+        }
     }
 
     fun showNewGroupDialog() {
@@ -130,6 +140,37 @@ constructor(
                 rssService.get().updateFeed(it.copy(isNotification = !it.isNotification))
                 fetchFeed(it.id)
             }
+        }
+    }
+
+    fun changeAutoTranslatePreset() {
+        viewModelScope.launch(ioDispatcher) {
+            _feedOptionUiState.value.feed?.let { feed ->
+                Timber.tag("AutoTranslate").d("changeAutoTranslatePreset: Feed ID = ${feed.id}, Name = ${feed.name}, Current isAutoTranslate = ${feed.isAutoTranslate}")
+                val isAutoTranslate = !feed.isAutoTranslate
+                Timber.tag("AutoTranslate").d("changeAutoTranslatePreset: New isAutoTranslate = $isAutoTranslate")
+                val updatedFeed = feed.copy(isAutoTranslate = isAutoTranslate)
+                rssService.get().updateFeed(updatedFeed)
+                Timber.tag("AutoTranslate").d("changeAutoTranslatePreset: Database update completed for feed ${feed.id}")
+                fetchFeed(feed.id)
+                Timber.tag("AutoTranslate").d("changeAutoTranslatePreset: FetchFeed completed for feed ${feed.id}")
+            } ?: Timber.tag("AutoTranslate").e("changeAutoTranslatePreset: Feed is null")
+        }
+    }
+
+    // 2026-02-02: 新增修改自动翻译文章标题设置的方法
+    fun changeAutoTranslateTitlePreset() {
+        viewModelScope.launch(ioDispatcher) {
+            _feedOptionUiState.value.feed?.let { feed ->
+                Timber.tag("AutoTranslateTitle").d("changeAutoTranslateTitlePreset: Feed ID = ${feed.id}, Name = ${feed.name}, Current isAutoTranslateTitle = ${feed.isAutoTranslateTitle}")
+                val isAutoTranslateTitle = !feed.isAutoTranslateTitle
+                Timber.tag("AutoTranslateTitle").d("changeAutoTranslateTitlePreset: New isAutoTranslateTitle = $isAutoTranslateTitle")
+                val updatedFeed = feed.copy(isAutoTranslateTitle = isAutoTranslateTitle)
+                rssService.get().updateFeed(updatedFeed)
+                Timber.tag("AutoTranslateTitle").d("changeAutoTranslateTitlePreset: Database update completed for feed ${feed.id}")
+                fetchFeed(feed.id)
+                Timber.tag("AutoTranslateTitle").d("changeAutoTranslateTitlePreset: FetchFeed completed for feed ${feed.id}")
+            } ?: Timber.tag("AutoTranslateTitle").e("changeAutoTranslateTitlePreset: Feed is null")
         }
     }
 
@@ -252,6 +293,56 @@ constructor(
         }
     }
 
+    fun showImageFilterDialog() {
+        val feed = _feedOptionUiState.value.feed
+        _feedOptionUiState.update {
+            it.copy(
+                imageFilterDialogVisible = true,
+                imageFilterEnabled = feed?.isImageFilterEnabled ?: false,
+                imageFilterResolution = feed?.imageFilterResolution ?: "",
+                imageFilterFileName = feed?.imageFilterFileName ?: "",
+                imageFilterDomain = feed?.imageFilterDomain ?: "",
+            )
+        }
+    }
+
+    fun hideImageFilterDialog() {
+        _feedOptionUiState.update { it.copy(imageFilterDialogVisible = false) }
+    }
+
+    fun inputImageFilterEnabled(enabled: Boolean) {
+        _feedOptionUiState.update { it.copy(imageFilterEnabled = enabled) }
+    }
+
+    fun inputImageFilterResolution(value: String) {
+        _feedOptionUiState.update { it.copy(imageFilterResolution = value) }
+    }
+
+    fun inputImageFilterFileName(value: String) {
+        _feedOptionUiState.update { it.copy(imageFilterFileName = value) }
+    }
+
+    fun inputImageFilterDomain(value: String) {
+        _feedOptionUiState.update { it.copy(imageFilterDomain = value) }
+    }
+
+    fun saveImageFilterSettings() {
+        viewModelScope.launch(ioDispatcher) {
+            val state = _feedOptionUiState.value
+            val feed = state.feed ?: return@launch
+            val updated =
+                feed.copy(
+                    isImageFilterEnabled = state.imageFilterEnabled,
+                    imageFilterResolution = state.imageFilterResolution.trim(),
+                    imageFilterFileName = state.imageFilterFileName.trim(),
+                    imageFilterDomain = state.imageFilterDomain.trim(),
+                )
+            rssService.get().updateFeed(updated)
+            fetchFeed(feed.id)
+            _feedOptionUiState.update { it.copy(imageFilterDialogVisible = false) }
+        }
+    }
+
     suspend fun exportFeedAsOpml(feedId: String): String {
         return opmlService.saveSingleFeedToString(feedId, attachInfo = true)
     }
@@ -271,4 +362,9 @@ data class FeedOptionUiState(
     val changeUrlDialogVisible: Boolean = false,
     val newIcon: String = "",
     val changeIconDialogVisible: Boolean = false,
+    val imageFilterDialogVisible: Boolean = false,
+    val imageFilterEnabled: Boolean = false,
+    val imageFilterResolution: String = "",
+    val imageFilterFileName: String = "",
+    val imageFilterDomain: String = "",
 )

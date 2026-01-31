@@ -3,6 +3,7 @@ package me.ash.reader.domain.data
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.paging.ItemSnapshotList
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -69,6 +70,13 @@ constructor(
                 itemSnapshotList = snapshot()
             }
         }
+
+    /**
+     * 监听 itemSnapshotList 变化的 Flow
+     * 修改日期：2026-02-03
+     * 修改原因：为标题翻译功能提供监听文章数量变化的 Flow
+     */
+    val itemSnapshotListFlow = snapshotFlow { itemSnapshotList }
 
     init {
         applicationScope.launch(ioDispatcher) {

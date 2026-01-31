@@ -17,11 +17,14 @@ import me.ash.reader.infrastructure.datastore.get
 import me.ash.reader.infrastructure.datastore.getOrDefault
 import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.IODispatcher
-import me.ash.reader.ui.ext.DataStoreKey
+import me.ash.reader.infrastructure.translate.preference.LocalCerebrasConfig
+
+import me.ash.reader.infrastructure.translate.preference.LocalQuickTranslateModel
+import me.ash.reader.infrastructure.translate.preference.LocalSiliconFlowConfig
 import me.ash.reader.ui.ext.collectAsStateValue
 import me.ash.reader.ui.ext.dataStore
 // 2026-01-23: 导入列表视图列表边距 Preference
-import me.ash.reader.infrastructure.preference.FeedsListItemPaddingPreference
+import me.ash.reader.infrastructure.translate.preference.LocalTranslateServiceId
 import javax.inject.Inject
 
 class SettingsProvider @Inject constructor(
@@ -163,6 +166,13 @@ class SettingsProvider @Inject constructor(
             LocalReadingTitleFontSize provides settings.readingTitleFontSize,
             LocalReadingTitleColor provides settings.readingTitleColor,
             LocalReadingTitleHorizontalPadding provides settings.readingTitleHorizontalPadding,
+
+            // Translate
+            LocalTranslateServiceId provides settings.translateServiceId,
+            LocalQuickTranslateModel provides settings.quickTranslateModel,
+
+            LocalSiliconFlowConfig provides settings.siliconFlowConfig,
+            LocalCerebrasConfig provides settings.cerebrasConfig,
 
             // Interaction
             LocalInitialPage provides settings.initialPage,

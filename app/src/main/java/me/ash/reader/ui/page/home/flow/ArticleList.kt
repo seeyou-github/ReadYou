@@ -13,6 +13,7 @@ import androidx.paging.compose.itemKey
 import me.ash.reader.domain.data.Diff
 import me.ash.reader.domain.model.article.ArticleFlowItem
 import me.ash.reader.domain.model.article.ArticleWithFeed
+import timber.log.Timber
 
 @Suppress("FunctionName")
 @OptIn(ExperimentalFoundationApi::class)
@@ -26,12 +27,14 @@ fun LazyListScope.ArticleList(
     isSwipeEnabled: () -> Boolean = { false },
     isMenuEnabled: Boolean = true,
     colorTheme: me.ash.reader.domain.model.theme.ColorTheme? = null,
+    translatedTitleProvider: (ArticleWithFeed) -> String? = { it.article.translatedTitle }, // 2026-02-03: ??????
     onClick: (ArticleWithFeed, Int) -> Unit = { _, _ -> },
     onToggleStarred: (ArticleWithFeed) -> Unit = {},
     onToggleRead: (ArticleWithFeed) -> Unit = {},
     onMarkAboveAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onMarkBelowAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onShare: ((ArticleWithFeed) -> Unit)? = null,
+    onSaveToLocal: ((ArticleWithFeed) -> Unit)? = null,
     isFirstItemLargeImageEnabled: Boolean = false, // 2026-01-27: 新增首行大图模式参数
     forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
 ) {
@@ -48,6 +51,15 @@ fun LazyListScope.ArticleList(
                 is ArticleFlowItem.Article -> {
                     val article = item.articleWithFeed.article
                     val hasImage = article.img != null
+                    val translatedTitle = translatedTitleProvider(item.articleWithFeed)
+
+                    if (index < 6) {
+                        Timber.tag("TitleTranslate").d(
+                            "ArticleList(item): idx=$index, articleId=${article.id}, feedId=${item.articleWithFeed.feed.id}, " +
+                                "feedAuto=${item.articleWithFeed.feed.isAutoTranslateTitle}, hasTranslatedTitle=${article.translatedTitle != null}, " +
+                                "showTranslated=${translatedTitle != null}"
+                        )
+                    }
 
                     // 2026-01-27: 判断是否应该显示大图模式
                     // 第一篇有图片的文章（index == 1，因为 index == 0 是 ArticleFlowItem.Date）
@@ -60,6 +72,7 @@ fun LazyListScope.ArticleList(
                         LargeImageArticleItem(
                             modifier = Modifier.padding(horizontal = 1.dp, vertical = 1.dp),
                             articleWithFeed = item.articleWithFeed,
+                            translatedTitle = translatedTitle,
                             onClick = { onClick(it, index) }
                         )
                     } else {
@@ -67,6 +80,7 @@ fun LazyListScope.ArticleList(
                         SwipeableArticleItem(
                             articleWithFeed = item.articleWithFeed,
                             isUnread = diffMap[article.id]?.isUnread ?: article.isUnread,
+                            translatedTitle = translatedTitle,
                             articleListTonalElevation = articleListTonalElevation,
                             colorTheme = colorTheme,
                             onClick = { onClick(it, index) },
@@ -80,6 +94,7 @@ fun LazyListScope.ArticleList(
                             onMarkBelowAsRead =
                                 if (index == pagingItems.itemCount - 1) null else onMarkBelowAsRead,
                             onShare = onShare,
+                            onSaveToLocal = onSaveToLocal,
                             forceShowFeedName = forceShowFeedName,
                         )
                     }
@@ -109,6 +124,7 @@ fun LazyListScope.ArticleList(
                     item(key = key(item), contentType = contentType(item)) {
                         val article = item.articleWithFeed.article
                         val hasImage = article.img != null
+                    val translatedTitle = translatedTitleProvider(item.articleWithFeed)
 
                         // 2026-01-27: 判断是否应该显示大图模式
                         // 第一篇有图片的文章（index == 1，因为 index == 0 是 ArticleFlowItem.Date）
@@ -141,6 +157,7 @@ fun LazyListScope.ArticleList(
                                 onMarkBelowAsRead =
                                     if (index == pagingItems.itemCount - 1) null else onMarkBelowAsRead,
                                 onShare = onShare,
+                                onSaveToLocal = onSaveToLocal,
                                 forceShowFeedName = forceShowFeedName,
                             )
                         }

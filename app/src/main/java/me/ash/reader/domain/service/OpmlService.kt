@@ -19,6 +19,15 @@ import me.ash.reader.ui.ext.getDefaultGroupId
 import java.io.InputStream
 import java.util.*
 import javax.inject.Inject
+import android.util.Base64
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import coil.ImageLoader
+import coil.request.ImageRequest
+import java.io.ByteArrayInputStream
+import java.net.URLConnection
+import okio.FileSystem
+import okio.buffer
 
 /**
  * 支持 OPML 文件的导入和导出。
@@ -38,6 +47,8 @@ class OpmlService @Inject constructor(
     private val OPMLDataSource: OPMLDataSource,
     @IODispatcher
     private val ioDispatcher: CoroutineDispatcher,
+    private val okHttpClient: OkHttpClient,
+    private val imageLoader: ImageLoader,
 ) {
 
     /**
@@ -71,6 +82,10 @@ class OpmlService @Inject constructor(
                     if (existingGroup == null) {
                         // 不存在，插入新分组
                         groupDao.insert(groupWithFeed.group)
+                        // 更新所有订阅源的分组 ID 为新插入分组的 ID
+                        groupWithFeed.feeds.forEach { feed ->
+                            feed.groupId = groupWithFeed.group.id
+                        }
                     } else {
                         // 存在，使用现有分组ID更新订阅源的分组
                         groupWithFeed.feeds.forEach { feed ->
@@ -82,8 +97,6 @@ class OpmlService @Inject constructor(
                 val repeatList = mutableListOf<Feed>()
                 // 遍历该分组下的所有订阅源
                 groupWithFeed.feeds.forEach {
-                    // 设置订阅源的分组 ID
-                    it.groupId = groupWithFeed.group.id
                     // 判断该订阅源 URL 是否已存在
                     if (rssService.get().isFeedExist(it.url)) {
                         // 已存在，添加到重复列表
@@ -108,56 +121,42 @@ class OpmlService @Inject constructor(
      */
     @Throws(Exception::class)
     suspend fun saveToString(accountId: Int, attachInfo: Boolean): String {
-        // 获取默认分组
-        val defaultGroup = groupDao.queryById(getDefaultGroupId(accountId))
-        // 构建 OPML 文档并返回字符串
-        return OpmlWriter().write(
-            Opml(
-                "2.0",
-                // 构建头部信息，使用账户名称和当前日期
-                Head(
-                    accountService.getCurrentAccount().name,
-                    Date().toString(), null, null, null,
-                    null, null, null, null,
-                    null, null, null, null,
-                ),
-                // 构建主体部分，包含所有分组和订阅源
-                Body(groupDao.queryAllGroupWithFeed(accountId).map {
-                    // 创建分组节点
-                    Outline(
-                        mutableMapOf(
-                            "text" to it.group.name,
-                            "title" to it.group.name,
-                        ).apply {
-                            // 如果需要附加信息，判断是否为默认分组
-                            if (attachInfo) {
-                                put("isDefault", (it.group.id == defaultGroup?.id).toString())
+        return withContext(ioDispatcher) {
+            // ??????
+            val defaultGroup = groupDao.queryById(getDefaultGroupId(accountId))
+            // ?? OPML ????????
+            OpmlWriter().write(
+                Opml(
+                    "2.0",
+                    // ??????????????????
+                    Head(
+                        accountService.getCurrentAccount().name,
+                        Date().toString(), null, null, null,
+                        null, null, null, null,
+                        null, null, null, null,
+                    ),
+                    // ?????????????????
+                    Body(groupDao.queryAllGroupWithFeed(accountId).map {
+                        // ??????
+                        Outline(
+                            mutableMapOf(
+                                "text" to it.group.name,
+                                "title" to it.group.name,
+                            ).apply {
+                                // ??????????????????
+                                if (attachInfo) {
+                                    put("isDefault", (it.group.id == defaultGroup?.id).toString())
+                                }
+                            },
+                            // ??????????????
+                            it.feeds.map { feed ->
+                                buildFeedOutline(feed, attachInfo)
                             }
-                        },
-                        // 构建该分组下的所有订阅源节点
-                        it.feeds.map { feed ->
-                            Outline(
-                                mutableMapOf(
-                                    "text" to feed.name,
-                                    "title" to feed.name,
-                                    "xmlUrl" to feed.url,
-                                    "htmlUrl" to feed.url,
-                                    "icon" to (feed.icon ?: "")
-                                ).apply {
-                                    // 如果需要附加信息，添加订阅源设置
-                                    if (attachInfo) {
-                                        put("isNotification", feed.isNotification.toString())
-                                        put("isFullContent", feed.isFullContent.toString())
-                                        put("isBrowser", feed.isBrowser.toString())
-                                    }
-                                },
-                                listOf()
-                            )
-                        }
-                    )
-                })
-            )
-        )!!
+                        )
+                    })
+                )
+            )!!
+        }
     }
 
     /**
@@ -180,51 +179,37 @@ class OpmlService @Inject constructor(
      */
     @Throws(Exception::class)
     suspend fun saveSingleFeedToString(feedId: String, attachInfo: Boolean): String {
-        // 根据订阅源 ID 查询订阅源
-        val feed = feedDao.queryById(feedId) ?: throw Exception("订阅源不存在")
-        // 根据订阅源的分组 ID 查询分组
-        val group = groupDao.queryById(feed.groupId) ?: throw Exception("分组不存在")
-        // 构建 OPML 文档并返回字符串
-        return OpmlWriter().write(
-            Opml(
-                "2.0",
-                Head(
-                    accountService.getCurrentAccount().name,
-                    Date().toString(), null, null, null,
-                    null, null, null, null,
-                    null, null, null, null,
-                ),
-                Body(listOf(
-                    // 创建分组节点
-                    Outline(
-                        mutableMapOf(
-                            "text" to group.name,
-                            "title" to group.name,
-                        ),
-                        listOf(
-                            // 创建订阅源节点
-                            Outline(
-                                mutableMapOf(
-                                    "text" to feed.name,
-                                    "title" to feed.name,
-                                    "xmlUrl" to feed.url,
-                                    "htmlUrl" to feed.url,
-                                    "icon" to (feed.icon ?: "")
-                                ).apply {
-                                    // 如果需要附加信息，添加订阅源设置
-                                    if (attachInfo) {
-                                        put("isNotification", feed.isNotification.toString())
-                                        put("isFullContent", feed.isFullContent.toString())
-                                        put("isBrowser", feed.isBrowser.toString())
-                                    }
-                                },
-                                listOf()
+        return withContext(ioDispatcher) {
+            // ?????ID?????
+            val feed = feedDao.queryById(feedId) ?: throw Exception("??????")
+            // ???????? ID ????
+            val group = groupDao.queryById(feed.groupId) ?: throw Exception("?????")
+            // ?? OPML ????????
+            OpmlWriter().write(
+                Opml(
+                    "2.0",
+                    Head(
+                        accountService.getCurrentAccount().name,
+                        Date().toString(), null, null, null,
+                        null, null, null, null,
+                        null, null, null, null,
+                    ),
+                    Body(listOf(
+                        // ??????
+                        Outline(
+                            mutableMapOf(
+                                "text" to group.name,
+                                "title" to group.name,
+                            ),
+                            listOf(
+                                // ???????
+                                buildFeedOutline(feed, attachInfo)
                             )
                         )
-                    )
-                ))
-            )
-        )!!
+                    ))
+                )
+            )!!
+        }
     }
 
     /**
@@ -239,50 +224,112 @@ class OpmlService @Inject constructor(
      */
     @Throws(Exception::class)
     suspend fun saveGroupFeedsToString(groupId: String, attachInfo: Boolean): String {
-        // 根据分组 ID 查询分组
-        val group = groupDao.queryById(groupId) ?: throw Exception("分组不存在")
-        // 查询该分组下的所有订阅源
-        val feeds = feedDao.queryByGroupId(group.accountId, groupId)
-        // 构建 OPML 文档并返回字符串
-        return OpmlWriter().write(
-            Opml(
-                "2.0",
-                Head(
-                    accountService.getCurrentAccount().name,
-                    Date().toString(), null, null, null,
-                    null, null, null, null,
-                    null, null, null, null,
-                ),
-                Body(listOf(
-                    // 创建分组节点
-                    Outline(
-                        mutableMapOf(
-                            "text" to group.name,
-                            "title" to group.name,
-                        ),
-                        // 构建该分组下所有订阅源的节点列表
-                        feeds.map { feed ->
-                            Outline(
-                                mutableMapOf(
-                                    "text" to feed.name,
-                                    "title" to feed.name,
-                                    "xmlUrl" to feed.url,
-                                    "htmlUrl" to feed.url,
-                                    "icon" to (feed.icon ?: "")
-                                ).apply {
-                                    // 如果需要附加信息，添加订阅源设置
-                                    if (attachInfo) {
-                                        put("isNotification", feed.isNotification.toString())
-                                        put("isFullContent", feed.isFullContent.toString())
-                                        put("isBrowser", feed.isBrowser.toString())
-                                    }
-                                },
-                                listOf()
-                            )
-                        }
-                    )
-                ))
-            )
-        )!!
+        return withContext(ioDispatcher) {
+            // ???? ID ????
+            val group = groupDao.queryById(groupId) ?: throw Exception("?????")
+            // ????????????
+            val feeds = feedDao.queryByGroupId(group.accountId, groupId)
+            // ?? OPML ????????
+            OpmlWriter().write(
+                Opml(
+                    "2.0",
+                    Head(
+                        accountService.getCurrentAccount().name,
+                        Date().toString(), null, null, null,
+                        null, null, null, null,
+                        null, null, null, null,
+                    ),
+                    Body(listOf(
+                        // ??????
+                        Outline(
+                            mutableMapOf(
+                                "text" to group.name,
+                                "title" to group.name,
+                            ),
+                            // ????????????????
+                            feeds.map { feed ->
+                                buildFeedOutline(feed, attachInfo)
+                            }
+                        )
+                    ))
+                )
+            )!!
+        }
+    }
+    private fun buildFeedOutline(feed: Feed, attachInfo: Boolean): Outline {
+        val iconUrl = feed.icon ?: ""
+        val iconBase64 = fetchIconBase64(iconUrl)
+        return Outline(
+            mutableMapOf(
+                "text" to feed.name,
+                "title" to feed.name,
+                "xmlUrl" to feed.url,
+                "htmlUrl" to feed.url,
+                "icon" to iconUrl,
+            ).apply {
+                if (!iconBase64.isNullOrBlank()) {
+                    put("iconBase64", iconBase64)
+                }
+                if (attachInfo) {
+                    put("isNotification", feed.isNotification.toString())
+                    put("isFullContent", feed.isFullContent.toString())
+                    put("isBrowser", feed.isBrowser.toString())
+                    put("isAutoTranslate", feed.isAutoTranslate.toString())
+                    put("isAutoTranslateTitle", feed.isAutoTranslateTitle.toString())
+                    put("isImageFilterEnabled", feed.isImageFilterEnabled.toString())
+                    put("imageFilterResolution", feed.imageFilterResolution)
+                    put("imageFilterFileName", feed.imageFilterFileName)
+                    put("imageFilterDomain", feed.imageFilterDomain)
+                }
+            },
+            listOf()
+        )
+    }
+
+    private fun fetchIconBase64(iconUrl: String?): String? {
+        if (iconUrl.isNullOrBlank()) return null
+        if (iconUrl.startsWith("data:", ignoreCase = true)) {
+            return iconUrl
+        }
+        loadFromDiskCache(iconUrl)?.let { return it }
+        return downloadAndEncode(iconUrl)
+    }
+
+    private fun loadFromDiskCache(iconUrl: String): String? {
+        val request = ImageRequest.Builder(context).data(iconUrl).build()
+        val key = request.diskCacheKey ?: return null
+        val snapshot = imageLoader.diskCache?.openSnapshot(key) ?: return null
+        snapshot.use {
+            val path = it.data
+            if (!FileSystem.SYSTEM.exists(path)) return null
+            val bytes = FileSystem.SYSTEM.source(path).buffer().use { source ->
+                source.readByteArray()
+            }
+            if (bytes.isEmpty()) return null
+            return toDataUri(bytes)
+        }
+    }
+
+    private fun downloadAndEncode(iconUrl: String): String? {
+        return runCatching {
+            val request = Request.Builder().url(iconUrl).build()
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val body = response.body ?: return@use null
+                val bytes = body.bytes()
+                if (bytes.isEmpty()) return@use null
+                val mime = body.contentType()?.toString()?.substringBefore(";")
+                toDataUri(bytes, mime)
+            }
+        }.getOrNull()
+    }
+
+    private fun toDataUri(bytes: ByteArray, mimeFromHeader: String? = null): String? {
+        val mime = mimeFromHeader
+            ?: runCatching { URLConnection.guessContentTypeFromStream(ByteArrayInputStream(bytes)) }
+                .getOrNull()
+            ?: "image/*"
+        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+        return "data:$mime;base64,$base64"
     }
 }
