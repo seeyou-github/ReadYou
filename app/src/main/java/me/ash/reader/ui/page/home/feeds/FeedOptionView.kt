@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.OpenInBrowser
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -37,6 +38,7 @@ fun FeedOptionView(
     selectedOpenInBrowserPreset: Boolean = false,
     selectedAutoTranslatePreset: Boolean = false,
     selectedAutoTranslateTitlePreset: Boolean = false,
+    disableRefererEnabled: Boolean = false,
     showImageFilterOption: Boolean = false,
     imageFilterEnabled: Boolean = false,
     isMoveToGroup: Boolean = false,
@@ -49,6 +51,7 @@ fun FeedOptionView(
     openInBrowserPresetOnClick: () -> Unit = {},
     autoTranslatePresetOnClick: () -> Unit = {},
     autoTranslateTitlePresetOnClick: () -> Unit = {},
+    disableRefererOnCheckedChange: (Boolean) -> Unit = {},
     onImageFilterClick: () -> Unit = {},
     clearArticlesOnClick: () -> Unit = {},
     unsubscribeOnClick: () -> Unit = {},
@@ -106,6 +109,27 @@ fun FeedOptionView(
                     color = MaterialTheme.colorScheme.outline,
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.height(26.dp))
+        Subtitle(text = stringResource(R.string.image_request))
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.disable_referer),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Switch(
+                checked = disableRefererEnabled,
+                onCheckedChange = disableRefererOnCheckedChange,
+            )
         }
 
         if (showGroup) {

@@ -125,6 +125,7 @@ fun ArticleItem(
         shortDescription = article.shortDescription,
         timeString = article.dateString,
         imgData = article.img,
+        disableReferer = feed.isDisableReferer,
         isStarred = article.isStarred,
         isUnread = isUnread,
         colorTheme = colorTheme,
@@ -145,6 +146,7 @@ fun ArticleItem(
     shortDescription: String = "",
     timeString: String? = null,
     imgData: Any? = null,
+    disableReferer: Boolean = false,
     isStarred: Boolean = false,
     isUnread: Boolean = false,
     colorTheme: ColorTheme? = null,
@@ -279,6 +281,7 @@ fun ArticleItem(
                         .size(imageSize.dp)
                         .clip(RoundedCornerShape(imageRoundedCorners.dp)),
                     data = imgData,
+                    disableReferer = disableReferer,
                     scale = Scale.FILL,
                     precision = Precision.INEXACT,
                     size = SIZE_1000,

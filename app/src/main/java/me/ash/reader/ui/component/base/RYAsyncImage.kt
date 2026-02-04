@@ -28,6 +28,7 @@ fun RYAsyncImage(
     modifier: Modifier = Modifier,
     data: Any? = null,
     key: Any? = null,  // 2026-01-23: 添加缓存 key 支持
+    disableReferer: Boolean = false,
     size: Size = Size.ORIGINAL,
     scale: Scale = Scale.FIT,
     precision: Precision = Precision.AUTOMATIC,
@@ -44,7 +45,7 @@ fun RYAsyncImage(
                 ImageRequest.Builder(LocalContext.current)
                     .apply {
                         val domain = data.toString().extractDomain()
-                        if (data.toString().extractDomain() != null) {
+                        if (!disableReferer && data.toString().extractDomain() != null) {
                             addHeader("Referer", domain!!)
                         }
                         // 2026-01-23: 使用 key 强制 Coil 在数据变化时重新加载

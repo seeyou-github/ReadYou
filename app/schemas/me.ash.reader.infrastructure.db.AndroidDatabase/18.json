@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 18,
-    "identityHash": "a6b2c5d8e1f0a3b4c5d6e7f8a9b0c1d2",
+    "identityHash": "c9de5482a333ab4d7f76124add852735",
     "entities": [
       {
         "tableName": "account",
@@ -166,6 +166,13 @@
           {
             "fieldPath": "isImageFilterEnabled",
             "columnName": "isImageFilterEnabled",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "isDisableReferer",
+            "columnName": "isDisableReferer",
             "affinity": "INTEGER",
             "notNull": true,
             "defaultValue": "0"
@@ -576,7 +583,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a6b2c5d8e1f0a3b4c5d6e7f8a9b0c1d2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c9de5482a333ab4d7f76124add852735')"
     ]
   }
 }

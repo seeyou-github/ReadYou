@@ -50,9 +50,9 @@ fun LargeImageArticleItem(
 
     // 2026-01-28: 获取尺寸设置
     val horizontalPadding = LocalFlowArticleListHorizontalPadding.current
-    val imageRoundedCorners = LocalFlowArticleListRoundedCorners.current  //圆角使用：列表背景圆角
+    val imageRoundedCorners = LocalFlowArticleListRoundedCorners.current  //圆角使用：列表背景圆�?
     val imageBrightness = LocalReadingImageBrightness.current
-    // 2026-01-28: 标题大小和行距
+    // 2026-01-28: 标题大小和行�?
     val titleFontSize = LocalFlowArticleListTitleFontSize.current
     val titleLineHeight = LocalFlowArticleListTitleLineHeight.current
 
@@ -71,32 +71,34 @@ fun LargeImageArticleItem(
         null
     }
 
-    // 2026-01-28: 使用颜色主题的文字颜色和背景色(50%透明度)
+    // 2026-01-28: 使用颜色主题的文字颜色和背景�?50%透明�?
     val themeTextColor = selectedColorTheme?.textColor ?: Color.Black
     val themeBackgroundColor = selectedColorTheme?.backgroundColor?.let {
-        Color(it.red, it.green, it.blue, 0.6f) // 50%透明度
+        Color(it.red, it.green, it.blue, 0.6f) // 50%透明�?
     } ?: Color.Black.copy(alpha = 0.6f)
 
     Box(
         modifier = modifier
             .fillMaxWidth()                       // 宽度撑满父布局
-            .aspectRatio(16f / 9f)                // 固定为 16:9 比例（常见封面图）
-            .padding(horizontal = horizontalPadding.dp)       // 左右内边距
-            .clip(RoundedCornerShape(imageRoundedCorners.dp)) // 裁剪成圆角
-            .clickable {                           // 整个区域可点击
-                onClick(articleWithFeed)           // 点击回调，传入文章数据
+            .aspectRatio(16f / 9f)                // 固定�?16:9 比例（常见封面图�?
+            .padding(horizontal = horizontalPadding.dp)       // 左右内边�?
+            .clip(RoundedCornerShape(imageRoundedCorners.dp)) // 裁剪成圆�?
+            .clickable {                           // 整个区域可点�?
+                onClick(articleWithFeed)           // 点击回调，传入文章数�?
             }
     ) {
-        // 封面背景大图（有图才显示）
+        // 封面背景大图（有图才显示�?
         if (imageUrl != null) {
             RYAsyncImage(
                 modifier = Modifier.fillMaxSize(), // 图片铺满整个 Box
-                data = imageUrl,                   // 图片地址（URL）
-                scale = Scale.FIT,                 // 按目标尺寸加载，省内存
+                data = imageUrl,
+                disableReferer = articleWithFeed.feed.isDisableReferer,
+                // 图片地址（URL�?
+                scale = Scale.FIT,                 // 按目标尺寸加载，省内�?
                 precision = Precision.INEXACT,     // 不要求精确尺寸，加载更快
                 size = SIZE_1000,                  // 限制最大加载尺寸，防止原图过大
-                contentScale = ContentScale.Crop,  // 等比裁剪填满（封面图常用）
-                colorFilter = brightnessFilter,    // 亮度/暗色滤镜，增强可读性
+                contentScale = ContentScale.Crop,  // 等比裁剪填满（封面图常用�?
+                colorFilter = brightnessFilter,    // 亮度/暗色滤镜，增强可读�?
             )
         }
 
@@ -108,20 +110,20 @@ fun LargeImageArticleItem(
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
                 .background(
-                    color = themeBackgroundColor, // 2026-01-28: 使用颜色主题的背景色(50%透明度)
+                    color = themeBackgroundColor, // 2026-01-28: 使用颜色主题的背景色(50%透明�?
 //                    shape = RoundedCornerShape(bottomStart = imageRoundedCorners.dp, bottomEnd = imageRoundedCorners.dp)
                 )
                 .padding(0.dp),
             verticalArrangement = Arrangement.Bottom
         ) {
-            // 文章标题（最多2行）- 2026-01-28: 使用标题大小和行距设置
+            // 文章标题（最�?行）- 2026-01-28: 使用标题大小和行距设�?
             Text(
                 text = translatedTitle ?: article.title,
                 style = MaterialTheme.typography.titleMedium.applyTextDirection((translatedTitle ?: article.title).requiresBidi()).copy(
                     fontSize = titleFontSize.sp,
                     lineHeight = (titleFontSize * titleLineHeight).sp
                 ),
-                color = themeTextColor, // 2026-01-28: 使用颜色主题的文字颜色
+                color = themeTextColor, // 2026-01-28: 使用颜色主题的文字颜�?
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier

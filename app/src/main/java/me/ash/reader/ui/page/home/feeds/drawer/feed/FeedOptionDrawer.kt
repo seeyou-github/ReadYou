@@ -137,6 +137,7 @@ fun FeedOptionDrawer(
                     selectedOpenInBrowserPreset = feedOptionUiState.feed?.isBrowser ?: false,
                     selectedAutoTranslatePreset = feedOptionUiState.feed?.isAutoTranslate ?: false,
                     selectedAutoTranslateTitlePreset = feedOptionUiState.feed?.isAutoTranslateTitle ?: false,
+                    disableRefererEnabled = feedOptionUiState.feed?.isDisableReferer ?: false,
                     showImageFilterOption = true,
                     imageFilterEnabled = feedOptionUiState.feed?.isImageFilterEnabled ?: false,
                     isMoveToGroup = true,
@@ -163,6 +164,9 @@ fun FeedOptionDrawer(
                     autoTranslateTitlePresetOnClick = {
                         Timber.tag("AutoTranslateTitle").d("onClick: Auto translate title button clicked")
                         feedOptionViewModel.changeAutoTranslateTitlePreset()
+                    },
+                    disableRefererOnCheckedChange = {
+                        feedOptionViewModel.setDisableReferer(it)
                     },
                     onImageFilterClick = {
                         feedOptionViewModel.showImageFilterDialog()

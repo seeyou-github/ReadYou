@@ -277,6 +277,7 @@ class OpmlService @Inject constructor(
                     put("isAutoTranslate", feed.isAutoTranslate.toString())
                     put("isAutoTranslateTitle", feed.isAutoTranslateTitle.toString())
                     put("isImageFilterEnabled", feed.isImageFilterEnabled.toString())
+                    put("isDisableReferer", feed.isDisableReferer.toString())
                     put("imageFilterResolution", feed.imageFilterResolution)
                     put("imageFilterFileName", feed.imageFilterFileName)
                     put("imageFilterDomain", feed.imageFilterDomain)

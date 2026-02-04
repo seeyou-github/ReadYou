@@ -21,7 +21,7 @@ import java.util.*
 
 @Database(
     entities = [Account::class, Feed::class, Article::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class],
-    version = 17,
+    version = 18,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 5, to = 7),
@@ -165,6 +165,21 @@ abstract class AndroidDatabase : RoomDatabase() {
                         )
                     }
                 }
+                /**
+                 * 鏁版嵁搴撹縼绉伙：浠庣増鏈?17 鍒扮版本?18
+                 *
+                 * 1. 向 feed 表添加 isDisableReferer 字段
+                 *
+                 * 修改日期：2026-02-04
+                 * 修改原因：新增订阅源级“禁止 Referer”开关
+                 */
+                private val MIGRATION_17_18 = object : Migration(17, 18) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE feed ADD COLUMN isDisableReferer INTEGER NOT NULL DEFAULT 0"
+                        )
+                    }
+                }
         fun getInstance(context: Context): AndroidDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -176,7 +191,8 @@ abstract class AndroidDatabase : RoomDatabase() {
                     MIGRATION_13_14,
                     MIGRATION_14_15,
                     MIGRATION_15_16,
-                    MIGRATION_16_17
+                    MIGRATION_16_17,
+                    MIGRATION_17_18
                 )
                  .build().also {
                     instance = it

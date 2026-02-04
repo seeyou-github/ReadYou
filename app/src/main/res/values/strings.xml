@@ -476,4 +476,6 @@
     <string name="image_filter_domain">Domain contains</string>
     <string name="image_filter_domain_hint">e.g. example.com</string>
     <string name="image_filter_note">Leave empty to ignore. If multiple rules are set, any match will filter.</string>
+    <string name="image_request">Image request</string>
+    <string name="disable_referer">Disable Referer</string>
 </resources>

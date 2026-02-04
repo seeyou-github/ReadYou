@@ -62,6 +62,7 @@ class OPMLDataSource @Inject constructor(
                             isAutoTranslate = outline.extractPresetAutoTranslate(),
                             isAutoTranslateTitle = outline.extractPresetAutoTranslateTitle(),
                             isImageFilterEnabled = outline.extractPresetImageFilterEnabled(),
+                            isDisableReferer = outline.extractPresetDisableReferer(),
                             imageFilterResolution = outline.extractPresetImageFilterResolution(),
                             imageFilterFileName = outline.extractPresetImageFilterFileName(),
                             imageFilterDomain = outline.extractPresetImageFilterDomain(),
@@ -96,6 +97,7 @@ class OPMLDataSource @Inject constructor(
                                 isAutoTranslate = subOutline.extractPresetAutoTranslate(),
                                 isAutoTranslateTitle = subOutline.extractPresetAutoTranslateTitle(),
                                 isImageFilterEnabled = subOutline.extractPresetImageFilterEnabled(),
+                                isDisableReferer = subOutline.extractPresetDisableReferer(),
                                 imageFilterResolution = subOutline.extractPresetImageFilterResolution(),
                                 imageFilterFileName = subOutline.extractPresetImageFilterFileName(),
                                 imageFilterDomain = subOutline.extractPresetImageFilterDomain(),
@@ -169,6 +171,9 @@ class OPMLDataSource @Inject constructor(
 
     private fun Outline?.extractPresetImageFilterEnabled(): Boolean =
         this?.attributes?.getOrDefault("isImageFilterEnabled", null).toBoolean()
+
+    private fun Outline?.extractPresetDisableReferer(): Boolean =
+        this?.attributes?.getOrDefault("isDisableReferer", null).toBoolean()
 
     private fun Outline?.extractPresetImageFilterResolution(): String =
         this?.attributes?.getOrDefault("imageFilterResolution", null) ?: ""
