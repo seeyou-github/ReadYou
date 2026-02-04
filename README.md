@@ -34,24 +34,24 @@
 
 ## 修改与新增功能：
 
-<img src="screenshot/1.png" alt="1" style="zoom: 20%;" /><img src="screenshot/2.png" alt="2" style="zoom: 20%;" /><img src="screenshot/3.png" alt="3" style="zoom: 20%;" />
+<img src="screenshot/1.png" alt="1" width="200" /><img src="screenshot/2.png" alt="2" width="200" /><img src="screenshot/3.png" alt="3" width="200" />
 
 
 ---
 
-<img src="screenshot/4.png" alt="1" style="zoom:20%;" /><img src="screenshot/5.png" alt="2" style="zoom:20%;" /><img src="screenshot/6.png" alt="3" style="zoom:20%;" />
-
-
-
----
-
-<img src="screenshot/7.png" alt="1" style="zoom:20%;" /><img src="screenshot/8.png" alt="2" style="zoom:20%;" /><img src="screenshot/9.png" alt="3" style="zoom:20%;" />
+<img src="screenshot/4.png" alt="1" width="200" /><img src="screenshot/5.png" alt="2" width="200" /><img src="screenshot/6.png" alt="3" width="200" />
 
 
 
 ---
 
-<img src="screenshot/10.png" alt="1" style="zoom:20%;" /><img src="screenshot/11.png" alt="2" style="zoom:20%;" />
+<img src="screenshot/7.png" alt="1" width="200" /><img src="screenshot/8.png" alt="2" width="200" /><img src="screenshot/9.png" alt="3" width="200" />
+
+
+
+---
+
+<img src="screenshot/10.png" alt="1" width="200" /><img src="screenshot/11.png" alt="2" width="200" />
 
 ## Build
 
