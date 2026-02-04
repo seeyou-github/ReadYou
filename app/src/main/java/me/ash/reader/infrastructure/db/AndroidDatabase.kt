@@ -21,7 +21,7 @@ import java.util.*
 
 @Database(
     entities = [Account::class, Feed::class, Article::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class],
-    version = 18,
+    version = 19,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 5, to = 7),
@@ -180,6 +180,21 @@ abstract class AndroidDatabase : RoomDatabase() {
                         )
                     }
                 }
+                /**
+                 * 数据库迁移：从版本 18 到版本 19
+                 *
+                 * 1. 向 feed 表添加 isDisableJavaScript 字段
+                 *
+                 * 修改日期：2026-02-04
+                 * 修改原因：新增订阅源级“关闭JS”开关
+                 */
+                private val MIGRATION_18_19 = object : Migration(18, 19) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE feed ADD COLUMN isDisableJavaScript INTEGER NOT NULL DEFAULT 0"
+                        )
+                    }
+                }
         fun getInstance(context: Context): AndroidDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -192,7 +207,8 @@ abstract class AndroidDatabase : RoomDatabase() {
                     MIGRATION_14_15,
                     MIGRATION_15_16,
                     MIGRATION_16_17,
-                    MIGRATION_17_18
+                    MIGRATION_17_18,
+                    MIGRATION_18_19
                 )
                  .build().also {
                     instance = it

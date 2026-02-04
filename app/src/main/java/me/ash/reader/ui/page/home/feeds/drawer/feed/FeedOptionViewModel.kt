@@ -66,6 +66,7 @@ constructor(
                 imageFilterFileName = feed?.imageFilterFileName ?: "",
                 imageFilterDomain = feed?.imageFilterDomain ?: "",
                 disableRefererEnabled = feed?.isDisableReferer ?: false,
+                disableJavaScriptEnabled = feed?.isDisableJavaScript ?: false,
             )
         }
     }
@@ -148,6 +149,15 @@ constructor(
         viewModelScope.launch(ioDispatcher) {
             _feedOptionUiState.value.feed?.let {
                 rssService.get().updateFeed(it.copy(isDisableReferer = enabled))
+                fetchFeed(it.id)
+            }
+        }
+    }
+
+    fun setDisableJavaScript(enabled: Boolean) {
+        viewModelScope.launch(ioDispatcher) {
+            _feedOptionUiState.value.feed?.let {
+                rssService.get().updateFeed(it.copy(isDisableJavaScript = enabled))
                 fetchFeed(it.id)
             }
         }
@@ -378,4 +388,5 @@ data class FeedOptionUiState(
     val imageFilterFileName: String = "",
     val imageFilterDomain: String = "",
     val disableRefererEnabled: Boolean = false,
+    val disableJavaScriptEnabled: Boolean = false,
 )

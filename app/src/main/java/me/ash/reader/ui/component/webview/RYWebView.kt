@@ -41,6 +41,7 @@ fun RYWebView(
     modifier: Modifier = Modifier,
     content: String,
     refererDomain: String? = null,
+    enableJavaScript: Boolean = true,
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
     onWebViewReady: ((android.webkit.WebView) -> Unit)? = null,
 ) {
@@ -86,7 +87,9 @@ fun RYWebView(
                             onOpenLink = { url ->
                                 context.openURL(url, openLink, openLinkSpecificBrowser)
                             },
+                            enableJavaScript = enableJavaScript,
                         ),
+                    enableJavaScript = enableJavaScript,
                     onImageClick = onImageClick,
                 )
             )

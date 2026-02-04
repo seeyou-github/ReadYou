@@ -138,6 +138,7 @@ fun FeedOptionDrawer(
                     selectedAutoTranslatePreset = feedOptionUiState.feed?.isAutoTranslate ?: false,
                     selectedAutoTranslateTitlePreset = feedOptionUiState.feed?.isAutoTranslateTitle ?: false,
                     disableRefererEnabled = feedOptionUiState.feed?.isDisableReferer ?: false,
+                    disableJavaScriptEnabled = feedOptionUiState.feed?.isDisableJavaScript ?: false,
                     showImageFilterOption = true,
                     imageFilterEnabled = feedOptionUiState.feed?.isImageFilterEnabled ?: false,
                     isMoveToGroup = true,
@@ -167,6 +168,9 @@ fun FeedOptionDrawer(
                     },
                     disableRefererOnCheckedChange = {
                         feedOptionViewModel.setDisableReferer(it)
+                    },
+                    disableJavaScriptOnCheckedChange = {
+                        feedOptionViewModel.setDisableJavaScript(it)
                     },
                     onImageFilterClick = {
                         feedOptionViewModel.showImageFilterDialog()

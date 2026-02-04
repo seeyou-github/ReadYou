@@ -20,6 +20,7 @@ class WebViewClient(
     private val context: Context,
     private val refererDomain: String?,
     private val onOpenLink: (url: String) -> Unit,
+    private val enableJavaScript: Boolean = true,
 ) : WebViewClient() {
 
     override fun shouldInterceptRequest(
@@ -60,7 +61,9 @@ class WebViewClient(
 
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
-        view!!.evaluateJavascript(OnImgClickScript, null)
+        if (enableJavaScript) {
+            view!!.evaluateJavascript(OnImgClickScript, null)
+        }
     }
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {

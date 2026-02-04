@@ -50,6 +50,7 @@ fun Content(
     contentPadding: PaddingValues = PaddingValues(),
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
     onWebViewReady: ((android.webkit.WebView) -> Unit)? = null,
+    disableJavaScript: Boolean = false,
 ) {
     val context = LocalContext.current
     val subheadUpperCase = LocalReadingSubheadUpperCase.current
@@ -103,6 +104,7 @@ fun Content(
                                 modifier = Modifier.fillMaxSize(),
                                 content = content,
                                 refererDomain = link.extractDomain(),
+                                enableJavaScript = !disableJavaScript,
                                 onImageClick = onImageClick,
                                 onWebViewReady = onWebViewReady,
                             )

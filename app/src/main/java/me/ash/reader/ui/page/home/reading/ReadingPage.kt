@@ -418,19 +418,20 @@ fun ReadingPage(
                                                     enabled = isPullToSwitchArticleEnabled,
                                                 ),
                                             contentPadding = paddings,
-                                            content = displayContent.text ?: "",
-                                            feedName = readerState.feedName,
-                                            title = displayTitle ?: "",
-                                            author = readerState.author,
-                                            link = readerState.link,
-                                            publishedDate = readerState.publishedDate,
-                                            isLoading = readerState.content is ReaderState.Loading,
-                                            scrollState = scrollState,
-                                            listState = listState,
-                                            onImageClick = { imgUrl, altText ->
-                                                currentImageData = ImageData(imgUrl, altText)
-                                                showFullScreenImageViewer = true
-                                            },
+                                              content = displayContent.text ?: "",
+                                              feedName = readerState.feedName,
+                                              title = displayTitle ?: "",
+                                              author = readerState.author,
+                                              link = readerState.link,
+                                              publishedDate = readerState.publishedDate,
+                                              isLoading = readerState.content is ReaderState.Loading,
+                                              scrollState = scrollState,
+                                              listState = listState,
+                                              disableJavaScript = readingUiState.articleWithFeed?.feed?.isDisableJavaScript ?: false,
+                                              onImageClick = { imgUrl, altText ->
+                                                  currentImageData = ImageData(imgUrl, altText)
+                                                  showFullScreenImageViewer = true
+                                              },
                                             onWebViewReady = { webView ->
                                                 webViewRef = webView
                                                 // 2026-01-31: WebView准备就绪，后续缓存恢复由TranslateButton处理

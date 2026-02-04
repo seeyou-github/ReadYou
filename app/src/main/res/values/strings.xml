@@ -478,4 +478,5 @@
     <string name="image_filter_note">Leave empty to ignore. If multiple rules are set, any match will filter.</string>
     <string name="image_request">Image request</string>
     <string name="disable_referer">Disable Referer</string>
+    <string name="disable_javascript">Disable JavaScript</string>
 </resources>

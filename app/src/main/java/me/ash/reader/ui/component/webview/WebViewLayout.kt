@@ -15,6 +15,7 @@ object WebViewLayout {
         context: Context,
         readingFontsPreference: ReadingFontsPreference,
         webViewClient: WebViewClient,
+        enableJavaScript: Boolean = true,
         onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
     ) = WebView(context).apply {
         this.webViewClient = webViewClient
@@ -42,7 +43,7 @@ object WebViewLayout {
                 else -> "sans-serif"
             }
             domStorageEnabled = true
-            javaScriptEnabled = true
+            javaScriptEnabled = enableJavaScript
             addJavascriptInterface(object : JavaScriptInterface {
                 @JavascriptInterface
                 override fun onImgTagClick(imgUrl: String?, alt: String?) {

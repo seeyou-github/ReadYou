@@ -43,6 +43,8 @@ data class Feed(
     val isImageFilterEnabled: Boolean = false,
     @ColumnInfo(defaultValue = "0")
     val isDisableReferer: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val isDisableJavaScript: Boolean = false,
     @ColumnInfo(defaultValue = "")
     val imageFilterResolution: String = "",
     @ColumnInfo(defaultValue = "")
@@ -67,6 +69,7 @@ data class Feed(
         isAutoTranslateTitle: Boolean = false,
         isImageFilterEnabled: Boolean = false,
         isDisableReferer: Boolean = false,
+        isDisableJavaScript: Boolean = false,
         imageFilterResolution: String = "",
         imageFilterFileName: String = "",
         imageFilterDomain: String = "",
@@ -85,6 +88,7 @@ data class Feed(
         isAutoTranslateTitle = isAutoTranslateTitle,
         isImageFilterEnabled = isImageFilterEnabled,
         isDisableReferer = isDisableReferer,
+        isDisableJavaScript = isDisableJavaScript,
         imageFilterResolution = imageFilterResolution,
         imageFilterFileName = imageFilterFileName,
         imageFilterDomain = imageFilterDomain,

@@ -39,6 +39,7 @@ fun FeedOptionView(
     selectedAutoTranslatePreset: Boolean = false,
     selectedAutoTranslateTitlePreset: Boolean = false,
     disableRefererEnabled: Boolean = false,
+    disableJavaScriptEnabled: Boolean = false,
     showImageFilterOption: Boolean = false,
     imageFilterEnabled: Boolean = false,
     isMoveToGroup: Boolean = false,
@@ -52,6 +53,7 @@ fun FeedOptionView(
     autoTranslatePresetOnClick: () -> Unit = {},
     autoTranslateTitlePresetOnClick: () -> Unit = {},
     disableRefererOnCheckedChange: (Boolean) -> Unit = {},
+    disableJavaScriptOnCheckedChange: (Boolean) -> Unit = {},
     onImageFilterClick: () -> Unit = {},
     clearArticlesOnClick: () -> Unit = {},
     unsubscribeOnClick: () -> Unit = {},
@@ -129,6 +131,27 @@ fun FeedOptionView(
             Switch(
                 checked = disableRefererEnabled,
                 onCheckedChange = disableRefererOnCheckedChange,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(26.dp))
+        Subtitle(text = stringResource(R.string.webview))
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.disable_javascript),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Switch(
+                checked = disableJavaScriptEnabled,
+                onCheckedChange = disableJavaScriptOnCheckedChange,
             )
         }
 
