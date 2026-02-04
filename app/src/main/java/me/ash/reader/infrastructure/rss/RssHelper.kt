@@ -175,6 +175,7 @@ constructor(
         //                    "desc: ${desc}\n" +
         //                    "content: ${content}\n"
         //        )
+        val baseUrl = syndEntry.link ?: feed.url
         return Article(
             id = accountId.spacerDollar(UUID.randomUUID().toString()),
             accountId = accountId,
@@ -188,8 +189,8 @@ constructor(
             shortDescription = Readability.parseToText(desc ?: content, syndEntry.link).take(280),
             //            fullContent = content,
             img = run {
-                val textThumbnail = findThumbnailWithFilter(content ?: desc, feed)
-                val syndThumbnail = findThumbnail(syndEntry)
+                val textThumbnail = findThumbnailWithFilter(content ?: desc, feed, baseUrl)
+                val syndThumbnail = findThumbnail(syndEntry, baseUrl)
                 if (feed.isImageFilterEnabled && shouldApplyImageFilter(feed) && syndThumbnail != null) {
                     val candidate = ImageCandidate(src = syndThumbnail)
                     if (shouldFilterImage(feed, candidate)) textThumbnail else syndThumbnail
@@ -202,20 +203,24 @@ constructor(
         )
     }
 
-    fun findThumbnail(syndEntry: SyndEntry): String? {
-        if (syndEntry.enclosures?.firstOrNull()?.url != null) {
-            return syndEntry.enclosures.first().url
+    fun findThumbnail(syndEntry: SyndEntry, baseUrl: String? = null): String? {
+        val enclosure = syndEntry.enclosures?.firstOrNull()
+        if (enclosure?.url != null) {
+            val contentType = enclosure.type ?: ""
+            if (contentType.startsWith("image/", ignoreCase = true)) {
+                return resolveUrl(baseUrl, enclosure.url)
+            }
         }
 
         val mediaModule = syndEntry.getModule(MediaModule.URI) as? MediaEntryModule
         if (mediaModule != null) {
-            return findThumbnail(mediaModule)
+            return findThumbnail(mediaModule, baseUrl)
         }
 
         return null
     }
 
-    private fun findThumbnail(mediaModule: MediaEntryModule): String? {
+    private fun findThumbnail(mediaModule: MediaEntryModule, baseUrl: String? = null): String? {
         val candidates =
             buildList {
                     add(mediaModule.metadata)
@@ -227,11 +232,11 @@ constructor(
         val thumbnail = candidates.firstOrNull()
 
         if (thumbnail != null) {
-            return thumbnail.url.toString()
+            return resolveUrl(baseUrl, thumbnail.url.toString())
         } else {
             val imageMedia = mediaModule.mediaContents.firstOrNull { it.medium == "image" }
             if (imageMedia != null) {
-                return (imageMedia.reference as? UrlReference)?.url.toString()
+                return resolveUrl(baseUrl, (imageMedia.reference as? UrlReference)?.url.toString())
             }
         }
         return null
@@ -256,9 +261,9 @@ constructor(
         return imgRegex.find(text)?.groupValues?.get(2)?.takeIf { !it.startsWith("data:") }
     }
 
-    fun findThumbnailWithFilter(text: String?, feed: Feed): String? {
+    fun findThumbnailWithFilter(text: String?, feed: Feed, baseUrl: String? = null): String? {
         text ?: return null
-        val candidates = extractImageCandidates(text)
+        val candidates = extractImageCandidates(text, baseUrl)
         if (candidates.isEmpty()) return null
         if (!feed.isImageFilterEnabled || !shouldApplyImageFilter(feed)) {
             return candidates.firstOrNull()?.src
@@ -289,14 +294,15 @@ constructor(
         }
     }
 
-    private fun extractImageCandidates(text: String): List<ImageCandidate> {
+    private fun extractImageCandidates(text: String, baseUrl: String? = null): List<ImageCandidate> {
         return imgTagRegex.findAll(text).mapNotNull { match ->
             val tag = match.value
             val src = imgSrcRegex.find(tag)?.groupValues?.get(2) ?: return@mapNotNull null
             if (src.startsWith("data:")) return@mapNotNull null
+            val resolved = resolveUrl(baseUrl, src)
             val width = imgWidthRegex.find(tag)?.groupValues?.get(2)?.toIntOrNull()
             val height = imgHeightRegex.find(tag)?.groupValues?.get(2)?.toIntOrNull()
-            ImageCandidate(src = src, width = width, height = height)
+            ImageCandidate(src = resolved, width = width, height = height)
         }.toList()
     }
 
@@ -351,6 +357,12 @@ constructor(
 
     private fun normalizeUrl(url: String): String {
         return url.substringBefore("#").substringBefore("?")
+    }
+
+    private fun resolveUrl(baseUrl: String?, url: String): String {
+        if (url.startsWith("http://") || url.startsWith("https://")) return url
+        if (baseUrl.isNullOrBlank()) return url
+        return runCatching { java.net.URI(baseUrl).resolve(url).toString() }.getOrDefault(url)
     }
 
     suspend fun queryRssIconLink(feedLink: String?): String? {
