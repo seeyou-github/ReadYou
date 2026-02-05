@@ -58,6 +58,7 @@ fun FeedOptionView(
     clearArticlesOnClick: () -> Unit = {},
     unsubscribeOnClick: () -> Unit = {},
     exportFeedAsOpmlOnClick: () -> Unit = {},
+    exportFeedLabel: String = "",
     onGroupClick: (groupId: String) -> Unit = {},
     onAddNewGroup: () -> Unit = {},
     onFeedUrlClick: () -> Unit = {},
@@ -82,6 +83,7 @@ fun FeedOptionView(
             clearArticlesOnClick = clearArticlesOnClick,
             unsubscribeOnClick = unsubscribeOnClick,
             exportFeedAsOpmlOnClick = exportFeedAsOpmlOnClick,
+            exportFeedLabel = exportFeedLabel,
             autoTranslatePresetOnClick = autoTranslatePresetOnClick,
             autoTranslateTitlePresetOnClick = autoTranslateTitlePresetOnClick,
         )
@@ -206,6 +208,7 @@ private fun Preset(
     clearArticlesOnClick: () -> Unit = {},
     unsubscribeOnClick: () -> Unit = {},
     exportFeedAsOpmlOnClick: () -> Unit = {},
+    exportFeedLabel: String = "",
 ) {
     Subtitle(text = stringResource(R.string.reading_page))
     Spacer(modifier = Modifier.height(10.dp))
@@ -300,7 +303,7 @@ private fun Preset(
         if (notSubscribeMode) {
             RYSelectionChip(
                 modifier = Modifier,
-                content = stringResource(R.string.export_feed_as_opml),
+                content = exportFeedLabel.ifBlank { stringResource(R.string.export_feed_as_opml) },
                 selected = false,
             ) {
                 exportFeedAsOpmlOnClick()

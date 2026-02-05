@@ -24,6 +24,10 @@ sealed interface Route : NavKey {
     // Settings
     @Serializable data object Settings : Route
 
+    // Plugins
+    @Serializable data object Plugins : Route
+    @Serializable data class PluginEditor(val pluginId: String?) : Route
+
     // Accounts
     @Serializable data object Accounts : Route
 

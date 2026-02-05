@@ -24,6 +24,7 @@ import me.ash.reader.domain.service.RssService
 import me.ash.reader.infrastructure.android.AndroidStringsHelper
 import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.rss.RssHelper
+import me.ash.reader.plugin.PluginRuleTransferService
 import me.ash.reader.ui.ext.formatUrl
 
 @HiltViewModel
@@ -34,6 +35,7 @@ constructor(
     val rssService: RssService,
     private val rssHelper: RssHelper,
     private val androidStringsHelper: AndroidStringsHelper,
+    private val pluginRuleTransferService: PluginRuleTransferService,
     @ApplicationScope private val applicationScope: CoroutineScope,
     accountService: AccountService,
 ) : ViewModel() {
@@ -73,6 +75,20 @@ constructor(
         applicationScope.launch {
             opmlService.saveToDatabase(inputStream)
             rssService.get().doSyncOneTime()
+        }
+    }
+
+    fun importLocalRule(inputStream: InputStream, onResult: (String) -> Unit) {
+        applicationScope.launch {
+            val json = inputStream.readBytes().decodeToString()
+            pluginRuleTransferService.importRule(json)
+                .onSuccess {
+                    rssService.get().doSyncOneTime()
+                    onResult("本地规则导入成功")
+                }
+                .onFailure { th ->
+                    onResult("本地规则导入失败：${th.message}")
+                }
         }
     }
 

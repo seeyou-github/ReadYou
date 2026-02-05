@@ -28,7 +28,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -53,9 +57,7 @@ import me.ash.reader.ui.ext.roundClick
 import me.ash.reader.ui.ext.showToast
 import me.ash.reader.ui.interaction.alphaIndicationClickable
 import me.ash.reader.ui.page.home.feeds.FeedOptionView
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import me.ash.reader.plugin.PluginConstants
 
 @Composable
 fun FeedOptionDrawer(
@@ -71,16 +73,32 @@ fun FeedOptionDrawer(
     val feedOptionUiState = feedOptionViewModel.feedOptionUiState.collectAsStateValue()
     val feed = feedOptionUiState.feed
     val toastString = stringResource(R.string.rename_toast, feedOptionUiState.newName)
+    val isLocalRule = feed?.url?.startsWith(PluginConstants.PLUGIN_URL_PREFIX) == true
+    val exportLabel =
+        if (isLocalRule) stringResource(R.string.export_local_rule_json)
+        else stringResource(R.string.export_feed_as_opml)
+
+    var pendingExportContent by remember { mutableStateOf("") }
 
     val exportFeedOpmlLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/xml")
     ) { result ->
         result?.let { uri ->
             scope.launch {
-                val feedId = feed?.id ?: return@launch
-                val opmlString = feedOptionViewModel.exportFeedAsOpml(feedId)
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    outputStream.write(opmlString.toByteArray())
+                    outputStream.write(pendingExportContent.toByteArray())
+                }
+            }
+        }
+    }
+
+    val exportFeedJsonLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { result ->
+        result?.let { uri ->
+            scope.launch {
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(pendingExportContent.toByteArray())
                 }
             }
         }
@@ -183,11 +201,17 @@ fun FeedOptionDrawer(
                     },
                     exportFeedAsOpmlOnClick = {
                         if (feed == null) return@FeedOptionView
-                        val date = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date())
-                        val baseName = (feed.name ?: "feed").ifBlank { "feed" }
-                        val fileName = "${baseName}_${date}.xml"
-                        exportFeedOpmlLauncher.launch(fileName)
+                        scope.launch {
+                            val export = feedOptionViewModel.buildExportPayload(feed.id)
+                            pendingExportContent = export.content
+                            if (export.mime == "application/json") {
+                                exportFeedJsonLauncher.launch(export.fileName)
+                            } else {
+                                exportFeedOpmlLauncher.launch(export.fileName)
+                            }
+                        }
                     },
+                    exportFeedLabel = exportLabel,
                     onGroupClick = {
                         feedOptionViewModel.selectedGroup(it)
                     },

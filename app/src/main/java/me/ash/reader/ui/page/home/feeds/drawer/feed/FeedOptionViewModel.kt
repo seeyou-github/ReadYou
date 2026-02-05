@@ -1,7 +1,5 @@
 package me.ash.reader.ui.page.home.feeds.drawer.feed
 
-import android.content.Context
-import android.content.Intent
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -22,11 +20,16 @@ import timber.log.Timber
 import me.ash.reader.domain.repository.FeedDao
 import me.ash.reader.domain.service.OpmlService
 import me.ash.reader.domain.service.RssService
-import me.ash.reader.R
 import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.IODispatcher
 import me.ash.reader.infrastructure.di.MainDispatcher
 import me.ash.reader.infrastructure.rss.RssHelper
+import me.ash.reader.plugin.PluginConstants
+import me.ash.reader.plugin.PluginRuleDao
+import me.ash.reader.plugin.PluginRuleTransferService
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterialApi::class)
 @HiltViewModel
@@ -40,6 +43,8 @@ constructor(
     private val rssHelper: RssHelper,
     private val feedDao: FeedDao,
     private val opmlService: OpmlService,
+    private val pluginRuleDao: PluginRuleDao,
+    private val pluginRuleTransferService: PluginRuleTransferService,
 ) : ViewModel() {
 
     private val _feedOptionUiState = MutableStateFlow(FeedOptionUiState())
@@ -363,10 +368,43 @@ constructor(
         }
     }
 
-    suspend fun exportFeedAsOpml(feedId: String): String {
-        return opmlService.saveSingleFeedToString(feedId, attachInfo = true)
+    suspend fun buildExportPayload(feedId: String): ExportPayload {
+        return withContext(ioDispatcher) {
+            val feed = rssService.get().findFeedById(feedId)
+                ?: return@withContext ExportPayload(
+                    fileName = "feed_${System.currentTimeMillis()}.xml",
+                    mime = "text/xml",
+                    content = "",
+                )
+            val date = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date())
+            val baseName = (feed.name ?: "feed").ifBlank { "feed" }
+            if (feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) {
+                val ruleId = feed.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX)
+                val rule = pluginRuleDao.queryById(ruleId)
+                if (rule != null) {
+                    val json = pluginRuleTransferService.exportRule(rule, feed)
+                    return@withContext ExportPayload(
+                        fileName = "${baseName}_${date}.json",
+                        mime = "application/json",
+                        content = json,
+                    )
+                }
+            }
+            val opml = opmlService.saveSingleFeedToString(feedId, attachInfo = true)
+            ExportPayload(
+                fileName = "${baseName}_${date}.xml",
+                mime = "text/xml",
+                content = opml,
+            )
+        }
     }
 }
+
+data class ExportPayload(
+    val fileName: String,
+    val mime: String,
+    val content: String,
+)
 
 data class FeedOptionUiState(
     val feed: Feed? = null,

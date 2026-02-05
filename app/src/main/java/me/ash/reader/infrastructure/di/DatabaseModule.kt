@@ -13,6 +13,7 @@ import me.ash.reader.domain.repository.BlacklistKeywordDao
 import me.ash.reader.domain.repository.FeedDao
 import me.ash.reader.domain.repository.GroupDao
 import me.ash.reader.infrastructure.db.AndroidDatabase
+import me.ash.reader.plugin.PluginRuleDao
 import javax.inject.Singleton
 
 /**
@@ -56,6 +57,11 @@ object DatabaseModule {
     @Singleton
     fun provideArticleTranslationCacheDao(androidDatabase: AndroidDatabase): ArticleTranslationCacheDao =
         androidDatabase.articleTranslationCacheDao()
+
+    @Provides
+    @Singleton
+    fun providePluginRuleDao(androidDatabase: AndroidDatabase): PluginRuleDao =
+        androidDatabase.pluginRuleDao()
 
     @Provides
     @Singleton

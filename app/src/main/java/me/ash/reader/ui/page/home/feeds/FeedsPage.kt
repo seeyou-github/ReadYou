@@ -118,6 +118,7 @@ fun FeedsPage(
     navigationToFlow: () -> Unit,
     navigateToAccountList: () -> Unit,
     navigateToAccountDetail: (Int) -> Unit,
+    navigateToLocalRuleEditor: () -> Unit,
 ) {
     var accountTabVisible by remember { mutableStateOf(false) }
     var showFeedsPageStyleDialog by remember { mutableStateOf(false) }
@@ -486,7 +487,10 @@ fun FeedsPage(
         },
     )
 
-    SubscribeDialog(subscribeViewModel = subscribeViewModel)
+    SubscribeDialog(
+        subscribeViewModel = subscribeViewModel,
+        onCreateLocalRule = navigateToLocalRuleEditor,
+    )
 
     GroupOptionDrawer(drawerState = groupDrawerState)
     FeedOptionDrawer(drawerState = feedDrawerState)

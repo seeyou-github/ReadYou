@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lightbulb
@@ -59,6 +60,7 @@ fun SettingsPage(
     navigateToOther: () -> Unit,
     navigateToBlacklist: () -> Unit,
     navigateToAITranslation: () -> Unit,
+    navigateToLocalRuleList: () -> Unit,
 ) {
     val context = LocalContext.current
     val newVersion = LocalNewVersionNumber.current
@@ -140,6 +142,14 @@ fun SettingsPage(
                         desc = stringResource(R.string.backup_and_restore_desc),
                         icon = Icons.Outlined.CloudUpload,
                         onClick = navigateToBackupAndRestore
+                    )
+                }
+                item {
+                    SelectableSettingGroupItem(
+                        title = stringResource(R.string.local_rule_list),
+                        desc = stringResource(R.string.local_rule_list_desc),
+                        icon = Icons.Outlined.Build,
+                        onClick = navigateToLocalRuleList
                     )
                 }
                 // 2026-01-30: 新增AI翻译入口

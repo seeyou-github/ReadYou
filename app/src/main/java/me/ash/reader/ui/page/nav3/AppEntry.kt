@@ -54,6 +54,8 @@ import me.ash.reader.ui.page.settings.other.OtherPage
 import me.ash.reader.ui.page.settings.backup.BackupAndRestorePage
 import me.ash.reader.ui.page.settings.blacklist.BlacklistPage
 import me.ash.reader.infrastructure.translate.ui.AITranslationPage
+import me.ash.reader.plugin.ui.PluginsPage
+import me.ash.reader.plugin.ui.PluginEditorPage
 import me.ash.reader.ui.page.settings.tips.LicenseListPage
 import me.ash.reader.ui.page.settings.tips.TipsAndSupportPage
 import me.ash.reader.ui.page.settings.troubleshooting.TroubleshootingPage
@@ -130,6 +132,7 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                                 navigateToAccountDetail = {
                                     backStack.add(Route.AccountDetails(it))
                                 },
+                                navigateToLocalRuleEditor = { backStack.add(Route.PluginEditor(null)) },
                             )
                         }
                     }
@@ -201,6 +204,22 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                                 navigateToOther = { backStack.add(Route.Other) },
                                 navigateToBlacklist = { backStack.add(Route.Blacklist) },
                                 navigateToAITranslation = { backStack.add(Route.AITranslation) },
+                                navigateToLocalRuleList = { backStack.add(Route.Plugins) },
+                            )
+                        }
+                    Route.Plugins ->
+                        NavEntry(key) {
+                            PluginsPage(
+                                onBack = onBack,
+                                onAdd = { backStack.add(Route.PluginEditor(null)) },
+                                onEdit = { pluginId -> backStack.add(Route.PluginEditor(pluginId)) },
+                            )
+                        }
+                    is Route.PluginEditor ->
+                        NavEntry(key) {
+                            PluginEditorPage(
+                                pluginId = key.pluginId,
+                                onBack = onBack,
                             )
                         }
                     Route.Accounts ->

@@ -10,6 +10,7 @@ import me.ash.reader.domain.model.article.Article
 import me.ash.reader.domain.model.blacklist.BlacklistKeyword
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.model.group.Group
+import me.ash.reader.plugin.PluginRule
 import me.ash.reader.infrastructure.translate.model.ArticleTranslationCache
 import me.ash.reader.domain.repository.AccountDao
 import me.ash.reader.domain.repository.ArticleDao
@@ -20,8 +21,8 @@ import me.ash.reader.domain.repository.GroupDao
 import java.util.*
 
 @Database(
-    entities = [Account::class, Feed::class, Article::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class],
-    version = 19,
+    entities = [Account::class, Feed::class, Article::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class, PluginRule::class],
+    version = 22,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 5, to = 7),
@@ -48,6 +49,7 @@ abstract class AndroidDatabase : RoomDatabase() {
     abstract fun groupDao(): GroupDao
     abstract fun blacklistKeywordDao(): BlacklistKeywordDao
     abstract fun articleTranslationCacheDao(): ArticleTranslationCacheDao
+    abstract fun pluginRuleDao(): me.ash.reader.plugin.PluginRuleDao
 
     companion object {
 
@@ -195,6 +197,79 @@ abstract class AndroidDatabase : RoomDatabase() {
                         )
                     }
                 }
+                /**
+                 * 数据库迁移：从版本 19 到版本 20
+                 *
+                 * 1. 新增插件规则表 plugin_rule
+                 *
+                 * 修改日期：2026-02-04
+                 * 修改原因：新增“插件”规则存储
+                 */
+                private val MIGRATION_19_20 = object : Migration(19, 20) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            """
+                            CREATE TABLE IF NOT EXISTS plugin_rule (
+                                id TEXT NOT NULL,
+                                accountId INTEGER NOT NULL,
+                                name TEXT NOT NULL,
+                                subscribeUrl TEXT NOT NULL,
+                                icon TEXT NOT NULL DEFAULT '',
+                                listHtmlCache TEXT NOT NULL DEFAULT '',
+                                listTitleSelector TEXT NOT NULL,
+                                listUrlSelector TEXT NOT NULL,
+                                listImageSelector TEXT NOT NULL DEFAULT '',
+                                listTimeSelector TEXT NOT NULL DEFAULT '',
+                                detailTitleSelector TEXT NOT NULL DEFAULT '',
+                                detailAuthorSelector TEXT NOT NULL DEFAULT '',
+                                detailTimeSelector TEXT NOT NULL DEFAULT '',
+                                detailContentSelector TEXT NOT NULL,
+                                detailContentSelectors TEXT NOT NULL DEFAULT '',
+                                detailImageSelector TEXT NOT NULL DEFAULT '',
+                                detailVideoSelector TEXT NOT NULL DEFAULT '',
+                                detailAudioSelector TEXT NOT NULL DEFAULT '',
+                                isEnabled INTEGER NOT NULL DEFAULT 0,
+                                createdAt INTEGER NOT NULL,
+                                updatedAt INTEGER NOT NULL,
+                                PRIMARY KEY(id)
+                            )
+                            """.trimIndent()
+                        )
+                        database.execSQL(
+                            "CREATE INDEX IF NOT EXISTS index_plugin_rule_accountId ON plugin_rule(accountId)"
+                        )
+                    }
+                }
+                /**
+                 * 数据库迁移：从版本 20 到版本 21
+                 *
+                 * 1. plugin_rule 增加 icon、listHtmlCache、detailContentSelectors 字段
+                 */
+                private val MIGRATION_20_21 = object : Migration(20, 21) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE plugin_rule ADD COLUMN icon TEXT NOT NULL DEFAULT ''"
+                        )
+                        database.execSQL(
+                            "ALTER TABLE plugin_rule ADD COLUMN listHtmlCache TEXT NOT NULL DEFAULT ''"
+                        )
+                        database.execSQL(
+                            "ALTER TABLE plugin_rule ADD COLUMN detailContentSelectors TEXT NOT NULL DEFAULT ''"
+                        )
+                    }
+                }
+                /**
+                 * 数据库迁移：从版本 21 到版本 22
+                 *
+                 * 1. plugin_rule 增加 detailExcludeSelector 字段
+                 */
+                private val MIGRATION_21_22 = object : Migration(21, 22) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE plugin_rule ADD COLUMN detailExcludeSelector TEXT NOT NULL DEFAULT ''"
+                        )
+                    }
+                }
         fun getInstance(context: Context): AndroidDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -208,7 +283,10 @@ abstract class AndroidDatabase : RoomDatabase() {
                     MIGRATION_15_16,
                     MIGRATION_16_17,
                     MIGRATION_17_18,
-                    MIGRATION_18_19
+                    MIGRATION_18_19,
+                    MIGRATION_19_20,
+                    MIGRATION_20_21,
+                    MIGRATION_21_22
                 )
                  .build().also {
                     instance = it

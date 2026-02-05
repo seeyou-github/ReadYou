@@ -9,7 +9,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CreateNewFolder
@@ -36,6 +40,7 @@ import me.ash.reader.ui.component.base.TextFieldDialog
 import me.ash.reader.ui.ext.MimeType
 import me.ash.reader.ui.ext.collectAsStateValue
 import me.ash.reader.ui.ext.roundClick
+import me.ash.reader.ui.ext.showToast
 import me.ash.reader.ui.page.home.feeds.FeedOptionView
 
 @OptIn(
@@ -45,6 +50,7 @@ import me.ash.reader.ui.page.home.feeds.FeedOptionView
 @Composable
 fun SubscribeDialog(
     subscribeViewModel: SubscribeViewModel = hiltViewModel(),
+    onCreateLocalRule: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -55,6 +61,16 @@ fun SubscribeDialog(
         it?.let { uri ->
             context.contentResolver.openInputStream(uri)?.let { inputStream ->
                 subscribeViewModel.importFromInputStream(inputStream)
+            }
+        }
+    }
+
+    val localRuleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {
+        it?.let { uri ->
+            context.contentResolver.openInputStream(uri)?.let { inputStream ->
+                subscribeViewModel.importLocalRule(inputStream) { message ->
+                    context.showToast(message)
+                }
             }
         }
     }
@@ -119,6 +135,8 @@ fun SubscribeDialog(
                                 is SubscribeState.Fetching -> ""
                                 is SubscribeState.Idle -> state.errorMessage ?: ""
                             }
+                            val canSearch = state is SubscribeState.Idle && state.linkState.text.isNotBlank()
+                            val canImportOpml = state is SubscribeState.Idle && state.importFromOpmlEnabled
 
                             ClipboardTextField(
                                 state = state.linkState,
@@ -131,6 +149,55 @@ fun SubscribeDialog(
                                     subscribeViewModel.searchFeed()
                                 },
                             )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                TextButton(
+                                    enabled = canSearch,
+                                    onClick = {
+                                        focusManager.clearFocus()
+                                        subscribeViewModel.searchFeed()
+                                    }
+                                ) {
+                                    Text(text = stringResource(R.string.search))
+                                }
+                                TextButton(
+                                    enabled = canImportOpml,
+                                    onClick = {
+                                        focusManager.clearFocus()
+                                        launcher.launch(arrayOf(MimeType.ANY))
+                                        subscribeViewModel.hideDrawer()
+                                    }
+                                ) {
+                                    Text(text = stringResource(R.string.import_from_opml))
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                TextButton(
+                                    onClick = {
+                                        focusManager.clearFocus()
+                                        subscribeViewModel.hideDrawer()
+                                        onCreateLocalRule()
+                                    }
+                                ) {
+                                    Text(text = stringResource(R.string.create_local_rule))
+                                }
+                                TextButton(
+                                    onClick = {
+                                        focusManager.clearFocus()
+                                        localRuleLauncher.launch(arrayOf("application/json", "text/*"))
+                                        subscribeViewModel.hideDrawer()
+                                    }
+                                ) {
+                                    Text(text = stringResource(R.string.import_local_rule))
+                                }
+                            }
                         }
 
                         is SubscribeState.Configure -> {
@@ -181,42 +248,18 @@ fun SubscribeDialog(
                     }
 
                     is SubscribeState.Input -> {
-                        val enabled =
-                            subscribeState is SubscribeState.Idle && subscribeState.linkState.text.isNotBlank()
-                        TextButton(
-                            enabled = enabled,
-                            onClick = {
-                                focusManager.clearFocus()
-                                subscribeViewModel.searchFeed()
-                            }
-                        ) {
-                            Text(
-                                text = stringResource(R.string.search),
-                            )
-                        }
+                        TextButton(onClick = {}) { }
                     }
                 }
             },
             dismissButton = {
-                if (subscribeState is SubscribeState.Idle && subscribeState.importFromOpmlEnabled) {
-                    TextButton(
-                        onClick = {
-                            focusManager.clearFocus()
-                            launcher.launch(arrayOf(MimeType.ANY))
-                            subscribeViewModel.hideDrawer()
-                        }
-                    ) {
-                        Text(text = stringResource(R.string.import_from_opml))
+                TextButton(
+                    onClick = {
+                        focusManager.clearFocus()
+                        subscribeViewModel.hideDrawer()
                     }
-                } else {
-                    TextButton(
-                        onClick = {
-                            focusManager.clearFocus()
-                            subscribeViewModel.hideDrawer()
-                        }
-                    ) {
-                        Text(text = stringResource(R.string.cancel))
-                    }
+                ) {
+                    Text(text = stringResource(R.string.cancel))
                 }
             },
         )

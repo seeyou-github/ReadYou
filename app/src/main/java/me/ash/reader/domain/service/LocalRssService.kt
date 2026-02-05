@@ -26,6 +26,9 @@ import me.ash.reader.infrastructure.android.NotificationHelper
 import me.ash.reader.infrastructure.di.DefaultDispatcher
 import me.ash.reader.infrastructure.di.IODispatcher
 import me.ash.reader.infrastructure.rss.RssHelper
+import me.ash.reader.plugin.PluginConstants
+import me.ash.reader.plugin.PluginRuleDao
+import me.ash.reader.plugin.PluginSyncService
 import timber.log.Timber
 
 private const val TAG = "LocalRssService"
@@ -45,6 +48,8 @@ constructor(
     private val accountService: AccountService,
     private val syncLogger: SyncLogger,
     private val blacklistKeywordDao: BlacklistKeywordDao,
+    private val pluginRuleDao: PluginRuleDao,
+    private val pluginSyncService: PluginSyncService,
 ) :
     AbstractRssRepository(
         articleDao,
@@ -155,6 +160,16 @@ constructor(
     }
 
     private suspend fun syncFeed(feed: Feed, preDate: Date = Date()): FeedWithArticle {
+        if (feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) {
+            val ruleId = feed.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX)
+            val rule = pluginRuleDao.queryById(ruleId)
+            if (rule == null) {
+                Timber.tag(TAG).w("Plugin rule not found: $ruleId")
+                return FeedWithArticle(feed = feed, articles = emptyList())
+            }
+            return pluginSyncService.syncByRule(feed, rule, preDate)
+        }
+
         val articles = rssHelper.queryRssXml(feed, "", preDate)
 
         if (feed.icon == null) {
