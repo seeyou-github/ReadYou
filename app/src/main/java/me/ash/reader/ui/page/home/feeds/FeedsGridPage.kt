@@ -133,15 +133,10 @@ fun FeedsGridPage(
         }
     }
 
-    // 当前选中的 Tab 索引
+    // ????? Tab ??
     var selectedTabIndex by remember { mutableIntStateOf(0) }
 
-    // Pager 状态（仅在显示 Tab 栏时使用）
-    val pagerState = rememberPagerState {
-        if (shouldShowTabBar) customGroups.size + 1 else 1
-    }
-
-    // Tab 列表：第一个是 default 分组，后面是自定义分组
+    // Tab ??????? default ???????????
     val tabGroups by remember(defaultGroup, customGroups) {
         derivedStateOf {
             buildList {
@@ -151,20 +146,24 @@ fun FeedsGridPage(
         }
     }
 
-    // 当分组列表变化时，调整当前选中的 Tab 索引
+    // Pager ??????? Tab ?????
+    val pagerState = rememberPagerState {
+        if (shouldShowTabBar) maxOf(1, tabGroups.size) else 1
+    }
+
+    // ???????????????? Tab ??
     LaunchedEffect(tabGroups.size) {
         if (selectedTabIndex >= tabGroups.size) {
             selectedTabIndex = maxOf(0, tabGroups.size - 1)
         }
     }
 
-    // 当 Pager 页面变化时，更新 Tab 索引
+    // ? Pager ???????? Tab ??
     LaunchedEffect(pagerState.currentPage) {
         if (pagerState.currentPage < tabGroups.size) {
             selectedTabIndex = pagerState.currentPage
         }
     }
-
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -236,6 +235,7 @@ fun FeedsGridPage(
             HorizontalPager(
                 state = pagerState, modifier = Modifier.fillMaxSize()
             ) { pageIndex ->
+                if (pageIndex >= tabGroups.size) return@HorizontalPager
                 val group = tabGroups[pageIndex]
 
                 // 根据选中的分组显示对应的订阅源

@@ -365,13 +365,32 @@ constructor(
         }
     }
 
+    fun consumeIconSearchResult() {
+        _feedOptionUiState.update { it.copy(iconSearchResult = null) }
+    }
+
     fun reloadIcon() {
-        _feedOptionUiState.value.feed?.let { feed ->
-            viewModelScope.launch(ioDispatcher) {
-                val icon = rssHelper.queryRssIconLink(feed.url) ?: return@launch
-                feedDao.update(feed.copy(icon = icon))
-                fetchFeed(feed.id)
+        val feed = _feedOptionUiState.value.feed ?: return
+        if (_feedOptionUiState.value.isIconSearching) return
+        _feedOptionUiState.update { it.copy(isIconSearching = true, iconSearchResult = null) }
+        viewModelScope.launch(ioDispatcher) {
+            val icon = runCatching { rssHelper.queryRssIconLink(feed.url) }.getOrNull()
+            if (icon.isNullOrBlank()) {
+                _feedOptionUiState.update {
+                    it.copy(isIconSearching = false, iconSearchResult = IconSearchResult.NotFound)
+                }
+                return@launch
             }
+            runCatching { feedDao.update(feed.copy(icon = icon)) }
+                .onFailure {
+                    _feedOptionUiState.update {
+                        it.copy(isIconSearching = false, iconSearchResult = IconSearchResult.Failed)
+                    }
+                }
+                .onSuccess {
+                    fetchFeed(feed.id)
+                    _feedOptionUiState.update { it.copy(isIconSearching = false) }
+                }
         }
     }
 
@@ -466,6 +485,13 @@ constructor(
     }
 }
 
+
+
+enum class IconSearchResult {
+    NotFound,
+    Failed,
+}
+
 data class ExportPayload(
     val fileName: String,
     val mime: String,
@@ -493,6 +519,8 @@ data class FeedOptionUiState(
     val imageFilterDomain: String = "",
     val disableRefererEnabled: Boolean = false,
     val disableJavaScriptEnabled: Boolean = false,
+    val isIconSearching: Boolean = false,
+    val iconSearchResult: IconSearchResult? = null,
 )
 
 

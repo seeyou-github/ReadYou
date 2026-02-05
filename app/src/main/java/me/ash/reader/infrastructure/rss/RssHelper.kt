@@ -64,9 +64,10 @@ constructor(
 
             response.body.byteStream().use { inputStream ->
                     SyndFeedInput().build(XmlReader(inputStream, httpContentType)).also {
+                    // ??????????????????????
                     it.icon = SyndImageImpl()
-                    it.icon.link = queryRssIconLink(feedLink)
-                    it.icon.url = it.icon.link
+                    // it.icon.link = queryRssIconLink(feedLink)
+                    // it.icon.url = it.icon.link
                 }
             }
         }

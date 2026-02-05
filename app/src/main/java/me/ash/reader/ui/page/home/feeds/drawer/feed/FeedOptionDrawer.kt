@@ -14,20 +14,26 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalBottomSheetState
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +63,7 @@ import me.ash.reader.ui.ext.roundClick
 import me.ash.reader.ui.ext.showToast
 import me.ash.reader.ui.interaction.alphaIndicationClickable
 import me.ash.reader.ui.page.home.feeds.FeedOptionView
+import me.ash.reader.ui.page.home.feeds.drawer.feed.IconSearchResult
 import me.ash.reader.plugin.PluginConstants
 
 @Composable
@@ -71,6 +78,21 @@ fun FeedOptionDrawer(
     val openLinkSpecificBrowser = LocalOpenLinkSpecificBrowser.current
     val scope = rememberCoroutineScope()
     val feedOptionUiState = feedOptionViewModel.feedOptionUiState.collectAsStateValue()
+    val iconSearchResult = feedOptionUiState.iconSearchResult
+    LaunchedEffect(iconSearchResult) {
+        when (iconSearchResult) {
+            IconSearchResult.NotFound -> {
+                context.showToast(context.getString(R.string.icon_not_found))
+                feedOptionViewModel.consumeIconSearchResult()
+            }
+            IconSearchResult.Failed -> {
+                context.showToast(context.getString(R.string.icon_search_failed))
+                feedOptionViewModel.consumeIconSearchResult()
+            }
+            null -> Unit
+        }
+    }
+
     val feed = feedOptionUiState.feed
     val toastString = stringResource(R.string.rename_toast, feedOptionUiState.newName)
     val isLocalRule = feed?.url?.startsWith(PluginConstants.PLUGIN_URL_PREFIX) == true
@@ -132,17 +154,40 @@ fun FeedOptionDrawer(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    FeedIcon(
-                        modifier = Modifier.clickable {
-                            if (feedOptionViewModel.rssService.get().updateSubscription) {
-                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                feedOptionViewModel.showChangeIconDialog()
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        FeedIcon(
+                            modifier = Modifier.clickable {
+                                if (feedOptionViewModel.rssService.get().updateSubscription) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    feedOptionViewModel.showChangeIconDialog()
+                                }
+                            },
+                            feedName = feed?.name,
+                            iconUrl = feed?.icon,
+                            size = 24.dp
+                        )
+                        IconButton(
+                            enabled = feedOptionViewModel.rssService.get().updateSubscription && !feedOptionUiState.isIconSearching,
+                            onClick = { feedOptionViewModel.reloadIcon() }
+                        ) {
+                            if (feedOptionUiState.isIconSearching) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.Search,
+                                    contentDescription = stringResource(R.string.search_icon),
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
                             }
-                        },
-                        feedName = feed?.name,
-                        iconUrl = feed?.icon,
-                        size = 24.dp
-                    )
+                        }
+                    }
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         modifier = Modifier.alphaIndicationClickable {

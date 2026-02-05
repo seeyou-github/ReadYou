@@ -535,4 +535,7 @@
     <string name="image_request">Image request</string>
     <string name="disable_referer">Disable Referer</string>
     <string name="disable_javascript">Disable JavaScript</string>
+    <string name="search_icon">Search icon</string>
+    <string name="icon_not_found">Icon not found</string>
+    <string name="icon_search_failed">Icon search failed</string>
 </resources>
