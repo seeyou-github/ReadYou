@@ -401,9 +401,13 @@
     <string name="one_click_backup_desc">Backup subscriptions, keywords, and app settings</string>
     <string name="backup_location">Backup location</string>
     <string name="backup_not_set">Not set</string>
+    <string name="one_click_restore">One-click restore</string>
+    <string name="one_click_restore_warning">This will overwrite current settings, subscriptions, and keywords. Continue?</string>
     <string name="backup_success">Backup completed successfully</string>
     <string name="backup_failed">Backup failed: %1$s</string>
     <string name="long_press_to_change_folder">Long press to change backup folder</string>
+    <string name="restore_success">Restore completed successfully</string>
+    <string name="restore_failed">Restore failed: %1$s</string>
     <string name="webview" translatable="false">WebView</string>
     <string name="native_component">Native component</string>
     <string name="content_renderer">Content renderer</string>
@@ -468,6 +472,8 @@
     <string name="plugin_icon">订阅图标</string>
     <string name="plugin_icon_hint">支持URL或Base64</string>
     <string name="plugin_import_icon">导入图标</string>
+    <string name="import_icon">Import icon</string>
+    <string name="export_icon">Export icon</string>
     <string name="plugin_list_section">标题列表解析</string>
     <string name="plugin_detail_section">正文解析</string>
     <string name="plugin_list_title_selector">标题列表CSS选择器</string>

@@ -104,6 +104,18 @@ fun FeedOptionDrawer(
         }
     }
 
+    val importIconLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { feedOptionViewModel.importIconFromUri(context, it) }
+    }
+
+    val exportIconLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("image/*")
+    ) { uri ->
+        uri?.let { feedOptionViewModel.exportIconToUri(context, it) }
+    }
+
 
     BackHandler(drawerState.isVisible) {
         scope.launch {
@@ -368,6 +380,18 @@ fun FeedOptionDrawer(
         onConfirm = {
             feedOptionViewModel.changeIconUrl()
             scope.launch { drawerState.hide() }
-        }
+        },
+        onImportClick = {
+            importIconLauncher.launch(arrayOf("image/*"))
+        },
+        onExportClick = {
+            exportIconLauncher.launch(buildIconFileName(feed))
+        },
+        exportEnabled = !feed?.icon.isNullOrBlank(),
     )
+}
+
+private fun buildIconFileName(feed: me.ash.reader.domain.model.feed.Feed?): String {
+    val base = feed?.name?.replace("/", "_")?.ifBlank { "feed" } ?: "feed"
+    return "${base}_icon.png"
 }

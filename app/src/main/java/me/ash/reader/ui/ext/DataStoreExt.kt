@@ -1,4 +1,4 @@
-package me.ash.reader.ui.ext
+﻿package me.ash.reader.ui.ext
 
 import android.content.Context
 import android.util.Log
@@ -151,14 +151,14 @@ sealed interface PreferencesKey {
         const val feedsBottomBarVisible = "feedsBottomBarVisible"
         const val feedsLayoutStyle = "feedsLayoutStyle"
         const val feedsPageColorThemes = "feedsPageColorThemes"
-        // 2026-01-21: 新增订阅源图标样式设置
+        // 2026-01-21: 鏂板璁㈤槄婧愬浘鏍囨牱寮忚缃?
         const val feedsIconBrightness = "feedsIconBrightness"
         const val feedsGridColumnCount = "feedsGridColumnCount"
         const val feedsGridRowSpacing = "feedsGridRowSpacing"
         const val feedsGridIconSize = "feedsGridIconSize"
         const val feedsListItemHeight = "feedsListItemHeight"
-        // 2026-01-23: 新增列表视图列表边距的 DataStoreKey 常量
-        // 修改原因：定义列表视图列表边距的存储键名
+        // 2026-01-23: 鏂板鍒楄〃瑙嗗浘鍒楄〃杈硅窛鐨?DataStoreKey 甯搁噺
+        // 淇敼鍘熷洜锛氬畾涔夊垪琛ㄨ鍥惧垪琛ㄨ竟璺濈殑瀛樺偍閿悕
         const val feedsListItemPadding = "feedsListItemPadding"
 
         // Flow page
@@ -166,7 +166,7 @@ sealed interface PreferencesKey {
         const val flowFilterBarPadding = "flowFilterBarPadding"
         const val flowFilterBarTonalElevation = "flowFilterBarTonalElevation"
         const val flowTopBarTonalElevation = "flowTopBarTonalElevation"
-        // 2026-01-21: 新增过滤栏自动隐藏功能
+        // 2026-01-21: 鏂板杩囨护鏍忚嚜鍔ㄩ殣钘忓姛鑳?
         const val flowFilterBarAutoHide = "flowFilterBarAutoHide"
         const val flowArticleListFeedIcon = "flowArticleListFeedIcon"
         const val flowArticleListFeedName = "flowArticleListFeedName"
@@ -177,7 +177,7 @@ sealed interface PreferencesKey {
         const val flowArticleListTonalElevation = "flowArticleListTonalElevation"
         const val flowArticleListReadIndicator = "flowArticleListReadStatusIndicator"
         const val flowSortUnreadArticles = "flowArticleListSortUnreadArticles"
-        // 2026-01-18: 新增文章列表样式设置相关的DataStoreKey常量
+        // 2026-01-18: 鏂板鏂囩珷鍒楄〃鏍峰紡璁剧疆鐩稿叧鐨凞ataStoreKey甯搁噺
         const val flowArticleListTitleFontSize = "flowArticleListTitleFontSize"
         const val flowArticleListTitleLineHeight = "flowArticleListTitleLineHeight"
         const val flowArticleListHorizontalPadding = "flowArticleListHorizontalPadding"
@@ -187,7 +187,7 @@ sealed interface PreferencesKey {
                 const val flowArticleListRoundedCorners = "flowArticleListRoundedCorners"
                 const val flowArticleListItemSpacing = "flowArticleListItemSpacing"
                 const val flowArticleListColorThemes = "flowArticleListColorThemes"
-        // 2026-01-27: 新增首行大图模式设置
+        // 2026-01-27: 鏂板棣栬澶у浘妯″紡璁剧疆
         const val flowArticleListFirstItemLargeImage = "flowArticleListFirstItemLargeImage"
         
         
@@ -229,19 +229,14 @@ sealed interface PreferencesKey {
         const val openLink = "openLink"
         const val openLinkAppSpecificBrowser = "openLinkAppSpecificBrowser"
         const val sharedContent = "sharedContent"
-        // 2026-01-24: 新增阅读页面标题样式设置相关 DataStoreKey 常量
-        // 修改原因：支持标题字体大小、颜色、左右边距的持久化存储
+        // 2026-01-24: 鏂板闃呰椤甸潰鏍囬鏍峰紡璁剧疆鐩稿叧 DataStoreKey 甯搁噺
+        // 淇敼鍘熷洜锛氭敮鎸佹爣棰樺瓧浣撳ぇ灏忋€侀鑹层€佸乏鍙宠竟璺濈殑鎸佷箙鍖栧瓨鍌?
         const val readingTitleFontSize = "readingTitleFontSize"
         const val readingTitleColor = "readingTitleColor"
         const val readingTitleHorizontalPadding = "readingTitleHorizontalPadding"
 
         // Languages
-        const val languages = "languages"
-
-        // Backup
-        const val backupFolder = "backupFolder"
-
-        // Translate
+        const val languages = "languages"// Translate
         const val translateServiceId = "translate_service_id"
         const val quickTranslateModel = "quick_translate_model"
         const val longPressTranslateModel = "long_press_translate_model"
@@ -275,14 +270,14 @@ sealed interface PreferencesKey {
                 BooleanKey(feedsGroupListExpand),
                 IntKey(feedsGroupListTonalElevation),
                 StringKey(feedsPageColorThemes),
-                // 2026-01-21: 新增订阅源图标样式设置
+                // 2026-01-21: 鏂板璁㈤槄婧愬浘鏍囨牱寮忚缃?
                 IntKey(feedsIconBrightness),
                 IntKey(feedsGridColumnCount),
                 IntKey(feedsGridRowSpacing),
                 IntKey(feedsGridIconSize),
                 IntKey(feedsListItemHeight),
-                // 2026-01-23: 新增列表视图列表边距的 Key
-                // 修改原因：支持列表视图列表边距的持久化存储
+                // 2026-01-23: 鏂板鍒楄〃瑙嗗浘鍒楄〃杈硅窛鐨?Key
+                // 淇敼鍘熷洜锛氭敮鎸佸垪琛ㄨ鍥惧垪琛ㄨ竟璺濈殑鎸佷箙鍖栧瓨鍌?
                 IntKey(feedsListItemPadding),
                 IntKey(feedsLayoutStyle),
                 // Flow page
@@ -290,7 +285,7 @@ sealed interface PreferencesKey {
                 IntKey(flowFilterBarPadding),
                 IntKey(flowFilterBarTonalElevation),
                 IntKey(flowTopBarTonalElevation),
-                // 2026-01-21: 新增过滤栏自动隐藏功能
+                // 2026-01-21: 鏂板杩囨护鏍忚嚜鍔ㄩ殣钘忓姛鑳?
                 BooleanKey(flowFilterBarAutoHide),
                 BooleanKey(flowArticleListFeedIcon),
                 BooleanKey(flowArticleListFeedName),
@@ -301,9 +296,9 @@ sealed interface PreferencesKey {
                 IntKey(flowArticleListTonalElevation),
                 IntKey(flowArticleListReadIndicator),
                 BooleanKey(flowSortUnreadArticles),
-                // 2026-01-27: 新增首行大图模式设置
+                // 2026-01-27: 鏂板棣栬澶у浘妯″紡璁剧疆
                 BooleanKey(flowArticleListFirstItemLargeImage),
-                // 2026-01-18: 新增文章列表样式设置相关的Key
+                // 2026-01-18: 鏂板鏂囩珷鍒楄〃鏍峰紡璁剧疆鐩稿叧鐨凨ey
                 IntKey(flowArticleListTitleFontSize),
                 FloatKey(flowArticleListTitleLineHeight),
                 IntKey(flowArticleListHorizontalPadding),
@@ -337,8 +332,8 @@ sealed interface PreferencesKey {
                 IntKey(readingImageRoundedCorners),
                 IntKey(readingImageBrightness),
                 StringKey(customReaderThemes),
-                // 2026-01-24: 新增阅读页面标题样式设置相关的 Key
-                // 修改原因：支持标题字体大小、颜色、左右边距的持久化存储
+                // 2026-01-24: 鏂板闃呰椤甸潰鏍囬鏍峰紡璁剧疆鐩稿叧鐨?Key
+                // 淇敼鍘熷洜锛氭敮鎸佹爣棰樺瓧浣撳ぇ灏忋€侀鑹层€佸乏鍙宠竟璺濈殑鎸佷箙鍖栧瓨鍌?
                 IntKey(readingTitleFontSize),
                 StringKey(readingTitleColor),
                 IntKey(readingTitleHorizontalPadding),
@@ -355,10 +350,7 @@ sealed interface PreferencesKey {
                 StringKey(openLinkAppSpecificBrowser),
                 IntKey(sharedContent),
                 // Languages
-                IntKey(languages),
-                // Backup
-                StringKey(backupFolder),
-                // Translate
+                IntKey(languages),// Translate
                 StringKey(translateServiceId),
                 StringKey(quickTranslateModel),
                 StringKey(longPressTranslateModel),
@@ -401,14 +393,14 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val feedsGroupListTonalElevation = "feedsGroupListTonalElevation"
         const val feedsLayoutStyle = "feedsLayoutStyle"
         const val feedsPageColorThemes = "feedsPageColorThemes"
-        // 2026-01-21: 新增订阅源图标样式设置
+        // 2026-01-21: 鏂板璁㈤槄婧愬浘鏍囨牱寮忚缃?
         const val feedsIconBrightness = "feedsIconBrightness"
         const val feedsGridColumnCount = "feedsGridColumnCount"
         const val feedsGridRowSpacing = "feedsGridRowSpacing"
         const val feedsGridIconSize = "feedsGridIconSize"
         const val feedsListItemHeight = "feedsListItemHeight"
-        // 2026-01-23: 新增列表视图列表边距的 DataStoreKey 常量
-        // 修改原因：定义列表视图列表边距的存储键名
+        // 2026-01-23: 鏂板鍒楄〃瑙嗗浘鍒楄〃杈硅窛鐨?DataStoreKey 甯搁噺
+        // 淇敼鍘熷洜锛氬畾涔夊垪琛ㄨ鍥惧垪琛ㄨ竟璺濈殑瀛樺偍閿悕
         const val feedsListItemPadding = "feedsListItemPadding"
         
         // Flow page
@@ -416,7 +408,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val flowFilterBarPadding = "flowFilterBarPadding"
         const val flowFilterBarTonalElevation = "flowFilterBarTonalElevation"
         const val flowTopBarTonalElevation = "flowTopBarTonalElevation"
-        // 2026-01-21: 新增过滤栏自动隐藏功能
+        // 2026-01-21: 鏂板杩囨护鏍忚嚜鍔ㄩ殣钘忓姛鑳?
         const val flowFilterBarAutoHide = "flowFilterBarAutoHide"
         const val flowArticleListFeedIcon = "flowArticleListFeedIcon"
         const val flowArticleListFeedName = "flowArticleListFeedName"
@@ -427,7 +419,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val flowArticleListTonalElevation = "flowArticleListTonalElevation"
         const val flowArticleListReadIndicator = "flowArticleListReadStatusIndicator"
         const val flowSortUnreadArticles = "flowArticleListSortUnreadArticles"
-        // 2026-01-18: 新增文章列表样式设置相关的DataStoreKey常量
+        // 2026-01-18: 鏂板鏂囩珷鍒楄〃鏍峰紡璁剧疆鐩稿叧鐨凞ataStoreKey甯搁噺
         const val flowArticleListTitleFontSize = "flowArticleListTitleFontSize"
         const val flowArticleListTitleLineHeight = "flowArticleListTitleLineHeight"
         const val flowArticleListHorizontalPadding = "flowArticleListHorizontalPadding"
@@ -437,7 +429,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val flowArticleListRoundedCorners = "flowArticleListRoundedCorners"
         const val flowArticleListItemSpacing = "flowArticleListItemSpacing"
         const val flowArticleListColorThemes = "flowArticleListColorThemes"
-        // 2026-01-27: 新增首行大图模式设置
+        // 2026-01-27: 鏂板棣栬澶у浘妯″紡璁剧疆
         const val flowArticleListFirstItemLargeImage = "flowArticleListFirstItemLargeImage"
 
         // Reading page
@@ -465,8 +457,8 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val readingImageBrightness = "readingImageBrightness"
         const val selectedReaderThemeId = "selected_reader_theme_id"
         const val customReaderThemes = "custom_reader_themes"
-        // 2026-01-24: 新增阅读页面标题样式设置相关 DataStoreKey 常量
-        // 修改原因：支持标题字体大小、颜色、左右边距的持久化存储
+        // 2026-01-24: 鏂板闃呰椤甸潰鏍囬鏍峰紡璁剧疆鐩稿叧 DataStoreKey 甯搁噺
+        // 淇敼鍘熷洜锛氭敮鎸佹爣棰樺瓧浣撳ぇ灏忋€侀鑹层€佸乏鍙宠竟璺濈殑鎸佷箙鍖栧瓨鍌?
         const val readingTitleFontSize = "readingTitleFontSize"
         const val readingTitleColor = "readingTitleColor"
         const val readingTitleHorizontalPadding = "readingTitleHorizontalPadding"
@@ -543,7 +535,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(intPreferencesKey(feedsLayoutStyle), Int::class.java),
                 feedsPageColorThemes to
                     DataStoreKey(stringPreferencesKey(feedsPageColorThemes), String::class.java),
-                // 2026-01-21: 新增订阅源图标样式设置
+                // 2026-01-21: 鏂板璁㈤槄婧愬浘鏍囨牱寮忚缃?
                 feedsIconBrightness to
                     DataStoreKey(intPreferencesKey(feedsIconBrightness), Int::class.java),
                 feedsGridColumnCount to
@@ -554,8 +546,8 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(intPreferencesKey(feedsGridIconSize), Int::class.java),
                 feedsListItemHeight to
                     DataStoreKey(intPreferencesKey(feedsListItemHeight), Int::class.java),
-                // 2026-01-23: 新增列表视图列表边距的 Key
-                // 修改原因：支持列表视图列表边距的持久化存储
+                // 2026-01-23: 鏂板鍒楄〃瑙嗗浘鍒楄〃杈硅窛鐨?Key
+                // 淇敼鍘熷洜锛氭敮鎸佸垪琛ㄨ鍥惧垪琛ㄨ竟璺濈殑鎸佷箙鍖栧瓨鍌?
                 feedsListItemPadding to
                     DataStoreKey(intPreferencesKey(feedsListItemPadding), Int::class.java),
                 // Flow page
@@ -567,7 +559,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(intPreferencesKey(flowFilterBarTonalElevation), Int::class.java),
                 flowTopBarTonalElevation to
                     DataStoreKey(intPreferencesKey(flowTopBarTonalElevation), Int::class.java),
-                // 2026-01-21: 新增过滤栏自动隐藏功能
+                // 2026-01-21: 鏂板杩囨护鏍忚嚜鍔ㄩ殣钘忓姛鑳?
                 flowFilterBarAutoHide to
                     DataStoreKey(booleanPreferencesKey(flowFilterBarAutoHide), Boolean::class.java),
                 flowArticleListFeedIcon to
@@ -600,7 +592,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                         booleanPreferencesKey(flowSortUnreadArticles),
                         Boolean::class.java,
                     ),
-                // 2026-01-18: 新增文章列表样式设置相关的DataStoreKey映射
+                // 2026-01-18: 鏂板鏂囩珷鍒楄〃鏍峰紡璁剧疆鐩稿叧鐨凞ataStoreKey鏄犲皠
                 flowArticleListFirstItemLargeImage to
                     DataStoreKey(
                         booleanPreferencesKey(flowArticleListFirstItemLargeImage),
@@ -677,8 +669,8 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(stringPreferencesKey(selectedReaderThemeId), String::class.java),
                 customReaderThemes to
                     DataStoreKey(stringPreferencesKey(customReaderThemes), String::class.java),
-                // 2026-01-24: 新增阅读页面标题样式设置相关的 DataStoreKey 映射
-                // 修改原因：支持标题字体大小、颜色、左右边距的持久化存储
+                // 2026-01-24: 鏂板闃呰椤甸潰鏍囬鏍峰紡璁剧疆鐩稿叧鐨?DataStoreKey 鏄犲皠
+                // 淇敼鍘熷洜锛氭敮鎸佹爣棰樺瓧浣撳ぇ灏忋€侀鑹层€佸乏鍙宠竟璺濈殑鎸佷箙鍖栧瓨鍌?
                 readingTitleFontSize to
                     DataStoreKey(intPreferencesKey(readingTitleFontSize), Int::class.java),
                 readingTitleColor to
@@ -770,3 +762,4 @@ suspend fun String.fromJSONStringToDataStore(context: Context) {
             }
     }
 }
+

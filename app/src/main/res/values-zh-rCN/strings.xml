@@ -324,10 +324,14 @@
     <string name="invalid_keywords_json_warning">该文件可能不是有效的关键字 JSON 文件！您确定要继续吗？</string>
     <string name="one_click_backup">一键备份</string>
     <string name="one_click_backup_desc">备份订阅、关键字和应用设置</string>
+    <string name="one_click_restore">一键恢复</string>
+    <string name="one_click_restore_warning">将覆盖当前设置、订阅源和关键字，是否继续？</string>
     <string name="backup_location">备份位置</string>
     <string name="backup_not_set">未设置</string>
     <string name="backup_success">备份成功</string>
     <string name="backup_failed">备份失败：%1$s</string>
+    <string name="restore_success">恢复成功</string>
+    <string name="restore_failed">恢复失败：%1$s</string>
     <string name="long_press_to_change_folder">长按可更改备份目录</string>
     <string name="unfold_more">全部展开</string>
     <string name="unfold_less">全部折叠</string>
@@ -369,7 +373,7 @@
     <string name="last_updated">上次更新</string>
     <string name="no_unread_articles">无未读文章</string>
     <string name="list_widget_label">列表视图</string>
-    <string name="card_widget_label">卡片视图</string>"
+    <string name="card_widget_label">卡片视图</string>
     <string name="widget_description">查看来自所选源的最新未读文章</string>
     <string name="apply">应用</string>
     <string name="notifications">通知</string>
@@ -391,4 +395,6 @@
     <string name="image_filter_domain">域名包含</string>
     <string name="image_filter_domain_hint">例如 example.com</string>
     <string name="image_filter_note">不填写则不生效；多个条件任一满足即过滤。</string>
+    <string name="import_icon">导入图标</string>
+    <string name="export_icon">导出图标</string>
 </resources>

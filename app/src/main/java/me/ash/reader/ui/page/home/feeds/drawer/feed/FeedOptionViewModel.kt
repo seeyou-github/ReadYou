@@ -14,6 +14,11 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.net.URL
+import java.net.URLConnection
+import android.util.Base64
+import android.content.Context
+import android.net.Uri
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.model.group.Group
 import timber.log.Timber
@@ -180,7 +185,7 @@ constructor(
         }
     }
 
-    // 2026-02-02: 新增修改自动翻译文章标题设置的方�?
+    // 2026-02-02: �����޸��Զ��������±������õķ�?
     fun changeAutoTranslateTitlePreset() {
         viewModelScope.launch(ioDispatcher) {
             _feedOptionUiState.value.feed?.let { feed ->
@@ -313,6 +318,50 @@ constructor(
                 }
                 _feedOptionUiState.update { it.copy(changeIconDialogVisible = false) }
             }
+        }
+    }
+
+
+    fun importIconFromUri(context: Context, uri: Uri) {
+        viewModelScope.launch(ioDispatcher) {
+            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            if (bytes == null || bytes.isEmpty()) return@launch
+            val mime =
+                context.contentResolver.getType(uri)
+                    ?: runCatching { URLConnection.guessContentTypeFromStream(bytes.inputStream()) }
+                        .getOrNull()
+                    ?: "image/*"
+            val dataUri = "data:$mime;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}"
+            _feedOptionUiState.value.feed?.let { feed ->
+                val updated = feed.copy(icon = dataUri)
+                rssService.get().updateFeed(updated)
+                syncLocalRuleIfNeeded(updated) { rule ->
+                    rule.copy(icon = updated.icon ?: rule.icon, updatedAt = System.currentTimeMillis())
+                }
+                fetchFeed(feed.id)
+                _feedOptionUiState.update { it.copy(newIcon = dataUri) }
+            }
+        }
+    }
+
+    fun exportIconToUri(context: Context, uri: Uri) {
+        viewModelScope.launch(ioDispatcher) {
+            val icon = _feedOptionUiState.value.feed?.icon ?: return@launch
+            val bytes =
+                when {
+                    icon.startsWith("data:", ignoreCase = true) -> {
+                        val base64 = icon.substringAfter("base64,", "")
+                        if (base64.isBlank()) return@launch
+                        runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull()
+                    }
+                    icon.startsWith("http://", ignoreCase = true) ||
+                        icon.startsWith("https://", ignoreCase = true) -> {
+                        runCatching { URL(icon).openStream().use { it.readBytes() } }.getOrNull()
+                    }
+                    else -> null
+                }
+            if (bytes == null || bytes.isEmpty()) return@launch
+            context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
         }
     }
 

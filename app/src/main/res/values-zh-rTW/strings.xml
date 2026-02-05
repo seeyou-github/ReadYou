@@ -308,11 +308,12 @@
     <string name="invalid_keywords_json_warning">此檔案可能不是有效的關鍵字 JSON 檔案。你確定要繼續嗎？</string>
     <string name="one_click_backup">一鍵備份</string>
     <string name="one_click_backup_desc">備份訂閱、關鍵字和應用程式設定</string>
-    <string name="backup_location">備份位置</string>
-    <string name="backup_not_set">未設定</string>
+    <string name="one_click_restore">一鍵還原</string>
+    <string name="one_click_restore_warning">將覆蓋目前設定、訂閱來源與關鍵字，是否繼續？</string>
     <string name="backup_success">備份成功</string>
     <string name="backup_failed">備份失敗：%1$s</string>
-    <string name="long_press_to_change_folder">長按可更改備份目錄</string>
+    <string name="restore_success">還原成功</string>
+    <string name="restore_failed">還原失敗：%1$s</string>
     <string name="unfold_more">全部展開</string>
     <string name="unfold_less">全部收合</string>
     <string name="native_component">原生元件</string>
@@ -343,4 +344,6 @@
     <string name="image_filter_domain">網域包含</string>
     <string name="image_filter_domain_hint">例如 example.com</string>
     <string name="image_filter_note">未填寫則不生效；多個條件任一符合即過濾。</string>
+    <string name="import_icon">匯入圖示</string>
+    <string name="export_icon">匯出圖示</string>
 </resources>

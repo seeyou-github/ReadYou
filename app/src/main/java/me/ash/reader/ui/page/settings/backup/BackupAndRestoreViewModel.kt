@@ -1,82 +1,33 @@
-package me.ash.reader.ui.page.settings.backup
+﻿package me.ash.reader.ui.page.settings.backup
 
 import android.content.Context
 import android.net.Uri
-import android.provider.DocumentsContract
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import me.ash.reader.domain.model.blacklist.BlacklistKeyword
+import me.ash.reader.domain.model.feed.Feed
+import me.ash.reader.domain.model.group.Group
 import me.ash.reader.domain.repository.BlacklistKeywordDao
+import me.ash.reader.domain.repository.FeedDao
+import me.ash.reader.domain.repository.GroupDao
 import me.ash.reader.domain.service.AccountService
 import me.ash.reader.domain.service.OpmlService
-import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.IODispatcher
-import me.ash.reader.ui.ext.DataStoreKey
-import me.ash.reader.ui.ext.PreferencesKey
-import me.ash.reader.ui.ext.dataStore
 import me.ash.reader.ui.ext.fromDataStoreToJSONString
 import me.ash.reader.ui.ext.fromJSONStringToDataStore
+import me.ash.reader.ui.ext.getDefaultGroupId
+import me.ash.reader.plugin.PluginRule
+import me.ash.reader.plugin.PluginRuleDao
 
-/**
- * 将 SAF URI 转换为可读的路径字符串
- */
-fun Uri.toReadablePath(context: Context): String {
-    return try {
-        val treeId = DocumentsContract.getTreeDocumentId(this)
-        if (DocumentsContract.isTreeUri(this)) {
-            val documentUri = DocumentsContract.buildDocumentUriUsingTree(this, treeId)
-            val projection = arrayOf(
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID
-            )
-            context.contentResolver.query(documentUri, projection, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val displayName = cursor.getString(0)
-                    val documentId = cursor.getString(1)
-                    // 构建路径，例如：/storage/emulated/0/XXX
-                    val storagePath = when {
-                        documentId.startsWith("primary:") -> "/storage/emulated/0"
-                        documentId.startsWith("home:") -> "/storage/emulated/0"
-                        else -> {
-                            // 尝试从 documentId 提取路径
-                            val colonIndex = documentId.indexOf(':')
-                            if (colonIndex > 0) {
-                                val volumeName = documentId.substring(0, colonIndex)
-                                "/storage/$volumeName"
-                            } else {
-                                "/storage"
-                            }
-                        }
-                    }
-                    val subPath = documentId.substringAfter(':').replace(':', '/')
-                    "$storagePath/$subPath".replace("//", "/")
-                } else {
-                    this.toString()
-                }
-            } ?: this.toString()
-        } else {
-            this.toString()
-        }
-    } catch (e: Exception) {
-        this.toString()
-    }
-}
 @HiltViewModel
 class BackupAndRestoreViewModel
 @Inject
@@ -84,8 +35,10 @@ constructor(
     private val accountService: AccountService,
     private val opmlService: OpmlService,
     private val blacklistKeywordDao: BlacklistKeywordDao,
+    private val groupDao: GroupDao,
+    private val feedDao: FeedDao,
+    private val pluginRuleDao: PluginRuleDao,
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
-    @ApplicationScope private val applicationScope: CoroutineScope,
 ) : ViewModel() {
 
     private val _backupUiState = MutableStateFlow(BackupUiState())
@@ -141,11 +94,7 @@ constructor(
     fun exportKeywordsAsJSON(context: Context, callback: (ByteArray) -> Unit = {}) {
         viewModelScope.launch(ioDispatcher) {
             val keywords = blacklistKeywordDao.getAllSync()
-            val exportData = mapOf(
-                "exportedAt" to System.currentTimeMillis(),
-                "keywords" to keywords
-            )
-            val jsonString = Gson().toJson(exportData)
+            val jsonString = Gson().toJson(KeywordsBackupPayload(keywords = keywords))
             callback(jsonString.toByteArray())
         }
     }
@@ -154,12 +103,8 @@ constructor(
         viewModelScope.launch(ioDispatcher) {
             try {
                 val jsonString = String(byteArray)
-                val gson = Gson()
-                val type = object : TypeToken<Map<String, Any>>() {}.type
-                val importData: Map<String, Any> = gson.fromJson(jsonString, type)
-
-                val keywordsList = importData["keywords"] as? List<*>
-                val count = keywordsList?.size ?: 0
+                val payload = Gson().fromJson(jsonString, KeywordsBackupPayload::class.java)
+                val count = payload.keywords.size
 
                 _backupUiState.update {
                     it.copy(
@@ -184,35 +129,15 @@ constructor(
         viewModelScope.launch(ioDispatcher) {
             try {
                 val jsonString = String(byteArray)
-                val gson = Gson()
-                val type = object : TypeToken<Map<String, Any>>() {}.type
-                val importData: Map<String, Any> = gson.fromJson(jsonString, type)
-
-                val keywordsList = importData["keywords"] as? List<*>
-                if (keywordsList != null) {
+                val payload = Gson().fromJson(jsonString, KeywordsBackupPayload::class.java)
+                if (payload.keywords.isNotEmpty()) {
                     val existingKeywords = blacklistKeywordDao.getAllSync()
                     val existingKeywordsSet = existingKeywords.map { it.keyword }.toSet()
-
-                    keywordsList.forEach { item ->
-                        try {
-                            val keywordMap = item as? Map<*, *>
-                            if (keywordMap != null) {
-                                val keyword = keywordMap["keyword"] as? String
-                                if (keyword != null && keyword !in existingKeywordsSet) {
-                                    val newKeyword = BlacklistKeyword(
-                                        keyword = keyword,
-                                        enabled = keywordMap["enabled"] as? Boolean ?: true,
-                                        feedUrls = keywordMap["feedUrls"] as? String,
-                                        feedNames = keywordMap["feedNames"] as? String,
-                                        createdAt = keywordMap["createdAt"] as? Long ?: System.currentTimeMillis()
-                                    )
-                                    blacklistKeywordDao.insert(newKeyword)
-                                }
-                            }
-                        } catch (e: Exception) {
-                            // Skip invalid keyword
+                    payload.keywords
+                        .filter { it.keyword !in existingKeywordsSet }
+                        .forEach { keyword ->
+                            blacklistKeywordDao.insert(keyword.copy(id = 0))
                         }
-                    }
                 }
             } catch (e: Exception) {
                 // Handle import error
@@ -226,182 +151,39 @@ constructor(
         _backupUiState.update { it.copy(keywordsWarningDialogVisible = false) }
     }
 
-    fun loadBackupFolder(context: Context) {
-        viewModelScope.launch(ioDispatcher) {
-            val folder = PreferencesKey.keys[PreferencesKey.backupFolder]?.key?.let {
-                context.dataStore.data.first()[it] as? String
-            }
-            _backupUiState.update { it.copy(backupFolder = folder) }
+        fun tryRestoreOneClick(context: Context, byteArray: ByteArray) {
+        _backupUiState.update {
+            it.copy(oneClickRestoreByteArray = byteArray, oneClickRestoreDialogVisible = true)
         }
     }
 
-    fun saveBackupFolder(context: Context, folderUri: String) {
-        viewModelScope.launch(ioDispatcher) {
-            context.dataStore.edit { preferences ->
-                preferences[PreferencesKey.keys[PreferencesKey.backupFolder]!!.key as Preferences.Key<String>] = folderUri
-            }
-            _backupUiState.update { it.copy(backupFolder = folderUri) }
-        }
+    fun hideOneClickRestoreDialog() {
+        _backupUiState.update { it.copy(oneClickRestoreDialogVisible = false) }
     }
 
-    fun performOneClickBackup(context: Context) {
+    fun performOneClickBackup(context: Context, outputUri: Uri) {
         viewModelScope.launch(ioDispatcher) {
             _backupUiState.update { it.copy(isBackingUp = true, backupSuccess = false, backupError = null) }
             try {
-                val backupFolder = _backupUiState.value.backupFolder
-                if (backupFolder.isNullOrBlank()) {
-                    _backupUiState.update { it.copy(isBackingUp = false, backupError = "Backup folder not set") }
+                val accountId = accountService.getCurrentAccountId()
+                val payload =
+                    OneClickBackupPayload(
+                        version = 1,
+                        exportedAt = System.currentTimeMillis(),
+                        accountId = accountId,
+                        preferencesJson = context.fromDataStoreToJSONString(),
+                        groups = groupDao.queryAll(accountId),
+                        feeds = feedDao.queryAll(accountId),
+                        keywords = blacklistKeywordDao.getAllSync(),
+                        pluginRules = pluginRuleDao.queryAll(accountId),
+                    )
+                val json = Gson().toJson(payload)
+                context.contentResolver.openOutputStream(outputUri)?.use {
+                    it.write(json.toByteArray())
+                } ?: run {
+                    _backupUiState.update { it.copy(isBackingUp = false, backupError = "Failed to write backup") }
                     return@launch
                 }
-
-                val uri = Uri.parse(backupFolder)
-
-                // Helper function to check if file exists and delete it
-                suspend fun deleteFileIfExists(fileName: String): Boolean {
-                    return try {
-                        val documentUri = DocumentsContract.buildDocumentUriUsingTree(
-                            uri,
-                            DocumentsContract.getTreeDocumentId(uri)
-                        )
-                        
-                        // Query for existing files with the same name
-                        val projection = arrayOf(
-                            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                            DocumentsContract.Document.COLUMN_DISPLAY_NAME
-                        )
-                        val selection = "${DocumentsContract.Document.COLUMN_DISPLAY_NAME} = ?"
-                        val selectionArgs = arrayOf(fileName)
-                        
-                        val queryResult = context.contentResolver.query(
-                            documentUri,
-                            projection,
-                            selection,
-                            selectionArgs,
-                            null
-                        )?.use { cursor ->
-                            if (cursor.moveToFirst()) {
-                                val documentId = cursor.getString(0)
-                                val fileUri = DocumentsContract.buildDocumentUriUsingTree(
-                                    uri,
-                                    documentId
-                                )
-                                // Try to delete the existing file
-                                try {
-                                    context.contentResolver.delete(fileUri, null, null) > 0
-                                } catch (deleteError: UnsupportedOperationException) {
-                                    // Some SAF providers don't support delete operations
-                                    // In this case, we'll proceed anyway as createDocument will overwrite
-//                                    Timber.w("Delete not supported for this provider, will overwrite instead")
-                                    true
-                                }
-                            } else {
-                                true // File doesn't exist, can proceed
-                            }
-                        } ?: true // Query failed, assume file doesn't exist
-                        
-                        queryResult
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        false
-                    }
-                }
-
-                // Helper function to create file URI in the selected folder
-                fun createFileUri(fileName: String, mimeType: String): Uri? {
-                    return try {
-                        val documentUri = DocumentsContract.buildDocumentUriUsingTree(
-                            uri,
-                            DocumentsContract.getTreeDocumentId(uri)
-                        )
-                        val fileUri = DocumentsContract.createDocument(
-                            context.contentResolver,
-                            documentUri,
-                            mimeType,
-                            fileName
-                        )
-                        DocumentsContract.buildDocumentUriUsingTree(
-                            uri,
-                            DocumentsContract.getDocumentId(fileUri)
-                        )
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-
-                // Backup subscriptions (OPML with info)
-                val opmlContent = opmlService.saveToString(
-                    accountService.getCurrentAccountId(),
-                    true
-                )
-                val opmlFileName = "subscriptions.opml"
-                
-                // Delete existing file if it exists and wait for completion
-                if (!deleteFileIfExists(opmlFileName)) {
-                    _backupUiState.update { it.copy(isBackingUp = false, backupError = "Failed to delete $opmlFileName") }
-                    return@launch
-                }
-                
-                val opmlFileUri = createFileUri(opmlFileName, "text/x-opml")
-                if (opmlFileUri != null) {
-                    context.contentResolver.openOutputStream(opmlFileUri)?.use { it.write(opmlContent.toByteArray()) }
-                        ?: run {
-                            _backupUiState.update { it.copy(isBackingUp = false, backupError = "Failed to write $opmlFileName") }
-                            return@launch
-                        }
-                } else {
-                    _backupUiState.update { it.copy(isBackingUp = false, backupError = "Failed to create $opmlFileName") }
-                    return@launch
-                }
-
-                // Backup keywords
-                val keywords = blacklistKeywordDao.getAllSync()
-                val keywordsExportData = mapOf(
-                    "exportedAt" to System.currentTimeMillis(),
-                    "keywords" to keywords
-                )
-                val keywordsJson = Gson().toJson(keywordsExportData)
-                val keywordsFileName = "keywords.json"
-                
-                // Delete existing file if it exists and wait for completion
-                if (!deleteFileIfExists(keywordsFileName)) {
-                    _backupUiState.update { it.copy(isBackingUp = false, backupError = "Failed to delete $keywordsFileName") }
-                    return@launch
-                }
-                
-                val keywordsFileUri = createFileUri(keywordsFileName, "application/json")
-                if (keywordsFileUri != null) {
-                    context.contentResolver.openOutputStream(keywordsFileUri)?.use { it.write(keywordsJson.toByteArray()) }
-                        ?: run {
-                            _backupUiState.update { it.copy(isBackingUp = false, backupError = "Failed to write $keywordsFileName") }
-                            return@launch
-                        }
-                } else {
-                    _backupUiState.update { it.copy(isBackingUp = false, backupError = "Failed to create $keywordsFileName") }
-                    return@launch
-                }
-
-                // Backup app preferences
-                val preferencesJson = context.fromDataStoreToJSONString()
-                val preferencesFileName = "preferences.json"
-                
-                // Delete existing file if it exists and wait for completion
-                if (!deleteFileIfExists(preferencesFileName)) {
-                    _backupUiState.update { it.copy(isBackingUp = false, backupError = "Failed to delete $preferencesFileName") }
-                    return@launch
-                }
-                
-                val preferencesFileUri = createFileUri(preferencesFileName, "application/json")
-                if (preferencesFileUri != null) {
-                    context.contentResolver.openOutputStream(preferencesFileUri)?.use { it.write(preferencesJson.toByteArray()) }
-                        ?: run {
-                            _backupUiState.update { it.copy(isBackingUp = false, backupError = "Failed to write $preferencesFileName") }
-                            return@launch
-                        }
-                } else {
-                    _backupUiState.update { it.copy(isBackingUp = false, backupError = "Failed to create $preferencesFileName") }
-                    return@launch
-                }
-
                 _backupUiState.update { it.copy(isBackingUp = false, backupSuccess = true) }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -409,7 +191,65 @@ constructor(
             }
         }
     }
-}
+
+    fun performOneClickRestore(context: Context, byteArray: ByteArray) {
+        viewModelScope.launch(ioDispatcher) {
+            _backupUiState.update {
+                it.copy(
+                    isRestoring = true,
+                    restoreSuccess = false,
+                    restoreError = null,
+                    oneClickRestoreDialogVisible = false,
+                )
+            }
+            try {
+                val jsonString = String(byteArray)
+                val payload = Gson().fromJson(jsonString, OneClickBackupPayload::class.java)
+                val accountId =
+                    payload.accountId.takeIf { accountService.getAccountById(it) != null }
+                        ?: accountService.getCurrentAccountId()
+
+                payload.preferencesJson.fromJSONStringToDataStore(context)
+
+                blacklistKeywordDao.deleteAll()
+                pluginRuleDao.queryAll(accountId).forEach { pluginRuleDao.delete(it) }
+                feedDao.deleteByAccountId(accountId)
+                groupDao.deleteByAccountId(accountId)
+
+                val groups = payload.groups.map { it.copy(accountId = accountId) }
+                if (groups.isNotEmpty()) {
+                    groupDao.insertAll(groups)
+                }
+                val defaultGroupId = accountId.getDefaultGroupId()
+                if (groups.none { it.id == defaultGroupId }) {
+                    val defaultGroup = accountService.getDefaultGroup().copy(accountId = accountId)
+                    groupDao.insert(defaultGroup)
+                }
+
+                val feeds = payload.feeds.map { it.copy(accountId = accountId) }
+                if (feeds.isNotEmpty()) {
+                    feedDao.insertAll(feeds)
+                }
+
+                payload.pluginRules.forEach { rule ->
+                    pluginRuleDao.insert(rule.copy(accountId = accountId))
+                }
+                payload.keywords.forEach { keyword ->
+                    blacklistKeywordDao.insert(keyword.copy(id = 0))
+                }
+
+                _backupUiState.update { it.copy(isRestoring = false, restoreSuccess = true) }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _backupUiState.update {
+                    it.copy(
+                        isRestoring = false,
+                        restoreError = e.message ?: "Restore failed",
+                    )
+                }
+            }
+        }
+    }}
 
 data class BackupUiState(
     val warningDialogVisible: Boolean = false,
@@ -419,13 +259,35 @@ data class BackupUiState(
     val keywordsWarningDialogVisible: Boolean = false,
     val keywordsByteArray: ByteArray = ByteArray(0),
     val keywordsImportCount: Int = 0,
-    val backupFolder: String? = null,
     val isBackingUp: Boolean = false,
     val backupSuccess: Boolean = false,
     val backupError: String? = null,
+    val isRestoring: Boolean = false,
+    val restoreSuccess: Boolean = false,
+    val restoreError: String? = null,
+    val oneClickRestoreDialogVisible: Boolean = false,
+    val oneClickRestoreByteArray: ByteArray = ByteArray(0),
 )
 
 sealed class ExportOPMLMode {
     object ATTACH_INFO : ExportOPMLMode()
     object NO_ATTACH : ExportOPMLMode()
 }
+
+data class OneClickBackupPayload(
+    val version: Int,
+    val exportedAt: Long,
+    val accountId: Int,
+    val preferencesJson: String,
+    val groups: List<Group>,
+    val feeds: List<Feed>,
+    val keywords: List<BlacklistKeyword>,
+    val pluginRules: List<PluginRule>,
+)
+
+data class KeywordsBackupPayload(
+    val exportedAt: Long = System.currentTimeMillis(),
+    val keywords: List<BlacklistKeyword> = emptyList(),
+)
+
+

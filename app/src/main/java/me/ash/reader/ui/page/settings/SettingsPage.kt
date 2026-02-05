@@ -138,14 +138,6 @@ fun SettingsPage(
                 }
                 item {
                     SelectableSettingGroupItem(
-                        title = stringResource(R.string.backup_and_restore),
-                        desc = stringResource(R.string.backup_and_restore_desc),
-                        icon = Icons.Outlined.CloudUpload,
-                        onClick = navigateToBackupAndRestore
-                    )
-                }
-                item {
-                    SelectableSettingGroupItem(
                         title = stringResource(R.string.local_rule_list),
                         desc = stringResource(R.string.local_rule_list_desc),
                         icon = Icons.Outlined.Build,
@@ -159,6 +151,14 @@ fun SettingsPage(
                         desc = stringResource(R.string.ai_translation_desc),
                         icon = Icons.Outlined.Translate,
                         onClick = navigateToAITranslation
+                    )
+                }
+                item {
+                    SelectableSettingGroupItem(
+                        title = stringResource(R.string.backup_and_restore),
+                        desc = stringResource(R.string.backup_and_restore_desc),
+                        icon = Icons.Outlined.CloudUpload,
+                        onClick = navigateToBackupAndRestore
                     )
                 }
                 item {

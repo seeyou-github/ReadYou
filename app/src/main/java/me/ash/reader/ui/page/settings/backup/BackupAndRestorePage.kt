@@ -1,14 +1,11 @@
-package me.ash.reader.ui.page.settings.backup
+﻿package me.ash.reader.ui.page.settings.backup
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
-import android.provider.DocumentsContract
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +17,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.runtime.LaunchedEffect
 import android.widget.Toast
@@ -31,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,11 +61,6 @@ fun BackupAndRestorePage(
     val context = LocalContext.current
     val uiState = viewModel.backupUiState.collectAsStateValue()
 
-    // Load backup folder on init
-    LaunchedEffect(Unit) {
-        viewModel.loadBackupFolder(context)
-    }
-
     // Show backup success/error toast
     LaunchedEffect(uiState.backupSuccess, uiState.backupError) {
         when {
@@ -77,8 +72,18 @@ fun BackupAndRestorePage(
             }
         }
     }
+    LaunchedEffect(uiState.restoreSuccess, uiState.restoreError) {
+        when {
+            uiState.restoreSuccess -> {
+                Toast.makeText(context, context.getString(R.string.restore_success), Toast.LENGTH_SHORT).show()
+            }
+            uiState.restoreError != null -> {
+                Toast.makeText(context, context.getString(R.string.restore_failed, uiState.restoreError), Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
-    // 导入导出 Launchers
+    // 瀵煎叆瀵煎嚭 Launchers
     val exportJSONLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(MimeType.JSON)
     ) { result ->
@@ -96,6 +101,22 @@ fun BackupAndRestorePage(
     ) { it?.let { uri ->
         context.contentResolver.openInputStream(uri)?.use { inputStream ->
             viewModel.tryImport(context, inputStream.readBytes())
+        }
+    }}
+
+    val oneClickBackupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(MimeType.JSON)
+    ) { result ->
+        result?.let { uri ->
+            viewModel.performOneClickBackup(context, uri)
+        }
+    }
+
+    val oneClickRestoreLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { it?.let { uri ->
+        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            viewModel.tryRestoreOneClick(context, inputStream.readBytes())
         }
     }}
 
@@ -131,18 +152,6 @@ fun BackupAndRestorePage(
         }
     }}
 
-    val selectBackupFolderLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        uri?.let {
-            context.contentResolver.takePersistableUriPermission(
-                it,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            )
-            viewModel.saveBackupFolder(context, it.toString())
-        }
-    }
-
     RYScaffold(
         containerColor = MaterialTheme.colorScheme.surface onLight MaterialTheme.colorScheme.inverseOnSurface,
         navigationIcon = {
@@ -162,8 +171,54 @@ fun BackupAndRestorePage(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
+                item {
+                    Subtitle(
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                        text = stringResource(R.string.one_click_backup)
+                    )
+                    Text(
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                        text = stringResource(R.string.one_click_backup_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            enabled = !uiState.isBackingUp && !uiState.isRestoring,
+                            onClick = { oneClickBackupFileLauncher(context, oneClickBackupLauncher) },
+                        ) {
+                            if (uiState.isBackingUp) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Text(text = stringResource(R.string.one_click_backup))
+                            }
+                        }
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            enabled = !uiState.isRestoring && !uiState.isBackingUp,
+                            onClick = { oneClickRestoreLauncher.launch(arrayOf(MimeType.ANY)) },
+                        ) {
+                            if (uiState.isRestoring) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Text(text = stringResource(R.string.one_click_restore))
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
 
-                // JSON 导入导出
+                // JSON 瀵煎叆瀵煎嚭
                 item {
                     Subtitle(
                         modifier = Modifier.padding(horizontal = 24.dp),
@@ -180,7 +235,7 @@ fun BackupAndRestorePage(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // OPML 导出
+                // OPML 瀵煎嚭
                 item {
                     Subtitle(
                         modifier = Modifier.padding(horizontal = 24.dp),
@@ -193,7 +248,7 @@ fun BackupAndRestorePage(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // 关键字导入导出
+                // 鍏抽敭瀛楀鍏ュ鍑?
                 item {
                     Subtitle(
                         modifier = Modifier.padding(horizontal = 24.dp),
@@ -210,55 +265,6 @@ fun BackupAndRestorePage(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // 一键备份
-                item {
-                    Subtitle(
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        text = stringResource(R.string.one_click_backup)
-                    )
-                    val readablePath = uiState.backupFolder?.let {
-                        try {
-                            Uri.parse(it).toReadablePath(context)
-                        } catch (e: Exception) {
-                            it
-                        }
-                    }
-                    SettingItem(
-                        title = stringResource(R.string.one_click_backup_desc),
-                        desc = readablePath?.let {
-                            stringResource(R.string.backup_location) + ": " + it
-                        } ?: stringResource(R.string.backup_not_set),
-                        onClick = {
-                            if (uiState.backupFolder.isNullOrBlank()) {
-                                selectBackupFolderLauncher.launch(null)
-                            } else {
-                                viewModel.performOneClickBackup(context)
-                            }
-                        },
-                        onLongClick = {
-                            selectBackupFolderLauncher.launch(null)
-                        },
-                        action = if (uiState.isBackingUp) {
-                            {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            }
-                        } else null
-                    )
-                    // 长按提示
-                    if (uiState.backupFolder != null) {
-                        androidx.compose.material3.Text(
-                            text = stringResource(R.string.long_press_to_change_folder),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-
                 item {
                     Spacer(modifier = Modifier.height(24.dp))
                     Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
@@ -267,7 +273,7 @@ fun BackupAndRestorePage(
         }
     )
 
-    // 对话框
+    // 瀵硅瘽妗?
     RYDialog(
         visible = uiState.warningDialogVisible,
         onDismissRequest = { viewModel.hideWarningDialog() },
@@ -323,6 +329,33 @@ fun BackupAndRestorePage(
         },
         dismissButton = {
             TextButton(onClick = { viewModel.hideKeywordsWarningDialog() }) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+
+    RYDialog(
+        visible = uiState.oneClickRestoreDialogVisible,
+        onDismissRequest = { viewModel.hideOneClickRestoreDialog() },
+        icon = {
+            Icon(
+                imageVector = Icons.Outlined.Warning,
+                contentDescription = stringResource(R.string.warning),
+            )
+        },
+        title = { Text(text = stringResource(R.string.warning)) },
+        text = { Text(text = stringResource(R.string.one_click_restore_warning)) },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    viewModel.performOneClickRestore(context, uiState.oneClickRestoreByteArray)
+                }
+            ) {
+                Text(stringResource(R.string.confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { viewModel.hideOneClickRestoreDialog() }) {
                 Text(stringResource(R.string.cancel))
             }
         },
@@ -406,6 +439,15 @@ private fun preferenceFileLauncher(
     )
 }
 
+private fun oneClickBackupFileLauncher(
+    context: Context,
+    launcher: ManagedActivityResultLauncher<String, Uri?>,
+) {
+    launcher.launch(
+        "read_you_backup.json"
+    )
+}
+
 private fun subscriptionOPMLFileLauncher(
     context: Context,
     launcher: ManagedActivityResultLauncher<String, Uri?>,
@@ -423,3 +465,5 @@ private fun keywordsFileLauncher(
         "keyword.json"
     )
 }
+
+
