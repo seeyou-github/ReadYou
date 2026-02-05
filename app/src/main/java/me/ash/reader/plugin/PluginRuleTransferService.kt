@@ -6,8 +6,11 @@ import javax.inject.Inject
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import me.ash.reader.domain.model.feed.Feed
+import me.ash.reader.domain.model.group.Group
 import me.ash.reader.domain.repository.FeedDao
+import me.ash.reader.domain.repository.GroupDao
 import me.ash.reader.domain.service.AccountService
+import me.ash.reader.ui.ext.getDefaultGroupId
 import me.ash.reader.ui.ext.spacerDollar
 
 /**
@@ -17,6 +20,7 @@ class PluginRuleTransferService @Inject constructor(
     private val pluginRuleDao: PluginRuleDao,
     private val pluginFeedManager: PluginFeedManager,
     private val feedDao: FeedDao,
+    private val groupDao: GroupDao,
     private val accountService: AccountService,
 ) {
     private val json =
@@ -25,22 +29,24 @@ class PluginRuleTransferService @Inject constructor(
             encodeDefaults = true
         }
 
-    fun exportRule(rule: PluginRule, feed: Feed): String {
+    suspend fun exportRule(rule: PluginRule, feed: Feed): String {
         return json.encodeToString(LocalRuleExport.serializer(), buildExport(rule, feed))
     }
 
-    private fun buildExport(rule: PluginRule, feed: Feed): LocalRuleExport {
+    private suspend fun buildExport(rule: PluginRule, feed: Feed): LocalRuleExport {
         val contentSelectors =
             rule.detailContentSelectors
                 .split("||")
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
                 .ifEmpty { listOf(rule.detailContentSelector).filter { it.isNotBlank() } }
+        val groupName = groupDao.queryById(feed.groupId)?.name.orEmpty()
         return LocalRuleExport(
             version = 1,
             name = rule.name,
             subscribeUrl = rule.subscribeUrl,
             icon = rule.icon,
+            groupName = groupName,
             listTitleSelector = rule.listTitleSelector,
             listUrlSelector = rule.listUrlSelector,
             listImageSelector = rule.listImageSelector,
@@ -107,9 +113,30 @@ class PluginRuleTransferService @Inject constructor(
             val pluginUrl = pluginFeedManager.buildPluginUrl(rule.id)
             val feed = feedDao.queryByLink(accountId, pluginUrl).firstOrNull()
             if (feed != null) {
+                val targetGroupId =
+                    parsed.groupName
+                        .trim()
+                        .takeIf { it.isNotBlank() }
+                        ?.let { groupName ->
+                            groupDao.queryByName(accountId, groupName)?.id
+                                ?: run {
+                                    val newGroupId =
+                                        accountId.spacerDollar(UUID.randomUUID().toString())
+                                    groupDao.insert(
+                                        Group(
+                                            id = newGroupId,
+                                            name = groupName,
+                                            accountId = accountId,
+                                        )
+                                    )
+                                    newGroupId
+                                }
+                        }
+                        ?: accountId.getDefaultGroupId()
                 val settings = parsed.feedSettings
                 val updated =
                     feed.copy(
+                        groupId = targetGroupId,
                         icon = rule.icon.ifBlank { feed.icon },
                         isNotification = settings.isNotification,
                         isFullContent = settings.isFullContent,
@@ -142,6 +169,7 @@ data class LocalRuleExport(
     val name: String,
     val subscribeUrl: String,
     val icon: String = "",
+    val groupName: String = "",
     val listTitleSelector: String,
     val listUrlSelector: String,
     val listImageSelector: String = "",

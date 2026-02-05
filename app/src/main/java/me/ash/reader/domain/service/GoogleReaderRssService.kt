@@ -172,6 +172,10 @@ constructor(
 
     override suspend fun addGroup(destFeed: Feed?, newGroupName: String): String {
         val accountId = accountService.getCurrentAccountId()
+        val existing = groupDao.queryByName(accountId, newGroupName)
+        if (existing != null) {
+            return existing.id
+        }
         getGoogleReaderAPI()
             .subscriptionEdit(
                 destFeedId = destFeed?.id?.dollarLast(),

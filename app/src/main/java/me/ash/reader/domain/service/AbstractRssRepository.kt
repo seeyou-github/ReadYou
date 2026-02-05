@@ -102,10 +102,13 @@ abstract class AbstractRssRepository(
     }
 
     open suspend fun addGroup(destFeed: Feed?, newGroupName: String): String {
-        accountService.getCurrentAccountId().let { accountId ->
-            return accountId.spacerDollar(UUID.randomUUID().toString()).also {
-                groupDao.insert(Group(id = it, name = newGroupName, accountId = accountId))
-            }
+        val accountId = accountService.getCurrentAccountId()
+        val existing = groupDao.queryByName(accountId, newGroupName)
+        if (existing != null) {
+            return existing.id
+        }
+        return accountId.spacerDollar(UUID.randomUUID().toString()).also {
+            groupDao.insert(Group(id = it, name = newGroupName, accountId = accountId))
         }
     }
 
