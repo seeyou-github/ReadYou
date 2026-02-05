@@ -26,46 +26,48 @@ class PluginRuleTransferService @Inject constructor(
         }
 
     fun exportRule(rule: PluginRule, feed: Feed): String {
+        return json.encodeToString(LocalRuleExport.serializer(), buildExport(rule, feed))
+    }
+
+    private fun buildExport(rule: PluginRule, feed: Feed): LocalRuleExport {
         val contentSelectors =
             rule.detailContentSelectors
                 .split("||")
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
                 .ifEmpty { listOf(rule.detailContentSelector).filter { it.isNotBlank() } }
-        val export =
-            LocalRuleExport(
-                version = 1,
-                name = rule.name,
-                subscribeUrl = rule.subscribeUrl,
-                icon = rule.icon,
-                listTitleSelector = rule.listTitleSelector,
-                listUrlSelector = rule.listUrlSelector,
-                listImageSelector = rule.listImageSelector,
-                listTimeSelector = rule.listTimeSelector,
-                detailTitleSelector = rule.detailTitleSelector,
-                detailAuthorSelector = rule.detailAuthorSelector,
-                detailTimeSelector = rule.detailTimeSelector,
-                detailContentSelectors = contentSelectors,
-                detailExcludeSelector = rule.detailExcludeSelector,
-                detailImageSelector = rule.detailImageSelector,
-                detailVideoSelector = rule.detailVideoSelector,
-                detailAudioSelector = rule.detailAudioSelector,
-                feedSettings =
-                    FeedSettingsExport(
-                        isNotification = feed.isNotification,
-                        isFullContent = feed.isFullContent,
-                        isBrowser = feed.isBrowser,
-                        isAutoTranslate = feed.isAutoTranslate,
-                        isAutoTranslateTitle = feed.isAutoTranslateTitle,
-                        isDisableReferer = feed.isDisableReferer,
-                        isDisableJavaScript = feed.isDisableJavaScript,
-                        isImageFilterEnabled = feed.isImageFilterEnabled,
-                        imageFilterResolution = feed.imageFilterResolution,
-                        imageFilterFileName = feed.imageFilterFileName,
-                        imageFilterDomain = feed.imageFilterDomain,
-                    ),
-            )
-        return json.encodeToString(LocalRuleExport.serializer(), export)
+        return LocalRuleExport(
+            version = 1,
+            name = rule.name,
+            subscribeUrl = rule.subscribeUrl,
+            icon = rule.icon,
+            listTitleSelector = rule.listTitleSelector,
+            listUrlSelector = rule.listUrlSelector,
+            listImageSelector = rule.listImageSelector,
+            listTimeSelector = rule.listTimeSelector,
+            detailTitleSelector = rule.detailTitleSelector,
+            detailAuthorSelector = rule.detailAuthorSelector,
+            detailTimeSelector = rule.detailTimeSelector,
+            detailContentSelectors = contentSelectors,
+            detailExcludeSelector = rule.detailExcludeSelector,
+            detailImageSelector = rule.detailImageSelector,
+            detailVideoSelector = rule.detailVideoSelector,
+            detailAudioSelector = rule.detailAudioSelector,
+            feedSettings =
+                FeedSettingsExport(
+                    isNotification = feed.isNotification,
+                    isFullContent = feed.isFullContent,
+                    isBrowser = feed.isBrowser,
+                    isAutoTranslate = feed.isAutoTranslate,
+                    isAutoTranslateTitle = feed.isAutoTranslateTitle,
+                    isDisableReferer = feed.isDisableReferer,
+                    isDisableJavaScript = feed.isDisableJavaScript,
+                    isImageFilterEnabled = feed.isImageFilterEnabled,
+                    imageFilterResolution = feed.imageFilterResolution,
+                    imageFilterFileName = feed.imageFilterFileName,
+                    imageFilterDomain = feed.imageFilterDomain,
+                ),
+        )
     }
 
     suspend fun importRule(jsonString: String): Result<PluginRule> {

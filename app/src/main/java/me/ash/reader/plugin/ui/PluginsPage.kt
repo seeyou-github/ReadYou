@@ -31,6 +31,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,7 +65,12 @@ fun PluginsPage(
     val context = LocalContext.current
     val rules = viewModel.rules.collectAsStateValue()
     var pendingExportContent by remember { mutableStateOf("") }
+    var pendingExportFileName by remember { mutableStateOf("") }
+    var pendingExportQueue by remember { mutableStateOf(emptyList<ExportPayload>()) }
+    var pendingExportIndex by remember { mutableStateOf(0) }
+    var pendingExportRequest by remember { mutableStateOf(false) }
     var expandedMenuRuleId by remember { mutableStateOf<String?>(null) }
+    var selectedRuleIds by remember { mutableStateOf(setOf<String>()) }
     val scope = rememberCoroutineScope()
 
     val colorThemes = LocalFeedsPageColorThemes.current
@@ -77,6 +83,24 @@ fun PluginsPage(
             context.contentResolver.openOutputStream(uri)?.use { outputStream ->
                 outputStream.write(pendingExportContent.toByteArray())
             }
+        }
+        if (pendingExportQueue.isNotEmpty() && pendingExportIndex < pendingExportQueue.size - 1) {
+            pendingExportIndex += 1
+            val next = pendingExportQueue[pendingExportIndex]
+            pendingExportContent = next.content
+            pendingExportFileName = next.fileName
+            pendingExportRequest = true
+        } else {
+            pendingExportQueue = emptyList()
+            pendingExportIndex = 0
+            pendingExportFileName = ""
+        }
+    }
+
+    LaunchedEffect(pendingExportRequest, pendingExportFileName) {
+        if (pendingExportRequest && pendingExportFileName.isNotBlank()) {
+            exportLauncher.launch(pendingExportFileName)
+            pendingExportRequest = false
         }
     }
 
@@ -150,9 +174,59 @@ fun PluginsPage(
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
+                if (selectedRuleIds.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium)
+                                    .clickable {
+                                        val targets = rules.filter { selectedRuleIds.contains(it.id) }
+                                        scope.launch {
+                                            val exports = viewModel.exportRulesPayloads(targets)
+                                            if (exports.isEmpty()) {
+                                                context.showToast(context.getString(R.string.export_failed))
+                                                return@launch
+                                            }
+                                            pendingExportQueue = exports
+                                            pendingExportIndex = 0
+                                            val first = exports.first()
+                                            pendingExportContent = first.content
+                                            pendingExportFileName = first.fileName
+                                            pendingExportRequest = true
+                                        }
+                                    }
+                                    .padding(12.dp),
+                            text = stringResource(R.string.export),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium)
+                                    .clickable {
+                                        viewModel.deleteRules(selectedRuleIds)
+                                        selectedRuleIds = emptySet()
+                                        context.showToast(context.getString(R.string.plugin_deleted))
+                                    }
+                                    .padding(12.dp),
+                            text = stringResource(R.string.delete),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
             }
 
             items(rules, key = { it.id }) { rule ->
+                val isSelected = selectedRuleIds.contains(rule.id)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -162,10 +236,26 @@ fun PluginsPage(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 72.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium)
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.secondaryContainer
+                                else MaterialTheme.colorScheme.surfaceVariant,
+                                MaterialTheme.shapes.medium
+                            )
                             .combinedClickable(
-                                onClick = { onEdit(rule.id) },
-                                onLongClick = { expandedMenuRuleId = rule.id },
+                                onClick = {
+                                    if (selectedRuleIds.isNotEmpty()) {
+                                        selectedRuleIds =
+                                            if (isSelected) selectedRuleIds - rule.id
+                                            else selectedRuleIds + rule.id
+                                    } else {
+                                        onEdit(rule.id)
+                                    }
+                                },
+                                onLongClick = {
+                                    selectedRuleIds =
+                                        if (isSelected) selectedRuleIds - rule.id
+                                        else selectedRuleIds + rule.id
+                                },
                             )
                             .padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -200,7 +290,7 @@ fun PluginsPage(
                     }
 
                     DropdownMenu(
-                        expanded = expandedMenuRuleId == rule.id,
+                        expanded = expandedMenuRuleId == rule.id && selectedRuleIds.isEmpty(),
                         onDismissRequest = { expandedMenuRuleId = null },
                     ) {
                         DropdownMenuItem(
@@ -214,7 +304,10 @@ fun PluginsPage(
                                         return@launch
                                     }
                                     pendingExportContent = export.content
-                                    exportLauncher.launch(export.fileName)
+                                    pendingExportFileName = export.fileName
+                                    pendingExportQueue = listOf(export)
+                                    pendingExportIndex = 0
+                                    pendingExportRequest = true
                                 }
                             }
                         )
@@ -237,3 +330,4 @@ fun PluginsPage(
         }
     }
 }
+

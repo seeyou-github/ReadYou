@@ -199,6 +199,9 @@ constructor(
     fun delete(callback: () -> Unit = {}) {
         _feedOptionUiState.value.feed?.let {
             applicationScope.launch(ioDispatcher) {
+                syncLocalRuleIfNeeded(it) { rule ->
+                    rule.copy(isEnabled = false, updatedAt = System.currentTimeMillis())
+                }
                 rssService.get().deleteFeed(it)
                 withContext(mainDispatcher) { callback() }
             }
@@ -233,7 +236,11 @@ constructor(
     fun renameFeed() {
         _feedOptionUiState.value.feed?.let {
             applicationScope.launch {
-                rssService.get().renameFeed(it.copy(name = _feedOptionUiState.value.newName))
+                val updated = it.copy(name = _feedOptionUiState.value.newName)
+                rssService.get().renameFeed(updated)
+                syncLocalRuleIfNeeded(updated) { rule ->
+                    rule.copy(name = updated.name, updatedAt = System.currentTimeMillis())
+                }
                 _feedOptionUiState.update { it.copy(renameDialogVisible = false) }
             }
         }
@@ -299,7 +306,11 @@ constructor(
     fun changeIconUrl() {
         _feedOptionUiState.value.feed?.let {
             applicationScope.launch {
-                rssService.get().updateFeed(it.copy(icon = _feedOptionUiState.value.newIcon))
+                val updated = it.copy(icon = _feedOptionUiState.value.newIcon)
+                rssService.get().updateFeed(updated)
+                syncLocalRuleIfNeeded(updated) { rule ->
+                    rule.copy(icon = updated.icon ?: rule.icon, updatedAt = System.currentTimeMillis())
+                }
                 _feedOptionUiState.update { it.copy(changeIconDialogVisible = false) }
             }
         }
@@ -365,6 +376,16 @@ constructor(
         }
     }
 
+    private suspend fun syncLocalRuleIfNeeded(
+        feed: Feed,
+        update: (me.ash.reader.plugin.PluginRule) -> me.ash.reader.plugin.PluginRule,
+    ) {
+        if (!feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) return
+        val ruleId = feed.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX)
+        val rule = pluginRuleDao.queryById(ruleId) ?: return
+        pluginRuleDao.insert(update(rule))
+    }
+
     suspend fun buildExportPayload(feedId: String): ExportPayload {
         return withContext(ioDispatcher) {
             val feed = rssService.get().findFeedById(feedId)
@@ -424,4 +445,9 @@ data class FeedOptionUiState(
     val disableRefererEnabled: Boolean = false,
     val disableJavaScriptEnabled: Boolean = false,
 )
+
+
+
+
+
 

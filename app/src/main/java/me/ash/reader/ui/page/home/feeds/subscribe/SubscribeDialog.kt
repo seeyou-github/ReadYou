@@ -52,15 +52,17 @@ fun SubscribeDialog(
     val subscribeUiState = subscribeViewModel.subscribeUiState.collectAsStateValue()
     val subscribeState = subscribeViewModel.subscribeState.collectAsStateValue()
 
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {
-        it?.let { uri ->
-            context.contentResolver.openInputStream(uri)?.let { inputStream ->
-                subscribeViewModel.importLocalRule(inputStream) { message ->
-                    context.showToast(message)
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+            if (uris.isNullOrEmpty()) return@rememberLauncherForActivityResult
+            uris.forEach { uri ->
+                context.contentResolver.openInputStream(uri)?.let { inputStream ->
+                    subscribeViewModel.importLocalRule(inputStream) { message ->
+                        context.showToast(message)
+                    }
                 }
             }
         }
-    }
 
     if (subscribeState is SubscribeState.Visible) {
 

@@ -39,6 +39,17 @@ class PluginListViewModel @Inject constructor(
         }
     }
 
+    fun deleteRules(ruleIds: Set<String>) {
+        viewModelScope.launch {
+            val targets = pluginRuleDao.queryAll(accountId).filter { ruleIds.contains(it.id) }
+            targets.forEach { rule ->
+                Log.d(TAG, "delete rule ${rule.id}")
+                pluginRuleDao.delete(rule)
+                pluginFeedManager.removeFeed(rule)
+            }
+        }
+    }
+
     fun toggleRule(rule: PluginRule, enabled: Boolean) {
         viewModelScope.launch {
             Log.d(TAG, "toggle rule ${rule.id} -> $enabled")
@@ -61,6 +72,16 @@ class PluginListViewModel @Inject constructor(
             fileName = "${baseName}.json",
             content = json,
         )
+    }
+
+    suspend fun exportRulesPayloads(rules: List<PluginRule>): List<ExportPayload> {
+        if (rules.isEmpty()) return emptyList()
+        val result = mutableListOf<ExportPayload>()
+        for (rule in rules) {
+            val export = exportRule(rule) ?: continue
+            result.add(export)
+        }
+        return result
     }
 
     fun importRule(json: String, onResult: (String) -> Unit) {
