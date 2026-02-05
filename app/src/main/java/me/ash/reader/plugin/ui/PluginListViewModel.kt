@@ -15,9 +15,6 @@ import me.ash.reader.plugin.PluginFeedManager
 import me.ash.reader.plugin.PluginRule
 import me.ash.reader.plugin.PluginRuleDao
 import me.ash.reader.plugin.PluginRuleTransferService
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @HiltViewModel
 class PluginListViewModel @Inject constructor(
@@ -59,10 +56,9 @@ class PluginListViewModel @Inject constructor(
         val pluginUrl = pluginFeedManager.buildPluginUrl(rule.id)
         val feed = feedDao.queryByLink(rule.accountId, pluginUrl).firstOrNull() ?: return null
         val json = pluginRuleTransferService.exportRule(rule, feed)
-        val date = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date())
         val baseName = (rule.name.ifBlank { rule.subscribeUrl }).replace("/", "_")
         return ExportPayload(
-            fileName = "${baseName}_${date}.json",
+            fileName = "${baseName}.json",
             content = json,
         )
     }

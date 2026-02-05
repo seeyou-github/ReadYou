@@ -27,9 +27,6 @@ import me.ash.reader.infrastructure.rss.RssHelper
 import me.ash.reader.plugin.PluginConstants
 import me.ash.reader.plugin.PluginRuleDao
 import me.ash.reader.plugin.PluginRuleTransferService
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterialApi::class)
 @HiltViewModel
@@ -183,7 +180,7 @@ constructor(
         }
     }
 
-    // 2026-02-02: 新增修改自动翻译文章标题设置的方法
+    // 2026-02-02: 新增修改自动翻译文章标题设置的方�?
     fun changeAutoTranslateTitlePreset() {
         viewModelScope.launch(ioDispatcher) {
             _feedOptionUiState.value.feed?.let { feed ->
@@ -372,11 +369,10 @@ constructor(
         return withContext(ioDispatcher) {
             val feed = rssService.get().findFeedById(feedId)
                 ?: return@withContext ExportPayload(
-                    fileName = "feed_${System.currentTimeMillis()}.xml",
+                    fileName = "feed.xml",
                     mime = "text/xml",
                     content = "",
                 )
-            val date = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date())
             val baseName = (feed.name ?: "feed").ifBlank { "feed" }
             if (feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) {
                 val ruleId = feed.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX)
@@ -384,7 +380,7 @@ constructor(
                 if (rule != null) {
                     val json = pluginRuleTransferService.exportRule(rule, feed)
                     return@withContext ExportPayload(
-                        fileName = "${baseName}_${date}.json",
+                        fileName = "${baseName}.json",
                         mime = "application/json",
                         content = json,
                     )
@@ -392,7 +388,7 @@ constructor(
             }
             val opml = opmlService.saveSingleFeedToString(feedId, attachInfo = true)
             ExportPayload(
-                fileName = "${baseName}_${date}.xml",
+                fileName = "${baseName}.xml",
                 mime = "text/xml",
                 content = opml,
             )
@@ -428,3 +424,4 @@ data class FeedOptionUiState(
     val disableRefererEnabled: Boolean = false,
     val disableJavaScriptEnabled: Boolean = false,
 )
+

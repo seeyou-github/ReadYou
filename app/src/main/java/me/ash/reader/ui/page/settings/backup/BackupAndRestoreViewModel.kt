@@ -10,9 +10,6 @@ import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -258,8 +255,6 @@ constructor(
                 }
 
                 val uri = Uri.parse(backupFolder)
-                val calendar = java.util.Calendar.getInstance()
-                val dateSuffix = "${calendar.get(java.util.Calendar.YEAR)}.${calendar.get(java.util.Calendar.MONTH) + 1}.${calendar.get(java.util.Calendar.DAY_OF_MONTH)}"
 
                 // Helper function to check if file exists and delete it
                 suspend fun deleteFileIfExists(fileName: String): Boolean {
@@ -338,7 +333,7 @@ constructor(
                     accountService.getCurrentAccountId(),
                     true
                 )
-                val opmlFileName = "subscriptions_${dateSuffix}.opml"
+                val opmlFileName = "subscriptions.opml"
                 
                 // Delete existing file if it exists and wait for completion
                 if (!deleteFileIfExists(opmlFileName)) {
@@ -365,7 +360,7 @@ constructor(
                     "keywords" to keywords
                 )
                 val keywordsJson = Gson().toJson(keywordsExportData)
-                val keywordsFileName = "keywords_${dateSuffix}.json"
+                val keywordsFileName = "keywords.json"
                 
                 // Delete existing file if it exists and wait for completion
                 if (!deleteFileIfExists(keywordsFileName)) {
@@ -387,7 +382,7 @@ constructor(
 
                 // Backup app preferences
                 val preferencesJson = context.fromDataStoreToJSONString()
-                val preferencesFileName = "preferences_${dateSuffix}.json"
+                val preferencesFileName = "preferences.json"
                 
                 // Delete existing file if it exists and wait for completion
                 if (!deleteFileIfExists(preferencesFileName)) {

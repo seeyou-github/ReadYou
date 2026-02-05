@@ -47,15 +47,11 @@ import me.ash.reader.ui.component.base.RYDialog
 import me.ash.reader.ui.component.base.RYScaffold
 import me.ash.reader.ui.component.base.RadioDialogOption
 import me.ash.reader.ui.component.base.Subtitle
-import me.ash.reader.ui.ext.DateFormat
 import me.ash.reader.ui.ext.MimeType
 import me.ash.reader.ui.ext.getCurrentVersion
 import me.ash.reader.ui.ext.collectAsStateValue
 import me.ash.reader.ui.page.settings.SettingItem
 import me.ash.reader.ui.theme.palette.onLight
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun BackupAndRestorePage(
@@ -405,9 +401,8 @@ private fun preferenceFileLauncher(
     context: Context,
     launcher: ManagedActivityResultLauncher<String, Uri?>,
 ) {
-    val date = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date())
     launcher.launch(
-        "preferences_${date}.json"
+        "preferences.json"
     )
 }
 
@@ -415,9 +410,8 @@ private fun subscriptionOPMLFileLauncher(
     context: Context,
     launcher: ManagedActivityResultLauncher<String, Uri?>,
 ) {
-    val date = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date())
     launcher.launch(
-        "subscription_${date}.xml"
+        "subscription.xml"
     )
 }
 
@@ -425,8 +419,7 @@ private fun keywordsFileLauncher(
     context: Context,
     launcher: ManagedActivityResultLauncher<String, Uri?>,
 ) {
-    val date = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date())
     launcher.launch(
-        "keyword_${date}.json"
+        "keyword.json"
     )
 }
