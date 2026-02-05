@@ -3,7 +3,10 @@ package me.ash.reader.domain.model.article
 import androidx.paging.PagingData
 import androidx.paging.insertSeparators
 import androidx.paging.map
+import java.text.SimpleDateFormat
+import java.util.Locale
 import me.ash.reader.infrastructure.android.AndroidStringsHelper
+import me.ash.reader.plugin.PluginConstants
 import me.ash.reader.ui.ext.formatAsRelativeTime
 
 /**
@@ -34,13 +37,32 @@ sealed class ArticleFlowItem {
 fun PagingData<ArticleWithFeed>.mapPagingFlowItem(androidStringsHelper: AndroidStringsHelper): PagingData<ArticleFlowItem> =
     map {
         ArticleFlowItem.Article(it.apply {
-            article.dateString = article.date.formatAsRelativeTime()
+            val isLocalRule = feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)
+            article.dateString =
+                if (isLocalRule && !article.sourceTime.isNullOrBlank()) {
+                    article.sourceTime
+                } else {
+                    article.date.formatAsRelativeTime()
+                }
         })
     }.insertSeparators { before, after ->
+        val dateFormat = SimpleDateFormat("M月d日", Locale.getDefault())
         val beforeDate =
-            androidStringsHelper.formatAsString(before?.articleWithFeed?.article?.date)
+            before?.articleWithFeed?.article?.date?.let { date ->
+                if (before.articleWithFeed.feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) {
+                    dateFormat.format(date)
+                } else {
+                    androidStringsHelper.formatAsString(date)
+                }
+            }
         val afterDate =
-            androidStringsHelper.formatAsString(after?.articleWithFeed?.article?.date)
+            after?.articleWithFeed?.article?.date?.let { date ->
+                if (after.articleWithFeed.feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) {
+                    dateFormat.format(date)
+                } else {
+                    androidStringsHelper.formatAsString(date)
+                }
+            }
         if (beforeDate != afterDate) {
             afterDate?.let { ArticleFlowItem.Date(it, beforeDate != null) }
         } else {

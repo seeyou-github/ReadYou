@@ -23,6 +23,8 @@ data class Article(
     @ColumnInfo
     var date: Date,
     @ColumnInfo
+    var sourceTime: String? = null,
+    @ColumnInfo
     var title: String,
     @ColumnInfo
     var author: String? = null,

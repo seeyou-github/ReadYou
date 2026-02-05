@@ -306,30 +306,9 @@ fun PluginEditorPage(
                 }
             }
             selectorField(
-                value = state.detailImageSelector,
-                onValueChange = { viewModel.updateState { copy(detailImageSelector = it) } },
-                label = stringResource(R.string.plugin_detail_image_selector),
-                hint = stringResource(R.string.plugin_selector_optional),
-                required = false,
-            )
-            selectorField(
                 value = state.detailExcludeSelector,
                 onValueChange = { viewModel.updateState { copy(detailExcludeSelector = it) } },
                 label = stringResource(R.string.plugin_detail_exclude_selector),
-                hint = stringResource(R.string.plugin_selector_optional),
-                required = false,
-            )
-            selectorField(
-                value = state.detailVideoSelector,
-                onValueChange = { viewModel.updateState { copy(detailVideoSelector = it) } },
-                label = stringResource(R.string.plugin_detail_video_selector),
-                hint = stringResource(R.string.plugin_selector_optional),
-                required = false,
-            )
-            selectorField(
-                value = state.detailAudioSelector,
-                onValueChange = { viewModel.updateState { copy(detailAudioSelector = it) } },
-                label = stringResource(R.string.plugin_detail_audio_selector),
                 hint = stringResource(R.string.plugin_selector_optional),
                 required = false,
             )
@@ -357,6 +336,7 @@ fun PluginEditorPage(
                                     RYAsyncImage(
                                         modifier = Modifier.size(72.dp),
                                         data = item.image,
+                                        refererUrl = item.link,
                                         contentScale = ContentScale.Crop,
                                     )
                                     Spacer(modifier = Modifier.size(12.dp))

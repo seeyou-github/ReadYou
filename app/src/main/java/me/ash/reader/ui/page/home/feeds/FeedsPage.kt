@@ -489,7 +489,6 @@ fun FeedsPage(
 
     SubscribeDialog(
         subscribeViewModel = subscribeViewModel,
-        onCreateLocalRule = navigateToLocalRuleEditor,
     )
 
     GroupOptionDrawer(drawerState = groupDrawerState)

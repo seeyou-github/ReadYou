@@ -1,6 +1,10 @@
-package me.ash.reader.plugin
+﻿package me.ash.reader.plugin
 
 import android.util.Log
+import java.text.ParsePosition
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -18,15 +22,11 @@ import okio.IOException
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
-import java.text.ParsePosition
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.UUID
 
 /**
- * 插件规则同步服务：
- * - 解析列表页，获取文章标题/URL/时间/配图
- * - 解析正文页，获取正文内容与媒体
+ * Plugin rule sync service.
+ * - Parse list page to get title/url/time/image
+ * - Parse detail page to get content/media
  */
 class PluginSyncService @Inject constructor(
     private val okHttpClient: OkHttpClient,
@@ -39,7 +39,7 @@ class PluginSyncService @Inject constructor(
                 Log.d(TAG, "preview list: url=${rule.subscribeUrl}")
                 val listHtml = rule.listHtmlCache.takeIf { it.isNotBlank() } ?: fetchHtml(rule.subscribeUrl)
                 if (listHtml.isBlank()) {
-                    throw IOException("列表页HTML为空")
+                    throw IOException("List HTML is empty")
                 }
                 val listDoc = Jsoup.parse(listHtml, rule.subscribeUrl)
                 val items = parseListItems(listDoc, rule)
@@ -60,21 +60,17 @@ class PluginSyncService @Inject constructor(
                 Log.d(TAG, "preview list items: url=${rule.subscribeUrl}")
                 val listHtml = rule.listHtmlCache.takeIf { it.isNotBlank() } ?: fetchHtml(rule.subscribeUrl)
                 if (listHtml.isBlank()) {
-                    throw IOException("列表页HTML为空")
+                    throw IOException("List HTML is empty")
                 }
                 val listDoc = Jsoup.parse(listHtml, rule.subscribeUrl)
                 val items = parseListItems(listDoc, rule)
-                if (rule.listImageSelector.isNotBlank()) {
-                    Log.d(TAG, "preview list items: images by list selector")
-                    items.forEachIndexed { index, item ->
-                        Log.d(TAG, "list item[$index]: title=${item.title} time=${item.time} image=${item.image}")
-                    }
-                    return@runCatching items
+                items.forEachIndexed { index, item ->
+                    Log.d(TAG, "list item[$index]: title=${item.title} time=${item.time} image=${item.image}")
                 }
-                if (rule.detailImageSelector.isBlank()) {
-                    return@runCatching items
-                }
-                // 列表未配置配图时，使用正文图片选择器抓取第一张图（仅用于预览）
+                if (rule.listImageSelector.isNotBlank()) return@runCatching items
+                if (rule.detailImageSelector.isBlank()) return@runCatching items
+
+                // When list image selector is empty, fallback to first detail image (preview only).
                 items.take(10).map { item ->
                     if (!item.image.isNullOrBlank()) return@map item
                     val detail = parseDetail(item, rule)
@@ -92,7 +88,7 @@ class PluginSyncService @Inject constructor(
                 Log.d(TAG, "preview detail: url=${rule.subscribeUrl}")
                 val listHtml = rule.listHtmlCache.takeIf { it.isNotBlank() } ?: fetchHtml(rule.subscribeUrl)
                 if (listHtml.isBlank()) {
-                    throw IOException("列表页HTML为空")
+                    throw IOException("List HTML is empty")
                 }
                 val listDoc = Jsoup.parse(listHtml, rule.subscribeUrl)
                 val items = parseListItems(listDoc, rule)
@@ -121,45 +117,45 @@ class PluginSyncService @Inject constructor(
                 if (listHtml.isBlank()) {
                     return@runCatching listOf(
                         SelectorDebugItem(
-                            label = "列表页",
-                            selector = "订阅URL",
+                            label = "List page",
+                            selector = "Subscribe URL",
                             count = 0,
-                            samples = listOf("列表页HTML为空")
+                            samples = listOf("List HTML is empty"),
                         )
                     )
                 }
                 val listDoc = Jsoup.parse(listHtml, rule.subscribeUrl)
 
-                debugItems += buildDebugItem(listDoc, "标题列表选择器", rule.listTitleSelector, sampleAttr = null)
-                debugItems += buildDebugItem(listDoc, "文章URL选择器", rule.listUrlSelector, sampleAttr = "href")
-                debugItems += buildDebugItem(listDoc, "标题配图选择器", rule.listImageSelector, sampleAttr = "src")
-                debugItems += buildDebugItem(listDoc, "标题发布时间选择器", rule.listTimeSelector, sampleAttr = null)
+                debugItems += buildDebugItem(listDoc, "List title selector", rule.listTitleSelector, sampleAttr = null)
+                debugItems += buildDebugItem(listDoc, "List url selector", rule.listUrlSelector, sampleAttr = "href")
+                debugItems += buildDebugItem(listDoc, "List image selector", rule.listImageSelector, sampleAttr = "src")
+                debugItems += buildDebugItem(listDoc, "List time selector", rule.listTimeSelector, sampleAttr = null)
 
                 val firstItem = parseListItems(listDoc, rule).firstOrNull()
                 if (firstItem == null) {
                     debugItems += SelectorDebugItem(
-                        label = "正文页",
-                        selector = "文章URL",
+                        label = "Detail page",
+                        selector = "Article URL",
                         count = 0,
-                        samples = listOf("列表未解析到文章URL")
+                        samples = listOf("No article URL parsed from list"),
                     )
                     return@runCatching debugItems
                 }
                 val detailHtml = fetchHtml(firstItem.link)
                 if (detailHtml.isBlank()) {
                     debugItems += SelectorDebugItem(
-                        label = "正文页",
-                        selector = "文章URL",
+                        label = "Detail page",
+                        selector = "Article URL",
                         count = 0,
-                        samples = listOf("正文HTML为空")
+                        samples = listOf("Detail HTML is empty"),
                     )
                     return@runCatching debugItems
                 }
                 val detailDoc = Jsoup.parse(detailHtml, firstItem.link)
 
-                debugItems += buildDebugItem(detailDoc, "正文标题选择器", rule.detailTitleSelector, sampleAttr = null)
-                debugItems += buildDebugItem(detailDoc, "作者选择器", rule.detailAuthorSelector, sampleAttr = null)
-                debugItems += buildDebugItem(detailDoc, "时间选择器", rule.detailTimeSelector, sampleAttr = null)
+                debugItems += buildDebugItem(detailDoc, "Detail title selector", rule.detailTitleSelector, sampleAttr = null)
+                debugItems += buildDebugItem(detailDoc, "Detail author selector", rule.detailAuthorSelector, sampleAttr = null)
+                debugItems += buildDebugItem(detailDoc, "Detail time selector", rule.detailTimeSelector, sampleAttr = null)
 
                 val contentSelectors =
                     rule.detailContentSelectors
@@ -169,16 +165,16 @@ class PluginSyncService @Inject constructor(
                         .ifEmpty { listOf(rule.detailContentSelector).filter { it.isNotBlank() } }
                 if (contentSelectors.isEmpty()) {
                     debugItems += SelectorDebugItem(
-                        label = "正文选择器",
-                        selector = "未设置",
+                        label = "Detail content selector",
+                        selector = "Not set",
                         count = 0,
-                        samples = listOf("正文选择器为空")
+                        samples = listOf("Detail content selector is empty"),
                     )
                 } else {
                     contentSelectors.forEachIndexed { index, selector ->
                         debugItems += buildDebugItem(
                             detailDoc,
-                            "正文选择器${index + 1}",
+                            "Detail content selector ${index + 1}",
                             selector,
                             sampleAttr = null,
                             useOuterHtml = true,
@@ -186,9 +182,10 @@ class PluginSyncService @Inject constructor(
                     }
                 }
 
-                debugItems += buildDebugItem(detailDoc, "正文图片选择器", rule.detailImageSelector, sampleAttr = "src")
-                debugItems += buildDebugItem(detailDoc, "正文视频选择器", rule.detailVideoSelector, sampleAttr = "src")
-                debugItems += buildDebugItem(detailDoc, "正文音频选择器", rule.detailAudioSelector, sampleAttr = "src")
+                debugItems += buildDebugItem(detailDoc, "Detail image selector", rule.detailImageSelector, sampleAttr = "src")
+                debugItems += buildDebugItem(detailDoc, "Detail exclude selector", rule.detailExcludeSelector, sampleAttr = null)
+                debugItems += buildDebugItem(detailDoc, "Detail video selector", rule.detailVideoSelector, sampleAttr = "src")
+                debugItems += buildDebugItem(detailDoc, "Detail audio selector", rule.detailAudioSelector, sampleAttr = "src")
 
                 debugItems.also { list ->
                     list.forEach {
@@ -216,7 +213,7 @@ class PluginSyncService @Inject constructor(
                 return@withContext FeedWithArticle(feed = feed, articles = emptyList())
             }
 
-            // 过滤已存在的文章（用 link 去重）
+            // Dedupe by link
             val existingLinks =
                 articleDao.queryArticlesByLinks(
                     linkList = items.map { it.link },
@@ -227,12 +224,11 @@ class PluginSyncService @Inject constructor(
             Log.d(TAG, "list items=${items.size}, newItems=${newItems.size}")
 
             val articles =
-                newItems.mapNotNull { item ->
+                newItems.mapIndexedNotNull { index, item ->
                     runCatching {
-                        val detail = parseDetail(item, rule)
-                        buildArticle(feed, rule, item, detail, preDate)
+                        buildArticle(feed, rule, item, preDate, index)
                     }.onFailure {
-                        Log.e(TAG, "parse detail failed: ${item.link} ${it.message}")
+                        Log.e(TAG, "build article failed: ${item.link} ${it.message}")
                     }.getOrNull()
                 }
             Log.d(TAG, "sync end: newArticles=${articles.size}")
@@ -261,21 +257,27 @@ class PluginSyncService @Inject constructor(
                 Log.w(TAG, "list item link empty at $index")
                 return@mapNotNull null
             }
+            val titleElement = titleElements.getOrNull(index)
+            val urlElement = urlElements.getOrNull(index)
             val image =
                 if (rule.listImageSelector.isNotBlank()) {
-                    val titleElement = titleElements.getOrNull(index)
-                    val urlElement = urlElements.getOrNull(index)
-                    val container =
-                        titleElement?.parents()?.firstOrNull { it.select(rule.listImageSelector).isNotEmpty() }
-                            ?: urlElement?.parents()?.firstOrNull { it.select(rule.listImageSelector).isNotEmpty() }
+                    val container = findContainer(titleElement, urlElement, rule.listImageSelector)
                     val fromContainer = container?.select(rule.listImageSelector)?.firstOrNull()
                     val picked = fromContainer?.let { pickUrl(it, "src") }.orEmpty()
-                    if (picked.isNotBlank()) picked
-                    else imageElements?.getOrNull(index)?.let { pickUrl(it, "src") }.orEmpty()
+                    if (picked.isNotBlank()) picked else ""
                 } else {
                     imageElements?.getOrNull(index)?.let { pickUrl(it, "src") }.orEmpty()
                 }.takeIf { it.isNotBlank() }
-            val time = timeElements?.getOrNull(index)?.let { pickText(it) } ?: ""
+            val time =
+                if (rule.listTimeSelector.isNotBlank()) {
+                    val container = findContainer(titleElement, urlElement, rule.listTimeSelector)
+                    val fromContainer = container?.select(rule.listTimeSelector)?.firstOrNull()
+                    val picked = fromContainer?.let { pickText(it) }.orEmpty()
+                    if (picked.isNotBlank()) picked
+                    else timeElements?.getOrNull(index)?.let { pickText(it) }.orEmpty()
+                } else {
+                    timeElements?.getOrNull(index)?.let { pickText(it) }.orEmpty()
+                }
 
             ListItem(
                 title = title.ifBlank { link },
@@ -320,26 +322,37 @@ class PluginSyncService @Inject constructor(
         feed: Feed,
         rule: PluginRule,
         item: ListItem,
-        detail: DetailResult,
         preDate: Date,
+        orderIndex: Int,
     ): Article {
-        val contentHtml = detail.contentHtml.ifBlank { "" }
-        val plainText = Jsoup.parse(contentHtml).text()
-        val parsedDate = parseDate(detail.time ?: item.time, preDate)
+        val contentHtml = ""
+        val plainText = ""
+        val sortDate = Date(preDate.time - orderIndex.toLong())
 
         return Article(
             id = feed.accountId.spacerDollar(UUID.randomUUID().toString()),
             accountId = feed.accountId,
             feedId = feed.id,
-            date = parsedDate,
-            title = (detail.title ?: item.title).decodeHTML() ?: item.title,
-            author = detail.author,
+            date = sortDate,
+            sourceTime = item.time,
+            title = item.title.decodeHTML() ?: item.title,
+            author = null,
             rawDescription = contentHtml,
             shortDescription = plainText.take(280),
-            img = detail.coverImage ?: item.image,
+            img = item.image,
             link = item.link,
             updateAt = preDate,
         )
+    }
+
+    suspend fun fetchDetail(rule: PluginRule, link: String): Result<DetailResult> {
+        return withContext(ioDispatcher) {
+            runCatching {
+                parseDetail(ListItem(title = "", link = link, image = null, time = null), rule)
+            }.onFailure {
+                Log.e(TAG, "fetch detail failed: ${it.message}")
+            }
+        }
     }
 
     private fun fetchHtml(url: String): String {
@@ -355,16 +368,29 @@ class PluginSyncService @Inject constructor(
     }
 
     private fun pickText(element: Element): String {
-        return element.text().ifBlank { element.attr("title") }.trim()
+        return element.text()
+            .ifBlank { element.attr("title") }
+            .ifBlank { element.attr("datetime") }
+            .trim()
     }
 
     private fun pickUrl(element: Element, attr: String): String {
-        val url = element.absUrl(attr).ifBlank {
+        val raw =
             element.attr(attr).ifBlank {
-                element.attr("data-src").ifBlank { element.attr("data-original") }
+                element.attr("data-src")
+                    .ifBlank { element.attr("data-original") }
+                    .ifBlank { element.attr("srcset").substringBefore(" ").trim() }
+            }.trim()
+        val url =
+            when {
+                raw.isNotBlank() -> {
+                    if (raw.startsWith("http://") || raw.startsWith("https://")) raw
+                    else if (raw.startsWith("//")) "https:$raw"
+                    else element.absUrl(attr).ifBlank { raw }
+                }
+                else -> element.absUrl(attr)
             }
-        }
-        return url
+        return url.trim()
     }
 
     private fun selectFirstText(doc: Document, selector: String): String? {
@@ -418,8 +444,8 @@ class PluginSyncService @Inject constructor(
         return builder.toString()
     }
 
-    private fun parseDate(text: String?, fallback: Date): Date {
-        if (text.isNullOrBlank()) return fallback
+    private fun parseDateOrNull(text: String?, base: Date): Date? {
+        if (text.isNullOrBlank()) return null
         val patterns = arrayOf(
             "yyyy-MM-dd HH:mm:ss",
             "yyyy-MM-dd",
@@ -427,6 +453,10 @@ class PluginSyncService @Inject constructor(
             "yyyy/MM/dd",
             "yyyy.MM.dd HH:mm:ss",
             "yyyy.MM.dd",
+            "yyyy年MM月dd日 HH:mm",
+            "yyyy年MM月dd日",
+            "MM月dd日 HH:mm",
+            "MM月dd日",
             "MM-dd HH:mm",
         )
         val df = SimpleDateFormat()
@@ -436,30 +466,39 @@ class PluginSyncService @Inject constructor(
             val date = df.parse(text.trim(), ParsePosition(0))
             if (date != null) return date
         }
-        // 处理中文相对时间：刚刚/分钟前/小时前/天前/昨天
+        // Relative time
         val trimmed = text.trim()
-        val now = fallback.time
+        val now = base.time
         if (trimmed.contains("刚刚")) return Date(now)
         val minuteMatch = Regex("(\\d+)\\s*分钟").find(trimmed)
         if (minuteMatch != null) {
-            val minutes = minuteMatch.groupValues[1].toLongOrNull() ?: return fallback
+            val minutes = minuteMatch.groupValues[1].toLongOrNull() ?: return null
             return Date(now - minutes * 60_000)
         }
         val hourMatch = Regex("(\\d+)\\s*小时").find(trimmed)
         if (hourMatch != null) {
-            val hours = hourMatch.groupValues[1].toLongOrNull() ?: return fallback
+            val hours = hourMatch.groupValues[1].toLongOrNull() ?: return null
             return Date(now - hours * 3_600_000)
         }
         val dayMatch = Regex("(\\d+)\\s*天").find(trimmed)
         if (dayMatch != null) {
-            val days = dayMatch.groupValues[1].toLongOrNull() ?: return fallback
+            val days = dayMatch.groupValues[1].toLongOrNull() ?: return null
             return Date(now - days * 86_400_000)
         }
         if (trimmed.contains("昨天")) {
             return Date(now - 86_400_000)
         }
+        if (trimmed.contains("前天")) {
+            return Date(now - 2 * 86_400_000)
+        }
         Log.w(TAG, "parse date failed: $text")
-        return fallback
+        return null
+    }
+
+    private fun findContainer(titleElement: Element?, urlElement: Element?, selector: String): Element? {
+        if (selector.isBlank()) return null
+        return titleElement?.parents()?.firstOrNull { it.select(selector).isNotEmpty() }
+            ?: urlElement?.parents()?.firstOrNull { it.select(selector).isNotEmpty() }
     }
 
     data class ListItem(
@@ -497,7 +536,7 @@ class PluginSyncService @Inject constructor(
         useOuterHtml: Boolean = false,
     ): SelectorDebugItem {
         if (selector.isBlank()) {
-            return SelectorDebugItem(label, selector, 0, listOf("选择器为空"))
+            return SelectorDebugItem(label, selector, 0, listOf("Selector is empty"))
         }
         val elements = doc.select(selector)
         val samples = elements.take(3).map { element ->
@@ -513,7 +552,7 @@ class PluginSyncService @Inject constructor(
             label = label,
             selector = selector,
             count = elements.size,
-            samples = if (samples.isEmpty()) listOf("未匹配到内容") else samples,
+            samples = if (samples.isEmpty()) listOf("No match") else samples,
         )
     }
 

@@ -3,12 +3,15 @@ package me.ash.reader.plugin.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -19,12 +22,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.UploadFile
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,6 +53,7 @@ import me.ash.reader.ui.ext.collectAsStateValue
 import me.ash.reader.ui.ext.showToast
 import me.ash.reader.ui.theme.palette.onLight
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PluginsPage(
     onBack: () -> Unit,
@@ -60,6 +64,7 @@ fun PluginsPage(
     val context = LocalContext.current
     val rules = viewModel.rules.collectAsStateValue()
     var pendingExportContent by remember { mutableStateOf("") }
+    var expandedMenuRuleId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     val colorThemes = LocalFeedsPageColorThemes.current
@@ -148,70 +153,78 @@ fun PluginsPage(
             }
 
             items(rules, key = { it.id }) { rule ->
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium)
-                        .clickable { onEdit(rule.id) }
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        FeedIcon(
-                            feedName = rule.name,
-                            iconUrl = rule.icon,
-                            placeholderIcon = Icons.Outlined.Build,
-                            size = 20.dp,
-                        )
-                        Column(modifier = Modifier.padding(start = 12.dp)) {
-                            Text(
-                                text = rule.name.ifBlank { rule.subscribeUrl },
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 72.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium)
+                            .combinedClickable(
+                                onClick = { onEdit(rule.id) },
+                                onLongClick = { expandedMenuRuleId = rule.id },
                             )
-                            Text(
-                                text = rule.subscribeUrl,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            FeedIcon(
+                                feedName = rule.name,
+                                iconUrl = rule.icon,
+                                placeholderIcon = Icons.Outlined.Build,
+                                size = 42.dp,
                             )
+                            Column(modifier = Modifier.padding(start = 12.dp)) {
+                                Text(
+                                    text = rule.name.ifBlank { rule.subscribeUrl },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = rule.subscribeUrl,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                )
+                            }
                         }
-                    }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(
                             checked = rule.isEnabled,
                             onCheckedChange = { viewModel.toggleRule(rule, it) },
                         )
-                        Icon(
-                            modifier = Modifier
-                                .padding(end = 12.dp)
-                                .clickable {
-                                    scope.launch {
-                                        val export = viewModel.exportRule(rule)
-                                        if (export == null) {
-                                            context.showToast(context.getString(R.string.export_failed))
-                                            return@launch
-                                        }
-                                        pendingExportContent = export.content
-                                        exportLauncher.launch(export.fileName)
+                    }
+
+                    DropdownMenu(
+                        expanded = expandedMenuRuleId == rule.id,
+                        onDismissRequest = { expandedMenuRuleId = null },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(text = stringResource(R.string.export_local_rule_json)) },
+                            onClick = {
+                                expandedMenuRuleId = null
+                                scope.launch {
+                                    val export = viewModel.exportRule(rule)
+                                    if (export == null) {
+                                        context.showToast(context.getString(R.string.export_failed))
+                                        return@launch
                                     }
-                                },
-                            imageVector = Icons.Outlined.Download,
-                            contentDescription = stringResource(R.string.export_local_rule_json),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    pendingExportContent = export.content
+                                    exportLauncher.launch(export.fileName)
+                                }
+                            }
                         )
-                        Icon(
-                            modifier = Modifier
-                                .clickable {
-                                    viewModel.deleteRule(rule)
-                                    context.showToast(context.getString(R.string.plugin_deleted))
-                                },
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = stringResource(R.string.delete),
-                            tint = MaterialTheme.colorScheme.error,
+                        DropdownMenuItem(
+                            text = { Text(text = stringResource(R.string.delete)) },
+                            onClick = {
+                                expandedMenuRuleId = null
+                                viewModel.deleteRule(rule)
+                                context.showToast(context.getString(R.string.plugin_deleted))
+                            }
                         )
                     }
                 }

@@ -1,4 +1,4 @@
-package me.ash.reader.ui.component.base
+﻿package me.ash.reader.ui.component.base
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
@@ -27,8 +27,9 @@ val SIZE_1000 = Size(1000, 1000)
 fun RYAsyncImage(
     modifier: Modifier = Modifier,
     data: Any? = null,
-    key: Any? = null,  // 2026-01-23: 添加缓存 key 支持
+    key: Any? = null,  // 2026-01-23: 娣诲姞缂撳瓨 key 鏀寔
     disableReferer: Boolean = false,
+    refererUrl: String? = null,
     size: Size = Size.ORIGINAL,
     scale: Scale = Scale.FIT,
     precision: Precision = Precision.AUTOMATIC,
@@ -44,11 +45,15 @@ fun RYAsyncImage(
             model =
                 ImageRequest.Builder(LocalContext.current)
                     .apply {
-                        val domain = data.toString().extractDomain()
-                        if (!disableReferer && data.toString().extractDomain() != null) {
-                            addHeader("Referer", domain!!)
+                        if (!disableReferer) {
+                            val referer =
+                                refererUrl?.takeIf { it.isNotBlank() }
+                                    ?: data?.toString()?.extractDomain()?.let { "https://$it" }
+                            if (!referer.isNullOrBlank()) {
+                                addHeader("Referer", referer)
+                            }
                         }
-                        // 2026-01-23: 使用 key 强制 Coil 在数据变化时重新加载
+                        // 2026-01-23: 浣跨敤 key 寮哄埗 Coil 鍦ㄦ暟鎹彉鍖栨椂閲嶆柊鍔犺浇
                         if (key != null) {
                             memoryCacheKey(key.toString())
                         }
@@ -71,35 +76,6 @@ fun RYAsyncImage(
         colorFilter = colorFilter,
         modifier = modifier.background(backgroundColor ?: MaterialTheme.colorScheme.surfaceContainer),
     )
-
-    //    coil.compose.AsyncImage(
-    //        modifier = modifier,
-    //        model = ImageRequest
-    //            .Builder(LocalContext.current)
-    //            .data(data)
-    //            .crossfade(true)
-    //            .scale(scale)
-    //            .precision(precision)
-    //            .size(size)
-    //            .build(),
-    //        contentDescription = contentDescription,
-    //        contentScale = contentScale,
-    //        imageLoader = LocalImageLoader.current,
-    //        placeholder = placeholder?.run {
-    //            forwardingPainter(
-    //                painter = painterResource(this),
-    //                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-    //                alpha = 0.1f,
-    //            )
-    //        },
-    //        error = error?.run {
-    //            forwardingPainter(
-    //                painter = painterResource(this),
-    //                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-    //                alpha = 0.1f,
-    //            )
-    //        },
-    //    )
 }
 
 // From: https://gist.github.com/colinrtwhite/c2966e0b8584b4cdf0a5b05786b20ae1

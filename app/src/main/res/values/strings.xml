@@ -438,7 +438,7 @@
     <string name="last_updated">Last updated</string>
     <string name="no_unread_articles">No unread articles</string>
     <string name="list_widget_label">List view</string>
-    <string name="card_widget_label">Card view</string>"
+    <string name="card_widget_label">Card view</string>
     <string name="widget_description">View latest unread articles from selected sources</string>
     <string name="apply">Apply</string>
     <string name="notifications">Notifications</string>
@@ -494,7 +494,7 @@
     <string name="plugin_test_list_title">标题解析预览</string>
     <string name="plugin_test_detail_title">正文解析预览</string>
     <string name="plugin_detail_empty">暂无正文内容</string>
-    <string name="create_local_rule">新建本地解析规则</string>
+    <string name="create_local_rule">新建本地规则</string>
     <string name="import_local_rule">导入本地规则</string>
     <string name="export_local_rule_json">导出本地规则(JSON)</string>
     <string name="local_rule_list">本地规则</string>

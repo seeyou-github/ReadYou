@@ -56,6 +56,10 @@ import  me.ash.reader.infrastructure.translate.ui.TranslateState
 import me.ash.reader.infrastructure.translate.preference.TranslateServiceIdPreference
 import me.ash.reader.infrastructure.translate.transtitle.TitleTranslateEntry
 import me.ash.reader.infrastructure.translate.transtitle.TitleTranslateQueue
+import me.ash.reader.plugin.PluginConstants
+import me.ash.reader.plugin.PluginRuleDao
+import me.ash.reader.plugin.PluginSyncService
+import org.jsoup.Jsoup
 import timber.log.Timber
 
 private const val TAG = "ArticleListReaderViewModel"
@@ -83,6 +87,8 @@ class ArticleListReaderViewModel
     private val articleDao: ArticleDao,
     val titleTranslateEntry: TitleTranslateEntry,
     val titleTranslateQueue: TitleTranslateQueue,
+    private val pluginRuleDao: PluginRuleDao,
+    private val pluginSyncService: PluginSyncService,
 ) : ViewModel() {
 
     val flowUiState: StateFlow<FlowUiState?> =
@@ -370,7 +376,19 @@ class ArticleListReaderViewModel
     }
 
     suspend fun ReaderState.renderContent(articleWithFeed: ArticleWithFeed): ReaderState {
-        val contentState = if (articleWithFeed.feed.isFullContent) {
+        val contentState = if (articleWithFeed.feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) {
+            val content = ensurePluginContent(articleWithFeed)
+            if (content.isNullOrBlank()) {
+                ReaderState.Description("")
+            } else {
+                val filtered =
+                    readerCacheHelper.removeFilteredImagesIfNeeded(
+                        content,
+                        articleWithFeed.feed,
+                    )
+                ReaderState.Description(filtered)
+            }
+        } else if (articleWithFeed.feed.isFullContent) {
             val fullContent =
                 readerCacheHelper.readFullContent(articleWithFeed.article.id).getOrNull()
             if (fullContent != null) {
@@ -392,6 +410,30 @@ class ArticleListReaderViewModel
         }
 
         return copy(content = contentState)
+    }
+
+    private suspend fun ensurePluginContent(articleWithFeed: ArticleWithFeed): String? {
+        val article = articleWithFeed.article
+        if (article.rawDescription.isNotBlank()) return article.rawDescription
+        val feed = articleWithFeed.feed
+        val ruleId = feed.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX)
+        val rule = pluginRuleDao.queryById(ruleId) ?: return null
+        val detail = pluginSyncService.fetchDetail(rule, article.link).getOrNull() ?: return null
+        val content = detail.contentHtml
+        if (content.isBlank()) return null
+        val plainText = Jsoup.parse(content).text()
+        val updated =
+            article.copy(
+                title = detail.title ?: article.title,
+                author = detail.author ?: article.author,
+                rawDescription = content,
+                shortDescription = plainText.take(280),
+                img = detail.coverImage ?: article.img,
+                sourceTime = detail.time ?: article.sourceTime,
+            )
+        articleDao.update(updated)
+        _readingUiState.update { it.copy(articleWithFeed = articleWithFeed.copy(article = updated)) }
+        return content
     }
 
     fun renderDescriptionContent() {

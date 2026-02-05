@@ -1,4 +1,4 @@
-package me.ash.reader.domain.service
+﻿package me.ash.reader.domain.service
 
 import android.content.Context
 import be.ceau.opml.OpmlWriter
@@ -20,6 +20,7 @@ import java.io.InputStream
 import java.util.*
 import javax.inject.Inject
 import android.util.Base64
+import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import coil.ImageLoader
@@ -30,12 +31,12 @@ import okio.FileSystem
 import okio.buffer
 
 /**
- * 支持 OPML 文件的导入和导出。
+ * 鏀寔 OPML 鏂囦欢鐨勫鍏ュ拰瀵煎嚭銆?
  *
- * 该服务提供以下功能：
- * - 从 OPML 文件导入订阅源
- * - 将订阅源导出为 OPML 格式
- * - 支持导出单个订阅源、分组或整个账户
+ * 璇ユ湇鍔℃彁渚涗互涓嬪姛鑳斤細
+ * - 浠?OPML 鏂囦欢瀵煎叆璁㈤槄婧?
+ * - 灏嗚闃呮簮瀵煎嚭涓?OPML 鏍煎紡
+ * - 鏀寔瀵煎嚭鍗曚釜璁㈤槄婧愩€佸垎缁勬垨鏁翠釜璐︽埛
  */
 class OpmlService @Inject constructor(
     @ApplicationContext
@@ -52,72 +53,63 @@ class OpmlService @Inject constructor(
 ) {
 
     /**
-     * 导入 OPML 文件。
+     * 瀵煎叆 OPML 鏂囦欢銆?
      *
-     * 将 OPML 文件中的订阅源导入到数据库。
-     * 处理逻辑：
-     * 1. 获取当前账户的默认分组
-     * 2. 解析 OPML 文件，获取所有分组和订阅源
-     * 3. 遍历解析结果，将新分组插入数据库
-     * 4. 检查重复订阅源，避免重复导入
-     * 5. 将不重复的订阅源插入数据库
+     * 灏?OPML 鏂囦欢涓殑璁㈤槄婧愬鍏ュ埌鏁版嵁搴撱€?
+     * 澶勭悊閫昏緫锛?
+     * 1. 鑾峰彇褰撳墠璐︽埛鐨勯粯璁ゅ垎缁?
+     * 2. 瑙ｆ瀽 OPML 鏂囦欢锛岃幏鍙栨墍鏈夊垎缁勫拰璁㈤槄婧?
+     * 3. 閬嶅巻瑙ｆ瀽缁撴灉锛屽皢鏂板垎缁勬彃鍏ユ暟鎹簱
+     * 4. 妫€鏌ラ噸澶嶈闃呮簮锛岄伩鍏嶉噸澶嶅鍏?
+     * 5. 灏嗕笉閲嶅鐨勮闃呮簮鎻掑叆鏁版嵁搴?
      *
-     * @param [inputStream] OPML 文件的输入流
-     * @throws Exception 解析或导入过程中可能抛出异常
+     * @param [inputStream] OPML 鏂囦欢鐨勮緭鍏ユ祦
+     * @throws Exception 瑙ｆ瀽鎴栧鍏ヨ繃绋嬩腑鍙兘鎶涘嚭寮傚父
      */
     @Throws(Exception::class)
     suspend fun saveToDatabase(inputStream: InputStream) {
         withContext(ioDispatcher) {
-            // 获取当前账户的默认分组
-            val defaultGroup = groupDao.queryById(getDefaultGroupId(context.currentAccountId))!!
-            // 解析 OPML 文件，返回分组和订阅源列表
-            val groupWithFeedList =
-                OPMLDataSource.parseFileInputStream(inputStream, defaultGroup, context.currentAccountId)
-            // 遍历每个分组及其订阅源
-            groupWithFeedList.forEach { groupWithFeed ->
-                // 如果不是默认分组，检查是否已存在同名分组
-                if (groupWithFeed.group != defaultGroup) {
-                    // 查询数据库中是否已存在同名分组
-                    val existingGroup = groupDao.queryByName(context.currentAccountId, groupWithFeed.group.name)
-                    if (existingGroup == null) {
-                        // 不存在，插入新分组
-                        groupDao.insert(groupWithFeed.group)
-                        // 更新所有订阅源的分组 ID 为新插入分组的 ID
-                        groupWithFeed.feeds.forEach { feed ->
-                            feed.groupId = groupWithFeed.group.id
-                        }
-                    } else {
-                        // 存在，使用现有分组ID更新订阅源的分组
-                        groupWithFeed.feeds.forEach { feed ->
-                            feed.groupId = existingGroup.id
+            runCatching {
+                val defaultGroup = groupDao.queryById(getDefaultGroupId(context.currentAccountId))!!
+                val groupWithFeedList =
+                    OPMLDataSource.parseFileInputStream(inputStream, defaultGroup, context.currentAccountId)
+                groupWithFeedList.forEach { groupWithFeed ->
+                    if (groupWithFeed.group != defaultGroup) {
+                        val existingGroup = groupDao.queryByName(context.currentAccountId, groupWithFeed.group.name)
+                        if (existingGroup == null) {
+                            groupDao.insert(groupWithFeed.group)
+                            groupWithFeed.feeds.forEach { feed ->
+                                feed.groupId = groupWithFeed.group.id
+                            }
+                        } else {
+                            groupWithFeed.feeds.forEach { feed ->
+                                feed.groupId = existingGroup.id
+                            }
                         }
                     }
-                }
-                // 重新计算重复列表，因为可能有订阅源的分组ID已被更新
-                val repeatList = mutableListOf<Feed>()
-                // 遍历该分组下的所有订阅源
-                groupWithFeed.feeds.forEach {
-                    // 判断该订阅源 URL 是否已存在
-                    if (rssService.get().isFeedExist(it.url)) {
-                        // 已存在，添加到重复列表
-                        repeatList.add(it)
+                    val repeatList = mutableListOf<Feed>()
+                    groupWithFeed.feeds.forEach {
+                        if (rssService.get().isFeedExist(it.url)) {
+                            repeatList.add(it)
+                        }
                     }
+                    feedDao.insertList((groupWithFeed.feeds subtract repeatList.toSet()).toList())
                 }
-                // 插入不重复的订阅源到数据库（排除重复项）
-                feedDao.insertList((groupWithFeed.feeds subtract repeatList.toSet()).toList())
+            }.onFailure { th ->
+                Log.e("OpmlService", "import OPML failed: ${th.message}")
             }
         }
     }
 
     /**
-     * 导出 OPML 文件。
+     * 瀵煎嚭 OPML 鏂囦欢銆?
      *
-     * 将当前账户的所有订阅源导出为 OPML 格式字符串。
+     * 灏嗗綋鍓嶈处鎴风殑鎵€鏈夎闃呮簮瀵煎嚭涓?OPML 鏍煎紡瀛楃涓层€?
      *
-     * @param [accountId] 账户 ID
-     * @param [attachInfo] 是否附加额外信息（通知开关、全文阅读、浏览器打开设置）
-     * @return OPML 格式的字符串
-     * @throws Exception 导出过程中可能抛出异常
+     * @param [accountId] 璐︽埛 ID
+     * @param [attachInfo] 鏄惁闄勫姞棰濆淇℃伅锛堥€氱煡寮€鍏炽€佸叏鏂囬槄璇汇€佹祻瑙堝櫒鎵撳紑璁剧疆锛?
+     * @return OPML 鏍煎紡鐨勫瓧绗︿覆
+     * @throws Exception 瀵煎嚭杩囩▼涓彲鑳芥姏鍑哄紓甯?
      */
     @Throws(Exception::class)
     suspend fun saveToString(accountId: Int, attachInfo: Boolean): String {
@@ -160,22 +152,22 @@ class OpmlService @Inject constructor(
     }
 
     /**
-     * 获取默认分组的 ID。
+     * 鑾峰彇榛樿鍒嗙粍鐨?ID銆?
      *
-     * @param [accountId] 账户 ID
-     * @return 默认分组的 ID 字符串
+     * @param [accountId] 璐︽埛 ID
+     * @return 榛樿鍒嗙粍鐨?ID 瀛楃涓?
      */
     private fun getDefaultGroupId(accountId: Int): String = accountId.getDefaultGroupId()
 
     /**
-     * 导出单个订阅源为 OPML。
+     * 瀵煎嚭鍗曚釜璁㈤槄婧愪负 OPML銆?
      *
-     * 将指定订阅源及其所属分组导出为 OPML 格式字符串。
+     * 灏嗘寚瀹氳闃呮簮鍙婂叾鎵€灞炲垎缁勫鍑轰负 OPML 鏍煎紡瀛楃涓层€?
      *
-     * @param [feedId] 订阅源 ID
-     * @param [attachInfo] 是否附加额外信息
-     * @return OPML 格式的字符串
-     * @throws Exception 订阅源或分组不存在时抛出异常
+     * @param [feedId] 璁㈤槄婧?ID
+     * @param [attachInfo] 鏄惁闄勫姞棰濆淇℃伅
+     * @return OPML 鏍煎紡鐨勫瓧绗︿覆
+     * @throws Exception 璁㈤槄婧愭垨鍒嗙粍涓嶅瓨鍦ㄦ椂鎶涘嚭寮傚父
      */
     @Throws(Exception::class)
     suspend fun saveSingleFeedToString(feedId: String, attachInfo: Boolean): String {
@@ -213,14 +205,14 @@ class OpmlService @Inject constructor(
     }
 
     /**
-     * 导出分组内所有订阅源为 OPML。
+     * 瀵煎嚭鍒嗙粍鍐呮墍鏈夎闃呮簮涓?OPML銆?
      *
-     * 将指定分组的所有订阅源导出为 OPML 格式字符串。
+     * 灏嗘寚瀹氬垎缁勭殑鎵€鏈夎闃呮簮瀵煎嚭涓?OPML 鏍煎紡瀛楃涓层€?
      *
-     * @param [groupId] 分组 ID
-     * @param [attachInfo] 是否附加额外信息
-     * @return OPML 格式的字符串
-     * @throws Exception 分组不存在时抛出异常
+     * @param [groupId] 鍒嗙粍 ID
+     * @param [attachInfo] 鏄惁闄勫姞棰濆淇℃伅
+     * @return OPML 鏍煎紡鐨勫瓧绗︿覆
+     * @throws Exception 鍒嗙粍涓嶅瓨鍦ㄦ椂鎶涘嚭寮傚父
      */
     @Throws(Exception::class)
     suspend fun saveGroupFeedsToString(groupId: String, attachInfo: Boolean): String {
@@ -335,3 +327,5 @@ class OpmlService @Inject constructor(
         return "data:$mime;base64,$base64"
     }
 }
+
+

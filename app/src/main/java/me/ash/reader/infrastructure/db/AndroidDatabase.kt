@@ -22,7 +22,7 @@ import java.util.*
 
 @Database(
     entities = [Account::class, Feed::class, Article::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class, PluginRule::class],
-    version = 22,
+    version = 23,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 5, to = 7),
@@ -270,6 +270,18 @@ abstract class AndroidDatabase : RoomDatabase() {
                         )
                     }
                 }
+                /**
+                 * 数据库迁移：从版本 22 到版本 23
+                 *
+                 * 1. article 增加 sourceTime 字段（保存原始发布时间文本）
+                 */
+                private val MIGRATION_22_23 = object : Migration(22, 23) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE article ADD COLUMN sourceTime TEXT"
+                        )
+                    }
+                }
         fun getInstance(context: Context): AndroidDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -286,7 +298,8 @@ abstract class AndroidDatabase : RoomDatabase() {
                     MIGRATION_18_19,
                     MIGRATION_19_20,
                     MIGRATION_20_21,
-                    MIGRATION_21_22
+                    MIGRATION_21_22,
+                    MIGRATION_22_23
                 )
                  .build().also {
                     instance = it

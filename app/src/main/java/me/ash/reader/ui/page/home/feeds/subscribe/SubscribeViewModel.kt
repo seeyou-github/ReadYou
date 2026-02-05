@@ -7,6 +7,7 @@ import com.rometools.rome.feed.synd.SyndFeed
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.InputStream
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.ash.reader.R
 import me.ash.reader.domain.model.group.Group
 import me.ash.reader.domain.service.AccountService
@@ -23,6 +25,7 @@ import me.ash.reader.domain.service.OpmlService
 import me.ash.reader.domain.service.RssService
 import me.ash.reader.infrastructure.android.AndroidStringsHelper
 import me.ash.reader.infrastructure.di.ApplicationScope
+import me.ash.reader.infrastructure.di.MainDispatcher
 import me.ash.reader.infrastructure.rss.RssHelper
 import me.ash.reader.plugin.PluginRuleTransferService
 import me.ash.reader.ui.ext.formatUrl
@@ -36,6 +39,7 @@ constructor(
     private val rssHelper: RssHelper,
     private val androidStringsHelper: AndroidStringsHelper,
     private val pluginRuleTransferService: PluginRuleTransferService,
+    @MainDispatcher private val mainDispatcher: CoroutineDispatcher,
     @ApplicationScope private val applicationScope: CoroutineScope,
     accountService: AccountService,
 ) : ViewModel() {
@@ -80,14 +84,22 @@ constructor(
 
     fun importLocalRule(inputStream: InputStream, onResult: (String) -> Unit) {
         applicationScope.launch {
-            val json = inputStream.readBytes().decodeToString()
-            pluginRuleTransferService.importRule(json)
+            val content = inputStream.readBytes().decodeToString()
+            val trimmed = content.trimStart()
+            if (trimmed.startsWith("<")) {
+                // 识别为 OPML/XML
+                opmlService.saveToDatabase(content.byteInputStream())
+                rssService.get().doSyncOneTime()
+                withContext(mainDispatcher) { onResult("OPML导入成功") }
+                return@launch
+            }
+            pluginRuleTransferService.importRule(content)
                 .onSuccess {
                     rssService.get().doSyncOneTime()
-                    onResult("本地规则导入成功")
+                    withContext(mainDispatcher) { onResult("本地规则导入成功") }
                 }
                 .onFailure { th ->
-                    onResult("本地规则导入失败：${th.message}")
+                    withContext(mainDispatcher) { onResult("本地规则导入失败：${th.message}") }
                 }
         }
     }

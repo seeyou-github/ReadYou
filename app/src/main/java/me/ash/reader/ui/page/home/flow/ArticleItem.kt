@@ -96,6 +96,7 @@ import me.ash.reader.ui.ext.atElevation
 import me.ash.reader.ui.ext.requiresBidi
 import me.ash.reader.ui.ext.surfaceColorAtElevation
 import me.ash.reader.ui.page.settings.color.flow.generateArticleWithFeedPreview
+import me.ash.reader.plugin.PluginConstants
 
 import me.ash.reader.ui.theme.applyTextDirection
 import me.ash.reader.ui.theme.palette.onDark
@@ -126,6 +127,7 @@ fun ArticleItem(
         timeString = article.dateString,
         imgData = article.img,
         disableReferer = feed.isDisableReferer,
+        refererUrl = if (feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) article.link else null,
         isStarred = article.isStarred,
         isUnread = isUnread,
         colorTheme = colorTheme,
@@ -147,6 +149,7 @@ fun ArticleItem(
     timeString: String? = null,
     imgData: Any? = null,
     disableReferer: Boolean = false,
+    refererUrl: String? = null,
     isStarred: Boolean = false,
     isUnread: Boolean = false,
     colorTheme: ColorTheme? = null,
@@ -282,6 +285,7 @@ fun ArticleItem(
                         .clip(RoundedCornerShape(imageRoundedCorners.dp)),
                     data = imgData,
                     disableReferer = disableReferer,
+                    refererUrl = refererUrl,
                     scale = Scale.FILL,
                     precision = Precision.INEXACT,
                     size = SIZE_1000,

@@ -28,7 +28,10 @@ class OPMLDataSource @Inject constructor(
         defaultGroup: Group,
         targetAccountId: Int,
     ): List<GroupWithFeed> {
-        val opml = OpmlParser().parse(inputStream)
+        val rawBytes = inputStream.readBytes()
+        val rawContent = rawBytes.decodeToString()
+        val sanitizedContent = sanitizeOpml(rawContent)
+        val opml = OpmlParser().parse(sanitizedContent.byteInputStream())
         val groupWithFeedList = mutableListOf<GroupWithFeed>().also {
             it.addGroup(defaultGroup)
         }
@@ -110,6 +113,16 @@ class OPMLDataSource @Inject constructor(
             }
         }
         return groupWithFeedList
+    }
+
+    /**
+     * 修复不规范 OPML：将未转义的 '&' 替换为 '&amp;'，避免 XmlPullParser 崩溃。
+     */
+    private fun sanitizeOpml(content: String): String {
+        if (!content.contains("&")) return content
+        // 匹配未转义的 '&'（不是 &xxx; 或 &#123; 形式）
+        val pattern = Regex("&(?!#\\d+;|#x[0-9a-fA-F]+;|[a-zA-Z]+;)")
+        return content.replace(pattern, "&amp;")
     }
 
     private fun MutableList<GroupWithFeed>.addGroup(group: Group) {
