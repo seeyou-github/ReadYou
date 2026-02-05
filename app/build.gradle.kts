@@ -44,7 +44,7 @@ android {
         buildConfigField(
             "String",
             "USER_AGENT_STRING",
-            "\"ReadYou/${versionName}(${versionCode})\"",
+            "\"Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36\"",
         )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

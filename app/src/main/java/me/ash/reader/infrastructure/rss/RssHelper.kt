@@ -190,6 +190,8 @@ constructor(
         //                    "content: ${content}\n"
         //        )
         val baseUrl = syndEntry.link ?: feed.url
+        val normalizedContent = normalizeHtmlImageUrls(content, baseUrl)
+        val normalizedDesc = normalizeHtmlImageUrls(desc, baseUrl)
         return Article(
             id = accountId.spacerDollar(UUID.randomUUID().toString()),
             accountId = accountId,
@@ -199,11 +201,17 @@ constructor(
                     ?: preDate,
             title = syndEntry.title.decodeHTML() ?: feed.name,
             author = syndEntry.author,
-            rawDescription = content ?: desc ?: "",
-            shortDescription = Readability.parseToText(desc ?: content, syndEntry.link).take(280),
+            rawDescription = normalizedContent ?: normalizedDesc ?: "",
+            shortDescription =
+                Readability.parseToText(normalizedDesc ?: normalizedContent, syndEntry.link).take(280),
             //            fullContent = content,
             img = run {
-                val textThumbnail = findThumbnailWithFilter(content ?: desc, feed, baseUrl)
+                val textThumbnail =
+                    findThumbnailWithFilter(
+                        normalizedContent ?: normalizedDesc,
+                        feed,
+                        baseUrl,
+                    )
                 val syndThumbnail = findThumbnail(syndEntry, baseUrl)
                 if (feed.isImageFilterEnabled && shouldApplyImageFilter(feed) && syndThumbnail != null) {
                     val candidate = ImageCandidate(src = syndThumbnail)
@@ -377,6 +385,25 @@ constructor(
         if (url.startsWith("http://") || url.startsWith("https://")) return url
         if (baseUrl.isNullOrBlank()) return url
         return runCatching { java.net.URI(baseUrl).resolve(url).toString() }.getOrDefault(url)
+    }
+
+    private fun normalizeHtmlImageUrls(html: String?, baseUrl: String?): String? {
+        if (html.isNullOrBlank() || baseUrl.isNullOrBlank()) return html
+        return runCatching {
+            val doc = Jsoup.parse(html, baseUrl)
+            doc.select("img").forEach { img ->
+                val raw =
+                    img.attr("src")
+                        .ifBlank { img.attr("data-src") }
+                        .ifBlank { img.attr("data-original") }
+                        .ifBlank { img.attr("srcset").substringBefore(" ").trim() }
+                val resolved = resolveUrl(baseUrl, raw)
+                if (resolved.isNotBlank()) {
+                    img.attr("src", resolved)
+                }
+            }
+            doc.body().html()
+        }.getOrDefault(html)
     }
 
     suspend fun queryRssIconLink(feedLink: String?): String? {

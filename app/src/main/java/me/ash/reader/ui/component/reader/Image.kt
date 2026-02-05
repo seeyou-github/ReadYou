@@ -29,7 +29,7 @@ import coil.size.Size
 import coil.size.pxOrElse
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import me.ash.reader.ui.ext.extractDomain
+import me.ash.reader.ui.ext.extractOrigin
 import org.jsoup.helper.StringUtil
 import org.jsoup.nodes.Element
 
@@ -124,9 +124,9 @@ private fun ArticleImage(
             model =
                 ImageRequest.Builder(LocalContext.current)
                     .apply {
-                        val domain = data.toString().extractDomain()
-                        if (data.toString().extractDomain() != null) {
-                            addHeader("Referer", domain!!)
+                        val origin = data.toString().extractOrigin()
+                        if (origin != null) {
+                            addHeader("Referer", origin)
                         }
                         data(data = data)
                         crossfade(true)

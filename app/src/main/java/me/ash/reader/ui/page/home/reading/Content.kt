@@ -31,7 +31,7 @@ import me.ash.reader.ui.component.reader.LocalTextContentWidth
 import me.ash.reader.ui.component.reader.Reader
 import me.ash.reader.ui.component.scrollbar.drawVerticalScrollIndicator
 import me.ash.reader.ui.component.webview.RYWebView
-import me.ash.reader.ui.ext.extractDomain
+import me.ash.reader.ui.ext.extractOrigin
 import me.ash.reader.ui.ext.roundClick
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -103,7 +103,7 @@ fun Content(
                             RYWebView(
                                 modifier = Modifier.fillMaxSize(),
                                 content = content,
-                                refererDomain = link.extractDomain(),
+                                refererDomain = link.extractOrigin(),
                                 enableJavaScript = !disableJavaScript,
                                 onImageClick = onImageClick,
                                 onWebViewReady = onWebViewReady,

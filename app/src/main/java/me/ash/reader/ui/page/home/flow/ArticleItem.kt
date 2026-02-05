@@ -97,7 +97,6 @@ import me.ash.reader.ui.ext.atElevation
 import me.ash.reader.ui.ext.requiresBidi
 import me.ash.reader.ui.ext.surfaceColorAtElevation
 import me.ash.reader.ui.page.settings.color.flow.generateArticleWithFeedPreview
-import me.ash.reader.plugin.PluginConstants
 
 import me.ash.reader.ui.theme.applyTextDirection
 import me.ash.reader.ui.theme.palette.onDark
@@ -128,7 +127,7 @@ fun ArticleItem(
         timeString = article.dateString,
         imgData = article.img,
         disableReferer = feed.isDisableReferer,
-        refererUrl = if (feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) article.link else null,
+        refererUrl = article.link.takeIf { it.isNotBlank() },
         isStarred = article.isStarred,
         isUnread = isUnread,
         colorTheme = colorTheme,
@@ -159,6 +158,8 @@ fun ArticleItem(
     forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
 ) {
     val articleListFeedIcon = LocalFlowArticleListFeedIcon.current
+    val titleImageUserAgent =
+        "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
     val articleListFeedName = LocalFlowArticleListFeedName.current
     // 2026-01-29: 计算是否显示订阅源名称（考虑强制显示标志）
     val shouldShowFeedName = articleListFeedName.value || forceShowFeedName
@@ -290,6 +291,7 @@ fun ArticleItem(
                     data = imgData,
                     disableReferer = disableReferer,
                     refererUrl = refererUrl,
+                    userAgent = titleImageUserAgent,
                     scale = Scale.FILL,
                     precision = Precision.INEXACT,
                     size = SIZE_1000,

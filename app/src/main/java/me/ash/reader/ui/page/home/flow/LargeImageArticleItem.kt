@@ -54,6 +54,7 @@ fun LargeImageArticleItem(
     val horizontalPadding = LocalFlowArticleListHorizontalPadding.current
     val imageRoundedCorners = LocalFlowArticleListRoundedCorners.current  //圆角使用：列表背景圆�?
     val imageBrightness = LocalReadingImageBrightness.current
+      val titleImageUserAgent = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
     // 2026-01-28: 标题大小和行�?
     val titleFontSize = LocalFlowArticleListTitleFontSize.current
     val titleLineHeight = LocalFlowArticleListTitleLineHeight.current
@@ -96,7 +97,9 @@ fun LargeImageArticleItem(
                 modifier = Modifier.fillMaxSize(), // 图片铺满整个 Box
                 data = imageUrl,
                 disableReferer = articleWithFeed.feed.isDisableReferer,
-                // 图片地址（URL�?
+                  refererUrl = articleWithFeed.article.link,
+                  userAgent = titleImageUserAgent,
+                                  // 图片地址（URL�?
                 scale = Scale.FIT,                 // 按目标尺寸加载，省内�?
                 precision = Precision.INEXACT,     // 不要求精确尺寸，加载更快
                 size = SIZE_1000,                  // 限制最大加载尺寸，防止原图过大
@@ -136,4 +139,9 @@ fun LargeImageArticleItem(
         }
     }
 }
+
+
+
+
+
 

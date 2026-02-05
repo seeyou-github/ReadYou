@@ -61,3 +61,17 @@ fun String?.extractDomain(): String? {
     val domainMatchResult = domainRegex.find(this)
     return domainMatchResult?.value
 }
+
+fun String?.extractOrigin(): String? {
+    if (this.isNullOrBlank()) return null
+    return runCatching {
+        val uri = java.net.URI(this)
+        val scheme = uri.scheme
+        val host = uri.host
+        if (!scheme.isNullOrBlank() && !host.isNullOrBlank()) {
+            "$scheme://$host"
+        } else {
+            this.extractDomain()?.let { "https://$it" }
+        }
+    }.getOrNull()
+}

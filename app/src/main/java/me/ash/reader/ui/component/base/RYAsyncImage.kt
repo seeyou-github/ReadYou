@@ -16,10 +16,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import coil.request.ImageResult
 import coil.size.Precision
 import coil.size.Scale
 import coil.size.Size
-import me.ash.reader.ui.ext.extractDomain
+import android.util.Log
+import me.ash.reader.ui.ext.extractOrigin
 
 val SIZE_1000 = Size(1000, 1000)
 
@@ -30,6 +32,7 @@ fun RYAsyncImage(
     key: Any? = null,  // 2026-01-23: 娣诲姞缂撳瓨 key 鏀寔
     disableReferer: Boolean = false,
     refererUrl: String? = null,
+    userAgent: String? = null,
     size: Size = Size.ORIGINAL,
     scale: Scale = Scale.FIT,
     precision: Precision = Precision.AUTOMATIC,
@@ -48,10 +51,17 @@ fun RYAsyncImage(
                         if (!disableReferer) {
                             val referer =
                                 refererUrl?.takeIf { it.isNotBlank() }
-                                    ?: data?.toString()?.extractDomain()?.let { "https://$it" }
+                                    ?: data?.toString()?.extractOrigin()
                             if (!referer.isNullOrBlank()) {
                                 addHeader("Referer", referer)
                             }
+                            Log.d("RLog", "RYAsyncImage request: url=$data, referer=$referer")
+                        } else {
+                            Log.d("RLog", "RYAsyncImage request: url=$data, referer=disabled")
+                        }
+                        if (!userAgent.isNullOrBlank()) {
+                            addHeader("User-Agent", userAgent)
+                            Log.d("RLog", "RYAsyncImage request: url=$data, ua=$userAgent")
                         }
                         // 2026-01-23: 浣跨敤 key 寮哄埗 Coil 鍦ㄦ暟鎹彉鍖栨椂閲嶆柊鍔犺浇
                         if (key != null) {
@@ -66,6 +76,14 @@ fun RYAsyncImage(
                         scale(scale)
                         precision(precision)
                         size(size)
+                        listener(
+                            onSuccess = { _, result: ImageResult ->
+                                Log.d("RLog", "RYAsyncImage success: url=$data")
+                            },
+                            onError = { _, result ->
+                                Log.e("RLog", "RYAsyncImage error: url=$data, throwable=${result.throwable?.message}")
+                            }
+                        )
                     }
                     .build()
         )
