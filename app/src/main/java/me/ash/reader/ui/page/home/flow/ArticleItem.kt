@@ -92,6 +92,7 @@ import me.ash.reader.ui.component.base.SIZE_1000
 import me.ash.reader.ui.component.menu.AnimatedDropdownMenu
 import me.ash.reader.ui.component.swipe.SwipeAction
 import me.ash.reader.ui.component.swipe.SwipeableActionsBox
+import android.util.Log
 import me.ash.reader.ui.ext.atElevation
 import me.ash.reader.ui.ext.requiresBidi
 import me.ash.reader.ui.ext.surfaceColorAtElevation
@@ -277,6 +278,9 @@ fun ArticleItem(
                     )
                 } else {
                     null
+                }
+                if (imgData is String) {
+                    Log.d("RLog", "list image: $imgData")
                 }
                 RYAsyncImage(
                     modifier = Modifier

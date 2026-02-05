@@ -243,7 +243,7 @@ class PluginSyncService @Inject constructor(
         }
         val titleElements = doc.select(rule.listTitleSelector)
         val urlElements = doc.select(rule.listUrlSelector)
-        val imageElements = rule.listImageSelector.takeIf { it.isNotBlank() }?.let { doc.select(it) }
+        val imageElements = rule.listImageSelector.takeIf { it.isBlank().not() }?.let { doc.select(it) }
         val timeElements = rule.listTimeSelector.takeIf { it.isNotBlank() }?.let { doc.select(it) }
 
         Log.d(TAG, "list title count=${titleElements.size}, url count=${urlElements.size}")
@@ -261,12 +261,21 @@ class PluginSyncService @Inject constructor(
             val urlElement = urlElements.getOrNull(index)
             val image =
                 if (rule.listImageSelector.isNotBlank()) {
-                    val container = findContainer(titleElement, urlElement, rule.listImageSelector)
+                    val container = findItemContainer(
+                        titleElement = titleElement,
+                        urlElement = urlElement,
+                        titleSelector = rule.listTitleSelector,
+                        targetSelector = rule.listImageSelector,
+                    )
                     val fromContainer = container?.select(rule.listImageSelector)?.firstOrNull()
                     val picked = fromContainer?.let { pickUrl(it, "src") }.orEmpty()
-                    if (picked.isNotBlank()) picked else ""
+                    if (picked.isBlank()) {
+                        Log.d(TAG, "list item[$index] no image: title='${title}' link=$link")
+                    }
+                    if (picked.isNotBlank()) resolveUrl(doc.baseUri(), picked) else ""
                 } else {
                     imageElements?.getOrNull(index)?.let { pickUrl(it, "src") }.orEmpty()
+                        .let { resolveUrl(doc.baseUri(), it) }
                 }.takeIf { it.isNotBlank() }
             val time =
                 if (rule.listTimeSelector.isNotBlank()) {
@@ -381,12 +390,13 @@ class PluginSyncService @Inject constructor(
                     .ifBlank { element.attr("data-original") }
                     .ifBlank { element.attr("srcset").substringBefore(" ").trim() }
             }.trim()
+        val baseUrl = element.ownerDocument()?.baseUri()
         val url =
             when {
                 raw.isNotBlank() -> {
                     if (raw.startsWith("http://") || raw.startsWith("https://")) raw
                     else if (raw.startsWith("//")) "https:$raw"
-                    else element.absUrl(attr).ifBlank { raw }
+                    else resolveUrl(baseUrl, raw)
                 }
                 else -> element.absUrl(attr)
             }
@@ -410,6 +420,18 @@ class PluginSyncService @Inject constructor(
             val element = doc.selectFirst(selector) ?: return@joinToString ""
             if (rule.detailExcludeSelector.isNotBlank()) {
                 element.select(rule.detailExcludeSelector).forEach { it.remove() }
+            }
+            // 修复正文中相对路径图片，统一转为绝对地址
+            element.select("img").forEach { img ->
+                val raw =
+                    img.attr("src")
+                        .ifBlank { img.attr("data-src") }
+                        .ifBlank { img.attr("data-original") }
+                        .ifBlank { img.attr("srcset").substringBefore(" ").trim() }
+                val resolved = resolveUrl(doc.baseUri(), raw)
+                if (resolved.isNotBlank()) {
+                    img.attr("src", resolved)
+                }
             }
             element.outerHtml()
         }
@@ -499,6 +521,46 @@ class PluginSyncService @Inject constructor(
         if (selector.isBlank()) return null
         return titleElement?.parents()?.firstOrNull { it.select(selector).isNotEmpty() }
             ?: urlElement?.parents()?.firstOrNull { it.select(selector).isNotEmpty() }
+    }
+
+    private fun findItemContainer(
+        titleElement: Element?,
+        urlElement: Element?,
+        titleSelector: String,
+        targetSelector: String,
+    ): Element? {
+        if (titleSelector.isBlank() || targetSelector.isBlank()) return null
+        val candidates = listOfNotNull(titleElement, urlElement)
+        for (candidate in candidates) {
+            var current: Element? = candidate
+            while (current != null) {
+                if (isValidItemContainer(current, titleSelector, targetSelector)) {
+                    return current
+                }
+                current = current.parent()
+            }
+        }
+        return null
+    }
+
+    private fun resolveUrl(baseUrl: String?, url: String): String {
+        if (url.isBlank()) return ""
+        if (url.startsWith("http://") || url.startsWith("https://")) return url
+        if (url.startsWith("//")) return "https:$url"
+        if (baseUrl.isNullOrBlank()) return url
+        return runCatching { java.net.URI(baseUrl).resolve(url).toString() }.getOrDefault(url)
+    }
+
+    private fun isValidItemContainer(
+        element: Element,
+        titleSelector: String,
+        targetSelector: String,
+    ): Boolean {
+        val tag = element.tagName()
+        if (tag == "html" || tag == "body") return false
+        val titleCount = element.select(titleSelector).size
+        if (titleCount != 1) return false
+        return element.select(targetSelector).isNotEmpty()
     }
 
     data class ListItem(

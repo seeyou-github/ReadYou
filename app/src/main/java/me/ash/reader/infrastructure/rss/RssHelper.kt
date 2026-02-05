@@ -32,6 +32,7 @@ import okhttp3.executeAsync
 import okhttp3.internal.commonIsSuccessful
 import okio.IOException
 import org.jsoup.Jsoup
+import java.io.ByteArrayInputStream
 
 val enclosureRegex = """<enclosure\s+url="([^"]+)"\s+type=".*"\s*/>""".toRegex()
 val imgRegex = """img.*?src=(["'])((?!data).*?)\1""".toRegex(RegexOption.DOT_MATCHES_ALL)
@@ -116,6 +117,18 @@ constructor(
                     if (h1Element != null && h1Element.hasText() && h1Element.text() == title) {
                         h1Element.remove()
                     }
+                    // 修复正文中相对路径图片，统一转为绝对地址
+                    articleContent.select("img").forEach { img ->
+                        val raw =
+                            img.attr("src")
+                                .ifBlank { img.attr("data-src") }
+                                .ifBlank { img.attr("data-original") }
+                                .ifBlank { img.attr("srcset").substringBefore(" ").trim() }
+                        val resolved = resolveUrl(link, raw)
+                        if (resolved.isNotBlank()) {
+                            img.attr("src", resolved)
+                        }
+                    }
                     articleContent.toString()
                 } ?: throw IOException("articleContent is null")
             } else throw IOException(response.message)
@@ -151,6 +164,7 @@ constructor(
         } catch (e: Exception) {
             e.printStackTrace()
             Log.e("RLog", "queryRssXml[${feed.name}]: ${e.message}")
+            runCatching { debugFetchRssRaw(feed.url, feed.name) }
             listOf()
         }
 
@@ -376,6 +390,47 @@ constructor(
 
     suspend fun saveRssIcon(feedDao: FeedDao, feed: Feed, iconLink: String) {
         feedDao.update(feed.copy(icon = iconLink))
+    }
+
+    suspend fun debugFetchRssRaw(
+        url: String,
+        label: String? = null,
+    ): String? =
+        withContext(ioDispatcher) {
+            val response = response(okHttpClient, url)
+            val contentType = response.header("Content-Type")
+            val httpContentType =
+                contentType?.let {
+                    if (it.contains("charset=", ignoreCase = true)) it
+                    else "$it; charset=UTF-8"
+                } ?: "text/xml; charset=UTF-8"
+            val bytes = response.body?.bytes() ?: return@withContext null
+            val charsetName =
+                contentType?.substringAfter("charset=", "UTF-8")?.trim()?.ifBlank { "UTF-8" } ?: "UTF-8"
+            val bodyString = bytes.toString(Charset.forName(charsetName))
+            logLong("RLog", "rss raw[${label ?: url}]: $bodyString")
+            runCatching {
+                ByteArrayInputStream(bytes).use { inputStream ->
+                    SyndFeedInput().build(XmlReader(inputStream, httpContentType))
+                }
+            }.onFailure { Log.e("RLog", "rss debug parse failed: ${it.message}") }
+            bodyString
+        }
+
+    private fun logLong(tag: String, message: String) {
+        val chunkSize = 3500
+        if (message.length <= chunkSize) {
+            Log.d(tag, message)
+            return
+        }
+        var start = 0
+        var index = 1
+        while (start < message.length) {
+            val end = (start + chunkSize).coerceAtMost(message.length)
+            Log.d(tag, "part $index: ${message.substring(start, end)}")
+            start = end
+            index++
+        }
     }
 
     private suspend fun response(client: OkHttpClient, url: String): okhttp3.Response =

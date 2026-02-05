@@ -38,6 +38,8 @@ fun LazyListScope.ArticleList(
     isFirstItemLargeImageEnabled: Boolean = false, // 2026-01-27: 新增首行大图模式参数
     forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
 ) {
+    val firstArticleIndex =
+        pagingItems.itemSnapshotList.items.indexOfFirst { it is ArticleFlowItem.Article }
     // https://issuetracker.google.com/issues/193785330
     // FIXME: Using sticky header with paging-compose need to iterate through the entire list
     //  to figure out where to add sticky headers, which significantly impacts the performance
@@ -63,9 +65,11 @@ fun LazyListScope.ArticleList(
 
                     // 2026-01-27: 判断是否应该显示大图模式
                     // 第一篇有图片的文章（index == 1，因为 index == 0 是 ArticleFlowItem.Date）
-                    val shouldShowLargeImage = isFirstItemLargeImageEnabled &&
-                        index == 1 &&
-                        hasImage
+                    val shouldShowLargeImage =
+                        isFirstItemLargeImageEnabled &&
+                            firstArticleIndex >= 0 &&
+                            index == firstArticleIndex &&
+                            hasImage
 
                     if (shouldShowLargeImage) {
                         // 大图模式
@@ -128,9 +132,11 @@ fun LazyListScope.ArticleList(
 
                         // 2026-01-27: 判断是否应该显示大图模式
                         // 第一篇有图片的文章（index == 1，因为 index == 0 是 ArticleFlowItem.Date）
-                        val shouldShowLargeImage = isFirstItemLargeImageEnabled &&
-                            index == 1 &&
-                            hasImage
+                        val shouldShowLargeImage =
+                            isFirstItemLargeImageEnabled &&
+                                firstArticleIndex >= 0 &&
+                                index == firstArticleIndex &&
+                                hasImage
 
                         if (shouldShowLargeImage) {
                             // 大图模式

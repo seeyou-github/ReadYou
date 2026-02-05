@@ -1,6 +1,7 @@
 package me.ash.reader.ui.page.adaptive
 
 import android.net.Uri
+import android.util.Log
 import androidx.compose.ui.util.fastFirstOrNull
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -409,7 +410,28 @@ class ArticleListReaderViewModel
             ReaderState.Description(filtered)
         }
 
+        val contentForLog =
+            when (contentState) {
+                is ReaderState.Description -> contentState.content
+                is ReaderState.FullContent -> contentState.content
+                else -> null
+            }
+        if (!contentForLog.isNullOrBlank()) {
+            logContentImages(contentForLog)
+        }
+
         return copy(content = contentState)
+    }
+
+    private fun logContentImages(content: String) {
+        val images =
+            runCatching { Jsoup.parse(content).select("img").mapNotNull { it.attr("src") } }
+                .getOrDefault(emptyList())
+        if (images.isNotEmpty()) {
+            Log.d("RLog", "content images count=${images.size}, samples=${images.take(5)}")
+        } else {
+            Log.d("RLog", "content images count=0")
+        }
     }
 
     private suspend fun ensurePluginContent(articleWithFeed: ArticleWithFeed): String? {

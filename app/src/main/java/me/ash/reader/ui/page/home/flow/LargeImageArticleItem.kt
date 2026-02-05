@@ -1,5 +1,7 @@
 package me.ash.reader.ui.page.home.flow
 
+import android.util.Log
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -89,6 +91,7 @@ fun LargeImageArticleItem(
     ) {
         // 封面背景大图（有图才显示�?
         if (imageUrl != null) {
+            Log.d("RLog", "list large image: ${imageUrl}")
             RYAsyncImage(
                 modifier = Modifier.fillMaxSize(), // 图片铺满整个 Box
                 data = imageUrl,
@@ -133,3 +136,4 @@ fun LargeImageArticleItem(
         }
     }
 }
+
