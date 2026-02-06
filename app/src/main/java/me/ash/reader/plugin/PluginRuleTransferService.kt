@@ -151,6 +151,12 @@ class PluginRuleTransferService @Inject constructor(
                         imageFilterDomain = settings.imageFilterDomain,
                     )
                 feedDao.update(updated)
+                pluginRuleDao.insert(
+                    rule.copy(
+                        groupId = targetGroupId,
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                )
             }
             rule
         }.onFailure {

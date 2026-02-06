@@ -109,9 +109,13 @@ constructor(
     fun selectedGroup(groupId: String) {
         applicationScope.launch(ioDispatcher) {
             _feedOptionUiState.value.feed?.let {
+                val updated = it.copy(groupId = groupId)
                 rssService
                     .get()
-                    .moveFeed(originGroupId = it.groupId, feed = it.copy(groupId = groupId))
+                    .moveFeed(originGroupId = it.groupId, feed = updated)
+                syncLocalRuleIfNeeded(updated) { rule ->
+                    rule.copy(groupId = groupId, updatedAt = System.currentTimeMillis())
+                }
                 fetchFeed(it.id)
             }
         }

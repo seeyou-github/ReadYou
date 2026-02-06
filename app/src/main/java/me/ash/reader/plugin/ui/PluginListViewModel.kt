@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import me.ash.reader.domain.service.AccountService
 import me.ash.reader.domain.repository.FeedDao
 import me.ash.reader.plugin.PluginFeedManager
+import me.ash.reader.plugin.PluginConstants
 import me.ash.reader.plugin.PluginRule
 import me.ash.reader.plugin.PluginRuleDao
 import me.ash.reader.plugin.PluginRuleTransferService
@@ -57,6 +58,11 @@ class PluginListViewModel @Inject constructor(
             pluginRuleDao.insert(updated)
             if (enabled) {
                 pluginFeedManager.ensureFeed(updated)
+                val pluginUrl = pluginFeedManager.buildPluginUrl(updated.id)
+                val feed = feedDao.queryByLink(updated.accountId, pluginUrl).firstOrNull()
+                if (feed != null && feed.groupId != updated.groupId) {
+                    pluginRuleDao.insert(updated.copy(groupId = feed.groupId, updatedAt = System.currentTimeMillis()))
+                }
             } else {
                 pluginFeedManager.removeFeed(updated)
             }

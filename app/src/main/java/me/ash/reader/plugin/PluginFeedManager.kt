@@ -5,6 +5,7 @@ import javax.inject.Inject
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.repository.ArticleDao
 import me.ash.reader.domain.repository.FeedDao
+import me.ash.reader.domain.repository.GroupDao
 import me.ash.reader.ui.ext.extractDomain
 import me.ash.reader.ui.ext.getDefaultGroupId
 
@@ -15,6 +16,7 @@ import me.ash.reader.ui.ext.getDefaultGroupId
 class PluginFeedManager @Inject constructor(
     private val feedDao: FeedDao,
     private val articleDao: ArticleDao,
+    private val groupDao: GroupDao,
 ) {
     fun buildPluginUrl(ruleId: String): String = "${PluginConstants.PLUGIN_URL_PREFIX}$ruleId"
 
@@ -36,13 +38,16 @@ class PluginFeedManager @Inject constructor(
             }
             return
         }
+        val resolvedGroupId =
+            rule.groupId.takeIf { it.isNotBlank() && groupDao.queryById(it) != null }
+                ?: rule.accountId.getDefaultGroupId()
         val feed =
             Feed(
                 id = rule.id,
                 name = displayName,
                 icon = rule.icon.ifBlank { null },
                 url = pluginUrl,
-                groupId = rule.accountId.getDefaultGroupId(),
+                groupId = resolvedGroupId,
                 accountId = rule.accountId,
                 isNotification = false,
                 isFullContent = false,

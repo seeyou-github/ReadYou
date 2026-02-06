@@ -19,6 +19,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.ash.reader.domain.model.group.Group
 import me.ash.reader.domain.service.OpmlService
+import me.ash.reader.domain.repository.FeedDao
+import me.ash.reader.domain.service.AccountService
+import me.ash.reader.plugin.PluginConstants
+import me.ash.reader.plugin.PluginRuleDao
 import me.ash.reader.R
 import me.ash.reader.domain.service.RssService
 import me.ash.reader.infrastructure.di.ApplicationScope
@@ -37,6 +41,9 @@ class GroupOptionViewModel @Inject constructor(
     @ApplicationScope
     private val applicationScope: CoroutineScope,
     private val opmlService: OpmlService,
+    private val feedDao: FeedDao,
+    private val pluginRuleDao: PluginRuleDao,
+    private val accountService: AccountService,
 ) : ViewModel() {
 
     private val _groupOptionUiState = MutableStateFlow(GroupOptionUiState())
@@ -159,7 +166,24 @@ class GroupOptionViewModel @Inject constructor(
         _groupOptionUiState.value.group?.let { group ->
             _groupOptionUiState.value.targetGroup?.let { targetGroup ->
                 viewModelScope.launch(ioDispatcher) {
+                    val accountId = accountService.getCurrentAccountId()
+                    val pluginRuleIds =
+                        feedDao.queryByGroupId(accountId, group.id)
+                            .filter { it.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX) }
+                            .map { it.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX) }
+                            .toSet()
                     rssService.get().groupMoveToTargetGroup(group, targetGroup)
+                    if (pluginRuleIds.isNotEmpty()) {
+                        pluginRuleIds.forEach { ruleId ->
+                            val rule = pluginRuleDao.queryById(ruleId) ?: return@forEach
+                            pluginRuleDao.insert(
+                                rule.copy(
+                                    groupId = targetGroup.id,
+                                    updatedAt = System.currentTimeMillis(),
+                                )
+                            )
+                        }
+                    }
                     withContext(mainDispatcher) {
                         callback()
                     }

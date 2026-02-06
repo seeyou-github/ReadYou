@@ -20,6 +20,8 @@ data class PluginRule(
     val name: String,
     @ColumnInfo
     val subscribeUrl: String,
+    @ColumnInfo(defaultValue = "")
+    val groupId: String = "",
     @ColumnInfo
     val icon: String = "",
     @ColumnInfo

@@ -22,7 +22,7 @@ import java.util.*
 
 @Database(
     entities = [Account::class, Feed::class, Article::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class, PluginRule::class],
-    version = 23,
+    version = 24,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 5, to = 7),
@@ -282,6 +282,20 @@ abstract class AndroidDatabase : RoomDatabase() {
                         )
                     }
                 }
+
+                /**
+                 * ????????? 23 ??? 24
+                 *
+                 * 1. plugin_rule ?? groupId ??
+                 */
+                private val MIGRATION_23_24 = object : Migration(23, 24) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE plugin_rule ADD COLUMN groupId TEXT NOT NULL DEFAULT ''"
+                        )
+                    }
+                }
+
         fun getInstance(context: Context): AndroidDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -299,7 +313,8 @@ abstract class AndroidDatabase : RoomDatabase() {
                     MIGRATION_19_20,
                     MIGRATION_20_21,
                     MIGRATION_21_22,
-                    MIGRATION_22_23
+                    MIGRATION_22_23,
+                    MIGRATION_23_24
                 )
                  .build().also {
                     instance = it
