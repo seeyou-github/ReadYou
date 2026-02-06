@@ -144,6 +144,11 @@ span {
     text-align: var(--text-align) !important;
 }
 
+html[data-translation-mode="on"] .translatable-text,
+html[data-translation-mode="on"] [data-translated-text] {
+    color: var(--text-color) !important;
+}
+
 /* Strong  */
 strong,
 b {
