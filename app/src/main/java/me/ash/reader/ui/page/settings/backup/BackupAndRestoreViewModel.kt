@@ -232,7 +232,14 @@ constructor(
                 }
 
                 payload.pluginRules.forEach { rule ->
-                    pluginRuleDao.insert(rule.copy(accountId = accountId))
+                    val safeGroupId =
+                        rule.groupId.takeIf { it.isNotBlank() } ?: defaultGroupId
+                    pluginRuleDao.insert(
+                        rule.copy(
+                            accountId = accountId,
+                            groupId = safeGroupId,
+                        )
+                    )
                 }
                 payload.keywords.forEach { keyword ->
                     blacklistKeywordDao.insert(keyword.copy(id = 0))
