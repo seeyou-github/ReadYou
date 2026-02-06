@@ -11,20 +11,27 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.rounded.RssFeed
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -32,10 +39,10 @@ import me.ash.reader.R
 import me.ash.reader.ui.component.FeedIcon
 import me.ash.reader.ui.component.RenameDialog
 import me.ash.reader.ui.component.base.ClipboardTextField
+import me.ash.reader.ui.component.base.RYTextField2
 import me.ash.reader.ui.component.base.TextFieldDialog
 import me.ash.reader.ui.ext.MimeType
 import me.ash.reader.ui.ext.collectAsStateValue
-import me.ash.reader.ui.ext.roundClick
 import me.ash.reader.ui.ext.showToast
 import me.ash.reader.ui.page.home.feeds.FeedOptionView
 
@@ -63,6 +70,11 @@ fun SubscribeDialog(
                 }
             }
         }
+    val imageLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            subscribeViewModel.importIconFromUri(context, uri)
+        }
 
     if (subscribeState is SubscribeState.Visible) {
 
@@ -73,7 +85,7 @@ fun SubscribeDialog(
         }
 
         AlertDialog(
-            modifier = Modifier.padding(horizontal = 44.dp),
+            modifier = Modifier.fillMaxWidth(0.92f).padding(horizontal = 16.dp, vertical = 12.dp),
             properties = DialogProperties(
                 usePlatformDefaultWidth = false,
                 dismissOnClickOutside = false
@@ -82,33 +94,8 @@ fun SubscribeDialog(
                 focusManager.clearFocus()
                 subscribeViewModel.hideDrawer()
             },
-            icon = {
-                val iconUrl = when (subscribeState) {
-                    is SubscribeState.Configure -> subscribeState.searchedFeed.icon.url
-                    else -> null
-                }
-                FeedIcon(
-                    feedName = null,
-                    iconUrl = iconUrl,
-                    placeholderIcon = Icons.Rounded.RssFeed,
-                )
-            },
-            title = {
-                Text(
-                    modifier = Modifier.roundClick {
-                        if (subscribeState is SubscribeState.Configure) {
-                            subscribeViewModel.showRenameDialog()
-                        }
-                    },
-                    text = when (subscribeState) {
-                        is SubscribeState.Configure -> subscribeState.searchedFeed.title
-                        is SubscribeState.Fetching -> stringResource(R.string.searching)
-                        is SubscribeState.Idle -> stringResource(R.string.add)
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            },
+            icon = null,
+            title = null,
             text = {
                 AnimatedContent(
                     targetState = subscribeState,
@@ -124,18 +111,122 @@ fun SubscribeDialog(
                                 is SubscribeState.Fetching -> ""
                                 is SubscribeState.Idle -> state.errorMessage ?: ""
                             }
-
-                            ClipboardTextField(
-                                state = state.linkState,
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                readOnly = state is SubscribeState.Fetching,
-                                placeholder = stringResource(R.string.feed_or_site_url),
-                                errorText = errorText,
-                                imeAction = ImeAction.Done,
-                                onConfirm = {
-                                    subscribeViewModel.addFeed()
-                                },
-                            )
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                    ) {
+                                        FeedIcon(
+                                            feedName = null,
+                                            iconUrl = state.iconUrlState.text.toString().ifBlank { null },
+                                            placeholderIcon = Icons.Rounded.RssFeed,
+                                            size = 56.dp,
+                                        )
+                                        TextButton(
+                                            enabled = state.linkState.text.isNotBlank(),
+                                            onClick = {
+                                                focusManager.clearFocus()
+                                                subscribeViewModel.parseIconFromFeedUrl()
+                                            },
+                                        ) {
+                                            Text(text = stringResource(R.string.parse_icon))
+                                        }
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                ) {
+                                    RYTextField2(
+                                        state = state.iconUrlState,
+                                        modifier = Modifier.weight(1f).onFocusChanged {
+                                            if (!it.isFocused) {
+                                                subscribeViewModel.resolveIconFromInputUrl()
+                                            }
+                                        },
+                                        placeholder = stringResource(R.string.icon_url_optional),
+                                        autoFocus = false,
+                                    )
+                                    TextButton(
+                                        onClick = { imageLauncher.launch(arrayOf("image/*")) },
+                                    ) {
+                                        Text(text = stringResource(R.string.import_image))
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                ) {
+                                    RYTextField2(
+                                        state = state.titleState,
+                                        modifier = Modifier.weight(1f),
+                                        placeholder = stringResource(R.string.feed_title_optional),
+                                        autoFocus = false,
+                                    )
+                                    TextButton(
+                                        enabled = state.linkState.text.isNotBlank(),
+                                        onClick = {
+                                            focusManager.clearFocus()
+                                            subscribeViewModel.parseTitleFromFeedUrl()
+                                        },
+                                    ) {
+                                        Text(text = stringResource(R.string.parse_title))
+                                    }
+                                }
+
+                                ClipboardTextField(
+                                    state = state.linkState,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    readOnly = state is SubscribeState.Fetching,
+                                    placeholder = stringResource(R.string.feed_url_required),
+                                    errorText = errorText,
+                                    imeAction = ImeAction.Done,
+                                    onConfirm = {
+                                        subscribeViewModel.addFeed()
+                                    },
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                ) {
+                                    if (state is SubscribeState.Idle && state.importFromOpmlEnabled) {
+                                        TextButton(
+                                            onClick = {
+                                                focusManager.clearFocus()
+                                                launcher.launch(arrayOf(MimeType.ANY))
+                                                subscribeViewModel.hideDrawer()
+                                            }
+                                        ) {
+                                            Text(text = stringResource(R.string.import_opml_file))
+                                        }
+                                    } else {
+                                        Spacer(modifier = Modifier.width(1.dp))
+                                    }
+                                    Button(
+                                        enabled = state.linkState.text.isNotBlank(),
+                                        onClick = {
+                                            focusManager.clearFocus()
+                                            subscribeViewModel.addFeed()
+                                        },
+                                    ) {
+                                        Text(text = stringResource(R.string.add))
+                                    }
+                                }
+                            }
                         }
 
                         is SubscribeState.Configure -> {
@@ -173,45 +264,19 @@ fun SubscribeDialog(
                 }
             },
             confirmButton = {
-                when (subscribeState) {
-                    is SubscribeState.Configure -> {
-                        TextButton(
-                            onClick = {
-                                focusManager.clearFocus()
-                                subscribeViewModel.subscribe()
-                            }
-                        ) {
-                            Text(stringResource(R.string.add))
+                if (subscribeState is SubscribeState.Configure) {
+                    TextButton(
+                        onClick = {
+                            focusManager.clearFocus()
+                            subscribeViewModel.subscribe()
                         }
-                    }
-
-                    is SubscribeState.Input -> {
-                        val enabled =
-                            subscribeState is SubscribeState.Idle && subscribeState.linkState.text.isNotBlank()
-                        TextButton(
-                            enabled = enabled,
-                            onClick = {
-                                focusManager.clearFocus()
-                                subscribeViewModel.addFeed()
-                            }
-                        ) {
-                            Text(text = stringResource(R.string.add))
-                        }
+                    ) {
+                        Text(stringResource(R.string.add))
                     }
                 }
             },
             dismissButton = {
-                if (subscribeState is SubscribeState.Idle && subscribeState.importFromOpmlEnabled) {
-                    TextButton(
-                        onClick = {
-                            focusManager.clearFocus()
-                            launcher.launch(arrayOf(MimeType.ANY))
-                            subscribeViewModel.hideDrawer()
-                        }
-                    ) {
-                        Text(text = stringResource(R.string.import_from_opml))
-                    }
-                } else {
+                if (subscribeState is SubscribeState.Configure) {
                     TextButton(
                         onClick = {
                             focusManager.clearFocus()

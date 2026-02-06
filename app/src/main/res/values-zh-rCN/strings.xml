@@ -36,6 +36,13 @@
     <string name="paste">粘贴</string>
     <string name="feed_or_site_url">订阅源或站点链接</string>
     <string name="import_from_opml">导入 OPML 文件</string>
+    <string name="import_opml_file">导入OPML文件</string>
+    <string name="parse_icon">解析图标</string>
+    <string name="import_image">导入图片</string>
+    <string name="icon_url_optional">图标URL（选填）</string>
+    <string name="feed_title_optional">订阅标题（选填）</string>
+    <string name="feed_url_required">订阅源URL（必填）</string>
+    <string name="parse_title">解析标题</string>
     <string name="preset">预设</string>
     <string name="selected">已选择</string>
     <string name="allow_notification">允许通知</string>

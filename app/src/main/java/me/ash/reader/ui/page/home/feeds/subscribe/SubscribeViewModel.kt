@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rometools.rome.feed.synd.SyndFeed
 import com.rometools.rome.feed.synd.SyndFeedImpl
+import com.rometools.rome.feed.synd.SyndImageImpl
+import android.content.Context
+import android.util.Base64
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.InputStream
 import javax.inject.Inject
@@ -27,8 +30,11 @@ import me.ash.reader.domain.service.RssService
 import me.ash.reader.infrastructure.android.AndroidStringsHelper
 import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.MainDispatcher
+import me.ash.reader.infrastructure.rss.RssHelper
 import me.ash.reader.plugin.PluginRuleTransferService
 import me.ash.reader.ui.ext.formatUrl
+import android.net.Uri
+import kotlinx.coroutines.Dispatchers
 
 @HiltViewModel
 class SubscribeViewModel
@@ -38,6 +44,7 @@ constructor(
     val rssService: RssService,
     private val androidStringsHelper: AndroidStringsHelper,
     private val pluginRuleTransferService: PluginRuleTransferService,
+    private val rssHelper: RssHelper,
     @MainDispatcher private val mainDispatcher: CoroutineDispatcher,
     @ApplicationScope private val applicationScope: CoroutineScope,
     accountService: AccountService,
@@ -178,7 +185,69 @@ constructor(
             }
             val groups = groupsFlow.value
             val firstGroupId = groups.firstOrNull()?.id ?: return@launch
-            addFeedDirectly(feedLink, firstGroupId)
+            val title = currentState.titleState.text.trim().toString()
+            val iconUrl = currentState.iconUrlState.text.trim().toString()
+            addFeedDirectly(feedLink, firstGroupId, title, iconUrl)
+        }
+    }
+
+    fun parseIconFromFeedUrl() {
+        val currentState = _subscribeState.value as? SubscribeState.Input ?: return
+        val feedLink = currentState.linkState.text.trim().toString().formatUrl()
+        if (feedLink.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val iconUrl = runCatching { rssHelper.queryRssIconLink(feedLink) }.getOrNull()
+            if (!iconUrl.isNullOrBlank()) {
+                currentState.iconUrlState.edit {
+                    replace(0, length, iconUrl)
+                }
+            }
+        }
+    }
+
+    fun parseTitleFromFeedUrl() {
+        val currentState = _subscribeState.value as? SubscribeState.Input ?: return
+        val feedLink = currentState.linkState.text.trim().toString().formatUrl()
+        if (feedLink.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val title =
+                runCatching { rssHelper.searchFeed(feedLink).title }
+                    .getOrNull()
+                    ?.trim()
+                    .orEmpty()
+            if (title.isNotBlank()) {
+                currentState.titleState.edit {
+                    replace(0, length, title)
+                }
+            }
+        }
+    }
+
+    fun resolveIconFromInputUrl() {
+        val currentState = _subscribeState.value as? SubscribeState.Input ?: return
+        val input = currentState.iconUrlState.text.trim().toString()
+        if (input.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val resolved =
+                if (isLikelyImageUrl(input)) {
+                    input
+                } else {
+                    runCatching { rssHelper.queryRssIconLink(input) }.getOrNull() ?: input
+                }
+            currentState.iconUrlState.edit {
+                replace(0, length, resolved)
+            }
+        }
+    }
+
+    fun importIconFromUri(context: Context, uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            if (bytes == null || bytes.isEmpty()) return@launch
+            val mime = context.contentResolver.getType(uri) ?: "image/*"
+            val dataUri = "data:$mime;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}"
+            val currentState = _subscribeState.value as? SubscribeState.Input ?: return@launch
+            currentState.iconUrlState.edit { replace(0, length, dataUri) }
         }
     }
 
@@ -218,17 +287,35 @@ constructor(
     fun handleSharedUrlFromIntent(url: String) {
         viewModelScope
             .launch {
-                _subscribeState.update { SubscribeState.Idle(linkState = TextFieldState(url)) }
+                _subscribeState.update {
+                    SubscribeState.Idle(
+                        linkState = TextFieldState(url),
+                        iconUrlState = TextFieldState(),
+                        titleState = TextFieldState(),
+                    )
+                }
                 delay(50)
             }
             .invokeOnCompletion { addFeed() }
     }
 
-    private fun addFeedDirectly(feedLink: String, groupId: String) {
+    private fun addFeedDirectly(
+        feedLink: String,
+        groupId: String,
+        titleInput: String,
+        iconUrlInput: String,
+    ) {
         applicationScope.launch {
             val searchedFeed: SyndFeed = SyndFeedImpl().apply {
-                title = feedLink
+                title = titleInput.ifBlank { feedLink }
                 link = feedLink
+                val iconUrl = iconUrlInput.ifBlank { "" }
+                if (iconUrl.isNotBlank()) {
+                    icon = SyndImageImpl().apply {
+                        link = iconUrl
+                        url = iconUrl
+                    }
+                }
             }
             rssService
                 .get()
@@ -247,7 +334,11 @@ constructor(
 
     fun showDrawer() {
         _subscribeState.value =
-            SubscribeState.Idle(importFromOpmlEnabled = rssService.get().importSubscription)
+            SubscribeState.Idle(
+                importFromOpmlEnabled = rssService.get().importSubscription,
+                iconUrlState = TextFieldState(),
+                titleState = TextFieldState(),
+            )
     }
 
     fun hideDrawer() {
@@ -294,6 +385,18 @@ constructor(
             }
         }
     }
+
+    private fun isLikelyImageUrl(value: String): Boolean {
+        if (value.startsWith("data:", ignoreCase = true)) return true
+        val lower = value.substringBefore("?").lowercase()
+        return lower.endsWith(".png") ||
+            lower.endsWith(".jpg") ||
+            lower.endsWith(".jpeg") ||
+            lower.endsWith(".gif") ||
+            lower.endsWith(".webp") ||
+            lower.endsWith(".svg") ||
+            lower.endsWith(".ico")
+    }
 }
 
 data class SubscribeUiState(
@@ -310,15 +413,24 @@ sealed interface SubscribeState {
 
     sealed interface Input : SubscribeState, Visible {
         val linkState: TextFieldState
+        val iconUrlState: TextFieldState
+        val titleState: TextFieldState
     }
 
     data class Idle(
         override val linkState: TextFieldState = TextFieldState(),
+        override val iconUrlState: TextFieldState = TextFieldState(),
+        override val titleState: TextFieldState = TextFieldState(),
         val importFromOpmlEnabled: Boolean = false,
         val errorMessage: String? = null,
     ) : SubscribeState, Input
 
-    data class Fetching(override val linkState: TextFieldState, val job: Job) :
+    data class Fetching(
+        override val linkState: TextFieldState,
+        override val iconUrlState: TextFieldState,
+        override val titleState: TextFieldState,
+        val job: Job,
+    ) :
         SubscribeState, Input
 
     data class Configure(

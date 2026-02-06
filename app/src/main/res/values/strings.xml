@@ -43,6 +43,13 @@
     <string name="paste">Paste</string>
     <string name="feed_or_site_url">Feed or site URL</string>
     <string name="import_from_opml">Import from OPML</string>
+    <string name="import_opml_file">Import OPML File</string>
+    <string name="parse_icon">Parse Icon</string>
+    <string name="import_image">Import Image</string>
+    <string name="icon_url_optional">Icon URL (Optional)</string>
+    <string name="feed_title_optional">Feed Title (Optional)</string>
+    <string name="feed_url_required">Feed URL (Required)</string>
+    <string name="parse_title">Parse Title</string>
     <string name="preset">Preset</string>
     <string name="selected">Selected</string>
     <string name="allow_notification">Allow notifications</string>

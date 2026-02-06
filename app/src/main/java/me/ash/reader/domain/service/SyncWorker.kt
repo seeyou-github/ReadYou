@@ -80,25 +80,25 @@ constructor(
     private suspend fun runPostSyncCacheTasks(accountId: Int, syncStartAt: Date) {
         runStepIf(
             shouldRun = shouldCacheLocalRuleContent(accountId, syncStartAt),
-            startMessage = "正在缓存本地规则正文内容",
-            successMessage = "缓存本地规则正文内容完成",
-            errorPrefix = "缓存本地规则正文内容出错，错误原因：",
+            startMessage = "缓存：本地规则正文...",
+            successMessage = "本地规则正文内容：缓存完成",
+            errorPrefix = "缓存:本地规则正文内容出错，错误原因：",
         ) {
             cacheLocalRuleContent(accountId, syncStartAt)
         }
         runStepIf(
             shouldRun = shouldCacheTitleImages(accountId, syncStartAt),
-            startMessage = "正在缓存新增文章标题图片",
-            successMessage = "缓存新增文章标题图片完成",
-            errorPrefix = "缓存新增文章标题图片出错，错误原因：",
+            startMessage = "缓存:标题图片...",
+            successMessage = "标题图片 缓存完成",
+            errorPrefix = "缓存: 标题图片出错，错误原因：",
         ) {
             cacheTitleImages(accountId, syncStartAt)
         }
         runStepIf(
             shouldRun = shouldCacheContentImages(accountId, syncStartAt),
-            startMessage = "正在缓存新增文章正文图片",
-            successMessage = "缓存新增文章正文图片完成",
-            errorPrefix = "缓存新增文章正文图片出错，错误原因：",
+            startMessage = "缓存: 正文图片...",
+            successMessage = "正文图片 缓存完成",
+            errorPrefix = "缓存: 正文图片出错，错误原因：",
         ) {
             cacheContentImages(accountId, syncStartAt)
         }
