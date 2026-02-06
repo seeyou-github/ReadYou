@@ -318,6 +318,52 @@ interface ArticleDao {
         before: Date,
     ): List<Article>
 
+    @Query(
+        """
+        SELECT * FROM article
+        WHERE accountId = :accountId
+        AND updateAt >= :since
+        """
+    )
+    suspend fun queryByUpdateAtAfter(accountId: Int, since: Date): List<Article>
+
+    @Query(
+        """
+        SELECT id FROM article
+        WHERE accountId = :accountId
+        AND feedId = :feedId
+        AND (:includeStarred = 1 OR isStarred = 0)
+        """
+    )
+    suspend fun queryIdsByFeedId(
+        accountId: Int,
+        feedId: String,
+        includeStarred: Boolean,
+    ): List<String>
+
+    @Query(
+        """
+        SELECT a.id FROM article AS a
+        LEFT JOIN feed AS f ON a.feedId = f.id
+        WHERE f.groupId = :groupId
+        AND a.accountId = :accountId
+        AND (:includeStarred = 1 OR a.isStarred = 0)
+        """
+    )
+    suspend fun queryIdsByGroupId(
+        accountId: Int,
+        groupId: String,
+        includeStarred: Boolean,
+    ): List<String>
+
+    @Query(
+        """
+        SELECT id FROM article
+        WHERE accountId = :accountId
+        """
+    )
+    suspend fun queryIdsByAccountId(accountId: Int): List<String>
+
     @Transaction
     @Query(
         """

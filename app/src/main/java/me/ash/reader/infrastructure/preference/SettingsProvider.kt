@@ -186,6 +186,10 @@ class SettingsProvider @Inject constructor(
             LocalOpenLinkSpecificBrowser provides settings.openLinkSpecificBrowser,
             LocalSharedContent provides settings.sharedContent,
 
+            // Cache
+            LocalCacheTitleImageOnUpdate provides settings.cacheTitleImageOnUpdate,
+            LocalCacheContentImageOnUpdate provides settings.cacheContentImageOnUpdate,
+
             // Languages
             LocalLanguages provides settings.languages,
         ) {

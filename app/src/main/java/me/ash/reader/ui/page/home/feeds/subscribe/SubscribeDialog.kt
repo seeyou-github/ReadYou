@@ -103,7 +103,7 @@ fun SubscribeDialog(
                     text = when (subscribeState) {
                         is SubscribeState.Configure -> subscribeState.searchedFeed.title
                         is SubscribeState.Fetching -> stringResource(R.string.searching)
-                        is SubscribeState.Idle -> stringResource(R.string.subscribe)
+                        is SubscribeState.Idle -> stringResource(R.string.add)
                     },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -131,7 +131,7 @@ fun SubscribeDialog(
                                 readOnly = state is SubscribeState.Fetching,
                                 placeholder = stringResource(R.string.feed_or_site_url),
                                 errorText = errorText,
-                                imeAction = ImeAction.Search,
+                                imeAction = ImeAction.Done,
                                 onConfirm = {
                                     subscribeViewModel.addFeed()
                                 },
@@ -181,7 +181,7 @@ fun SubscribeDialog(
                                 subscribeViewModel.subscribe()
                             }
                         ) {
-                            Text(stringResource(R.string.subscribe))
+                            Text(stringResource(R.string.add))
                         }
                     }
 

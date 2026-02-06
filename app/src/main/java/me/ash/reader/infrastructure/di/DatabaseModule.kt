@@ -8,6 +8,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import me.ash.reader.domain.repository.AccountDao
 import me.ash.reader.domain.repository.ArticleDao
+import me.ash.reader.domain.repository.ArticleImageCacheDao
 import me.ash.reader.infrastructure.translate.cache.ArticleTranslationCacheDao
 import me.ash.reader.domain.repository.BlacklistKeywordDao
 import me.ash.reader.domain.repository.FeedDao
@@ -32,6 +33,11 @@ object DatabaseModule {
     @Singleton
     fun provideArticleDao(androidDatabase: AndroidDatabase): ArticleDao =
         androidDatabase.articleDao()
+
+    @Provides
+    @Singleton
+    fun provideArticleImageCacheDao(androidDatabase: AndroidDatabase): ArticleImageCacheDao =
+        androidDatabase.articleImageCacheDao()
 
     @Provides
     @Singleton

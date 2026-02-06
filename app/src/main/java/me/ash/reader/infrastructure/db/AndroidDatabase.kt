@@ -7,6 +7,7 @@ import androidx.room.migration.Migration
 import me.ash.reader.domain.model.account.*
 import me.ash.reader.domain.model.article.ArchivedArticle
 import me.ash.reader.domain.model.article.Article
+import me.ash.reader.domain.model.article.ArticleImageCache
 import me.ash.reader.domain.model.blacklist.BlacklistKeyword
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.model.group.Group
@@ -14,6 +15,7 @@ import me.ash.reader.plugin.PluginRule
 import me.ash.reader.infrastructure.translate.model.ArticleTranslationCache
 import me.ash.reader.domain.repository.AccountDao
 import me.ash.reader.domain.repository.ArticleDao
+import me.ash.reader.domain.repository.ArticleImageCacheDao
 import me.ash.reader.infrastructure.translate.cache.ArticleTranslationCacheDao
 import me.ash.reader.domain.repository.BlacklistKeywordDao
 import me.ash.reader.domain.repository.FeedDao
@@ -21,8 +23,8 @@ import me.ash.reader.domain.repository.GroupDao
 import java.util.*
 
 @Database(
-    entities = [Account::class, Feed::class, Article::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class, PluginRule::class],
-    version = 25,
+    entities = [Account::class, Feed::class, Article::class, ArticleImageCache::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class, PluginRule::class],
+    version = 26,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 5, to = 7),
@@ -46,6 +48,7 @@ abstract class AndroidDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun feedDao(): FeedDao
     abstract fun articleDao(): ArticleDao
+    abstract fun articleImageCacheDao(): ArticleImageCacheDao
     abstract fun groupDao(): GroupDao
     abstract fun blacklistKeywordDao(): BlacklistKeywordDao
     abstract fun articleTranslationCacheDao(): ArticleTranslationCacheDao
@@ -308,6 +311,38 @@ abstract class AndroidDatabase : RoomDatabase() {
                         )
                     }
                 }
+                /**
+                 * 数据库迁移：从版本 25 到版本 26
+                 *
+                 * 1. 新增 article_image_cache 表
+                 */
+                private val MIGRATION_25_26 = object : Migration(25, 26) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            """
+                            CREATE TABLE IF NOT EXISTS article_image_cache (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                                articleId TEXT NOT NULL,
+                                accountId INTEGER NOT NULL,
+                                url TEXT NOT NULL,
+                                type TEXT NOT NULL,
+                                localPath TEXT NOT NULL,
+                                createdAt INTEGER NOT NULL,
+                                FOREIGN KEY(articleId) REFERENCES article(id) ON UPDATE CASCADE ON DELETE CASCADE
+                            )
+                            """.trimIndent()
+                        )
+                        database.execSQL(
+                            "CREATE INDEX IF NOT EXISTS index_article_image_cache_articleId ON article_image_cache(articleId)"
+                        )
+                        database.execSQL(
+                            "CREATE INDEX IF NOT EXISTS index_article_image_cache_accountId ON article_image_cache(accountId)"
+                        )
+                        database.execSQL(
+                            "CREATE UNIQUE INDEX IF NOT EXISTS index_article_image_cache_articleId_url_type ON article_image_cache(articleId, url, type)"
+                        )
+                    }
+                }
 
         fun getInstance(context: Context): AndroidDatabase {
             return instance ?: synchronized(this) {
@@ -328,7 +363,8 @@ abstract class AndroidDatabase : RoomDatabase() {
                     MIGRATION_21_22,
                     MIGRATION_22_23,
                     MIGRATION_23_24,
-                    MIGRATION_24_25
+                    MIGRATION_24_25,
+                    MIGRATION_25_26
                 )
                  .build().also {
                     instance = it

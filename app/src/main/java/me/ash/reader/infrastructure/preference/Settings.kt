@@ -125,6 +125,10 @@ data class Settings(
     val openLinkSpecificBrowser: OpenLinkSpecificBrowserPreference = OpenLinkSpecificBrowserPreference.default,
     val sharedContent: SharedContentPreference = SharedContentPreference.default,
 
+    // Cache
+    val cacheTitleImageOnUpdate: CacheTitleImageOnUpdatePreference = CacheTitleImageOnUpdatePreference.default,
+    val cacheContentImageOnUpdate: CacheContentImageOnUpdatePreference = CacheContentImageOnUpdatePreference.default,
+
     // Languages
     val languages: LanguagesPreference = LanguagesPreference.default,
 )

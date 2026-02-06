@@ -126,6 +126,10 @@ fun Preferences.toSettings(): Settings {
         openLinkSpecificBrowser = OpenLinkSpecificBrowserPreference.fromPreferences(this),
         sharedContent = SharedContentPreference.fromPreferences(this),
 
+        // Cache
+        cacheTitleImageOnUpdate = CacheTitleImageOnUpdatePreference.fromPreferences(this),
+        cacheContentImageOnUpdate = CacheContentImageOnUpdatePreference.fromPreferences(this),
+
         // Languages
         languages = LanguagesPreference.fromPreferences(this),
 

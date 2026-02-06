@@ -45,6 +45,7 @@ import me.ash.reader.infrastructure.di.MainDispatcher
 import me.ash.reader.infrastructure.html.Readability
 import me.ash.reader.infrastructure.net.onFailure
 import me.ash.reader.infrastructure.net.onSuccess
+import me.ash.reader.infrastructure.rss.ArticleImageCacheService
 import me.ash.reader.infrastructure.rss.RssHelper
 import me.ash.reader.infrastructure.rss.provider.greader.GoogleReaderAPI
 import me.ash.reader.infrastructure.rss.provider.greader.GoogleReaderAPI.Companion.dbId
@@ -72,6 +73,7 @@ constructor(
     private val rssHelper: RssHelper,
     private val notificationHelper: NotificationHelper,
     private val groupDao: GroupDao,
+    private val articleImageCacheService: ArticleImageCacheService,
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
     @MainDispatcher private val mainDispatcher: CoroutineDispatcher,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
@@ -87,6 +89,7 @@ constructor(
         workManager,
         rssHelper,
         notificationHelper,
+        articleImageCacheService,
         ioDispatcher,
         defaultDispatcher,
         accountService,

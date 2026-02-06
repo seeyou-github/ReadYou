@@ -539,4 +539,6 @@
     <string name="icon_not_found">Icon not found</string>
     <string name="icon_search_failed">Icon search failed</string>
     <string name="plugin_cache_content_on_update">Cache content on update</string>
+    <string name="cache_title_image_on_update">Cache title image on update</string>
+    <string name="cache_content_image_on_update">Cache content images on update</string>
 </resources>

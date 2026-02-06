@@ -34,6 +34,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,7 +48,10 @@ import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.ash.reader.R
+import me.ash.reader.domain.model.account.AccountType
 import me.ash.reader.infrastructure.preference.KeepArchivedPreference
+import me.ash.reader.infrastructure.preference.LocalCacheContentImageOnUpdate
+import me.ash.reader.infrastructure.preference.LocalCacheTitleImageOnUpdate
 import me.ash.reader.infrastructure.preference.SyncBlockListPreference
 import me.ash.reader.infrastructure.preference.SyncIntervalPreference
 import me.ash.reader.infrastructure.preference.not
@@ -80,6 +84,7 @@ fun AccountDetailsPage(
 ) {
     val uiState = viewModel.accountUiState.collectAsStateValue()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     val selectedAccount = uiState.selectedAccount.collectAsStateValue(initial = null)
 
@@ -96,6 +101,8 @@ fun AccountDetailsPage(
     var syncIntervalDialogVisible by remember { mutableStateOf(false) }
     var keepArchivedDialogVisible by remember { mutableStateOf(false) }
     var exportOPMLModeDialogVisible by remember { mutableStateOf(false) }
+    val cacheTitleImageOnUpdate = LocalCacheTitleImageOnUpdate.current
+    val cacheContentImageOnUpdate = LocalCacheContentImageOnUpdate.current
 
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(MimeType.ANY)) {
@@ -220,6 +227,24 @@ fun AccountDetailsPage(
                         RYSwitch(activated = selectedAccount?.syncOnlyWhenCharging?.value == true) {
                             selectedAccount?.id?.let {
                                 (!selectedAccount.syncOnlyWhenCharging).put(it, viewModel)
+                            }
+                        }
+                    }
+                    if (selectedAccount?.type?.id == AccountType.Local.id) {
+                        SettingItem(
+                            title = stringResource(R.string.cache_title_image_on_update),
+                            onClick = { cacheTitleImageOnUpdate.toggle(context, scope) },
+                        ) {
+                            RYSwitch(activated = cacheTitleImageOnUpdate.value) {
+                                cacheTitleImageOnUpdate.toggle(context, scope)
+                            }
+                        }
+                        SettingItem(
+                            title = stringResource(R.string.cache_content_image_on_update),
+                            onClick = { cacheContentImageOnUpdate.toggle(context, scope) },
+                        ) {
+                            RYSwitch(activated = cacheContentImageOnUpdate.value) {
+                                cacheContentImageOnUpdate.toggle(context, scope)
                             }
                         }
                     }

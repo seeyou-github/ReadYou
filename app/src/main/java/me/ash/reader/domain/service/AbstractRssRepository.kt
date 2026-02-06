@@ -29,6 +29,7 @@ import me.ash.reader.infrastructure.android.NotificationHelper
 import me.ash.reader.infrastructure.preference.KeepArchivedPreference
 import me.ash.reader.infrastructure.preference.SyncIntervalPreference
 import me.ash.reader.infrastructure.rss.RssHelper
+import me.ash.reader.infrastructure.rss.ArticleImageCacheService
 import timber.log.Timber
 import me.ash.reader.ui.ext.decodeHTML
 import me.ash.reader.ui.ext.spacerDollar
@@ -40,6 +41,7 @@ abstract class AbstractRssRepository(
     private val workManager: WorkManager,
     private val rssHelper: RssHelper,
     private val notificationHelper: NotificationHelper,
+    private val articleImageCacheService: ArticleImageCacheService,
     private val dispatcherIO: CoroutineDispatcher,
     private val dispatcherDefault: CoroutineDispatcher,
     private val accountService: AccountService,
@@ -183,6 +185,9 @@ abstract class AbstractRssRepository(
                     accountId,
                     Date(System.currentTimeMillis() - keepArchived.value),
                 )
+            if (archivedArticles.isNotEmpty()) {
+                articleImageCacheService.deleteByArticleIds(archivedArticles.map { it.id })
+            }
             articleDao.delete(*archivedArticles.toTypedArray())
             return archivedArticles.also {
                 feedDao.insertArchivedArticles(
@@ -386,23 +391,41 @@ abstract class AbstractRssRepository(
         includeStarred: Boolean = false,
     ) {
         when {
-            group != null ->
+            group != null -> {
+                val articleIds =
+                    articleDao.queryIdsByGroupId(
+                        accountService.getCurrentAccountId(),
+                        group.id,
+                        includeStarred,
+                    )
+                articleImageCacheService.deleteByArticleIds(articleIds)
                 articleDao.deleteByGroupId(
                     accountService.getCurrentAccountId(),
                     group.id,
                     includeStarred,
                 )
+            }
 
-            feed != null ->
+            feed != null -> {
+                val articleIds =
+                    articleDao.queryIdsByFeedId(
+                        accountService.getCurrentAccountId(),
+                        feed.id,
+                        includeStarred,
+                    )
+                articleImageCacheService.deleteByArticleIds(articleIds)
                 articleDao.deleteByFeedId(
                     accountService.getCurrentAccountId(),
                     feed.id,
                     includeStarred,
                 )
+            }
         }
     }
 
     suspend fun deleteAccountArticles(accountId: Int) {
+        val articleIds = articleDao.queryIdsByAccountId(accountId)
+        articleImageCacheService.deleteByArticleIds(articleIds)
         articleDao.deleteByAccountId(accountId)
     }
 

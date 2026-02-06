@@ -26,6 +26,7 @@ import me.ash.reader.infrastructure.android.NotificationHelper
 import me.ash.reader.infrastructure.di.DefaultDispatcher
 import me.ash.reader.infrastructure.di.IODispatcher
 import me.ash.reader.infrastructure.rss.RssHelper
+import me.ash.reader.infrastructure.rss.ArticleImageCacheService
 import me.ash.reader.plugin.PluginConstants
 import me.ash.reader.plugin.PluginRuleDao
 import me.ash.reader.plugin.PluginSyncService
@@ -42,6 +43,7 @@ constructor(
     private val rssHelper: RssHelper,
     private val notificationHelper: NotificationHelper,
     private val groupDao: GroupDao,
+    private val articleImageCacheService: ArticleImageCacheService,
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
     private val workManager: WorkManager,
@@ -58,6 +60,7 @@ constructor(
         workManager,
         rssHelper,
         notificationHelper,
+        articleImageCacheService,
         ioDispatcher,
         defaultDispatcher,
         accountService,
