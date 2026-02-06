@@ -83,6 +83,10 @@ android {
     }
     lint { disable.addAll(listOf("MissingTranslation", "ExtraTranslation")) }
     buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -96,8 +100,9 @@ android {
     }
     applicationVariants.all {
         outputs.all {
+            val variantName = name
             (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
-                "ReadYou-${defaultConfig.versionName}.apk"
+                "ReadYou-${defaultConfig.versionName}-$variantName.apk"
         }
     }
     kotlinOptions {
