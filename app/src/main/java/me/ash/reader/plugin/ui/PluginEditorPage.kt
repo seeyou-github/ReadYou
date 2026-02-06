@@ -241,25 +241,25 @@ fun PluginEditorPage(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(text = stringResource(R.string.plugin_detail_section), style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.plugin_cache_content_on_update),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Switch(
-                        checked = state.cacheContentOnUpdate,
-                        onCheckedChange = { viewModel.updateState { copy(cacheContentOnUpdate = it) } },
-                    )
-                }
                 TextButton(onClick = { viewModel.testDetailPreview() }) {
                     Text(text = stringResource(R.string.plugin_test_detail))
                 }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.plugin_cache_content_on_update),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Switch(
+                    checked = state.cacheContentOnUpdate,
+                    onCheckedChange = { viewModel.updateState { copy(cacheContentOnUpdate = it) } },
+                )
             }
             Spacer(modifier = Modifier.height(8.dp))
             selectorField(

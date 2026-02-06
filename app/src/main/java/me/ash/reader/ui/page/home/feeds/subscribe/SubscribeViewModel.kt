@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rometools.rome.feed.synd.SyndFeed
+import com.rometools.rome.feed.synd.SyndFeedImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.InputStream
 import javax.inject.Inject
@@ -26,7 +27,6 @@ import me.ash.reader.domain.service.RssService
 import me.ash.reader.infrastructure.android.AndroidStringsHelper
 import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.MainDispatcher
-import me.ash.reader.infrastructure.rss.RssHelper
 import me.ash.reader.plugin.PluginRuleTransferService
 import me.ash.reader.ui.ext.formatUrl
 
@@ -36,7 +36,6 @@ class SubscribeViewModel
 constructor(
     private val opmlService: OpmlService,
     val rssService: RssService,
-    private val rssHelper: RssHelper,
     private val androidStringsHelper: AndroidStringsHelper,
     private val pluginRuleTransferService: PluginRuleTransferService,
     @MainDispatcher private val mainDispatcher: CoroutineDispatcher,
@@ -78,7 +77,6 @@ constructor(
     fun importFromInputStream(inputStream: InputStream) {
         applicationScope.launch {
             opmlService.saveToDatabase(inputStream)
-            rssService.get().doSyncOneTime()
         }
     }
 
@@ -89,13 +87,11 @@ constructor(
             if (trimmed.startsWith("<")) {
                 // 识别为 OPML/XML
                 opmlService.saveToDatabase(content.byteInputStream())
-                rssService.get().doSyncOneTime()
                 withContext(mainDispatcher) { onResult("OPML导入成功") }
                 return@launch
             }
             pluginRuleTransferService.importRule(content)
                 .onSuccess {
-                    rssService.get().doSyncOneTime()
                     withContext(mainDispatcher) { onResult("本地规则导入成功") }
                 }
                 .onFailure { th ->
@@ -166,7 +162,7 @@ constructor(
         }
     }
 
-    fun searchFeed() {
+    fun addFeed() {
         val currentState = _subscribeState.value
         if (currentState !is SubscribeState.Idle) return
         viewModelScope.launch {
@@ -182,27 +178,7 @@ constructor(
             }
             val groups = groupsFlow.value
             val firstGroupId = groups.firstOrNull()?.id ?: return@launch
-
-            val job =
-                viewModelScope.launch {
-                    runCatching { rssHelper.searchFeed(feedLink) }
-                        .onSuccess {
-                            val groups = groupsFlow.value
-                            _subscribeState.value =
-                                SubscribeState.Configure(
-                                    searchedFeed = it,
-                                    feedLink = feedLink,
-                                    groups = groups,
-                                    selectedGroupId = firstGroupId,
-                                )
-                        }
-                        .onFailure {
-                            _subscribeState.value = currentState.copy(errorMessage = it.message)
-                        }
-                }
-
-            _subscribeState.value =
-                SubscribeState.Fetching(linkState = currentState.linkState, job = job)
+            addFeedDirectly(feedLink, firstGroupId)
         }
     }
 
@@ -245,7 +221,28 @@ constructor(
                 _subscribeState.update { SubscribeState.Idle(linkState = TextFieldState(url)) }
                 delay(50)
             }
-            .invokeOnCompletion { searchFeed() }
+            .invokeOnCompletion { addFeed() }
+    }
+
+    private fun addFeedDirectly(feedLink: String, groupId: String) {
+        applicationScope.launch {
+            val searchedFeed: SyndFeed = SyndFeedImpl().apply {
+                title = feedLink
+                link = feedLink
+            }
+            rssService
+                .get()
+                .subscribe(
+                    searchedFeed = searchedFeed,
+                    feedLink = feedLink,
+                    groupId = groupId,
+                    isNotification = false,
+                    isFullContent = false,
+                    isBrowser = false,
+                    isAutoTranslate = false,
+                )
+            hideDrawer()
+        }
     }
 
     fun showDrawer() {

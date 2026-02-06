@@ -133,7 +133,7 @@ fun SubscribeDialog(
                                 errorText = errorText,
                                 imeAction = ImeAction.Search,
                                 onConfirm = {
-                                    subscribeViewModel.searchFeed()
+                                    subscribeViewModel.addFeed()
                                 },
                             )
                         }
@@ -192,12 +192,10 @@ fun SubscribeDialog(
                             enabled = enabled,
                             onClick = {
                                 focusManager.clearFocus()
-                                subscribeViewModel.searchFeed()
+                                subscribeViewModel.addFeed()
                             }
                         ) {
-                            Text(
-                                text = stringResource(R.string.search),
-                            )
+                            Text(text = stringResource(R.string.add))
                         }
                     }
                 }
