@@ -482,11 +482,18 @@
     <string name="import_icon">Import icon</string>
     <string name="export_icon">Export icon</string>
     <string name="plugin_list_section">标题列表解析</string>
+    <string name="plugin_list_json_section">标题列表 JSON 规则</string>
+    <string name="plugin_list_json_desc">如果列表是 JSON，填写以下字段；CSS 选择器可留空</string>
     <string name="plugin_detail_section">正文解析</string>
     <string name="plugin_list_title_selector">标题列表CSS选择器</string>
     <string name="plugin_list_url_selector">文章URL CSS选择器</string>
     <string name="plugin_list_image_selector">标题配图CSS选择器</string>
     <string name="plugin_list_time_selector">标题发布时间CSS选择器</string>
+    <string name="plugin_list_json_array_selector">标题数组路径</string>
+    <string name="plugin_list_json_title_selector">标题字段</string>
+    <string name="plugin_list_json_url_selector">正文链接字段</string>
+    <string name="plugin_list_json_image_selector">标题图片字段</string>
+    <string name="plugin_list_json_time_selector">标题日期字段</string>
     <string name="plugin_detail_title_selector">正文标题CSS选择器</string>
     <string name="plugin_detail_author_selector">作者CSS选择器</string>
     <string name="plugin_detail_time_selector">时间CSS选择器</string>
@@ -497,6 +504,7 @@
     <string name="plugin_detail_video_selector">正文视频CSS选择器</string>
     <string name="plugin_detail_audio_selector">正文音频CSS选择器</string>
     <string name="plugin_selector_hint">CSS选择器（jsoup/jquery语法）</string>
+    <string name="plugin_json_selector_hint">JSON字段/路径（支持 . 或 [0]）</string>
     <string name="plugin_selector_optional">可留空</string>
     <string name="plugin_enable">显示在主页</string>
     <string name="plugin_enable_desc">创建订阅并显示在主页</string>

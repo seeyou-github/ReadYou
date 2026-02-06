@@ -1,4 +1,4 @@
-package me.ash.reader.infrastructure.db
+﻿package me.ash.reader.infrastructure.db
 
 import android.content.Context
 import androidx.room.*
@@ -24,7 +24,7 @@ import java.util.*
 
 @Database(
     entities = [Account::class, Feed::class, Article::class, ArticleImageCache::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class, PluginRule::class],
-    version = 26,
+    version = 27,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 5, to = 7),
@@ -344,6 +344,31 @@ abstract class AndroidDatabase : RoomDatabase() {
                     }
                 }
 
+                /**
+                 * 数据库迁移：从版本 26 到版本 27
+                 *
+                 * 1. plugin_rule 新增 JSON 列表解析相关字段
+                 */
+                private val MIGRATION_26_27 = object : Migration(26, 27) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE plugin_rule ADD COLUMN listJsonArraySelector TEXT NOT NULL DEFAULT ''"
+                        )
+                        database.execSQL(
+                            "ALTER TABLE plugin_rule ADD COLUMN listJsonTitleSelector TEXT NOT NULL DEFAULT ''"
+                        )
+                        database.execSQL(
+                            "ALTER TABLE plugin_rule ADD COLUMN listJsonUrlSelector TEXT NOT NULL DEFAULT ''"
+                        )
+                        database.execSQL(
+                            "ALTER TABLE plugin_rule ADD COLUMN listJsonImageSelector TEXT NOT NULL DEFAULT ''"
+                        )
+                        database.execSQL(
+                            "ALTER TABLE plugin_rule ADD COLUMN listJsonTimeSelector TEXT NOT NULL DEFAULT ''"
+                        )
+                    }
+                }
+
         fun getInstance(context: Context): AndroidDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -364,7 +389,8 @@ abstract class AndroidDatabase : RoomDatabase() {
                     MIGRATION_22_23,
                     MIGRATION_23_24,
                     MIGRATION_24_25,
-                    MIGRATION_25_26
+                    MIGRATION_25_26,
+                    MIGRATION_26_27
                 )
                  .build().also {
                     instance = it
@@ -385,3 +411,6 @@ abstract class AndroidDatabase : RoomDatabase() {
         }
     }
 }
+
+
+

@@ -225,6 +225,53 @@ fun PluginEditorPage(
                 hint = stringResource(R.string.plugin_selector_optional),
                 required = false,
             )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.plugin_list_json_section),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.plugin_list_json_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            selectorField(
+                value = state.listJsonArraySelector,
+                onValueChange = { viewModel.updateState { copy(listJsonArraySelector = it) } },
+                label = stringResource(R.string.plugin_list_json_array_selector),
+                hint = stringResource(R.string.plugin_json_selector_hint),
+                required = false,
+            )
+            selectorField(
+                value = state.listJsonTitleSelector,
+                onValueChange = { viewModel.updateState { copy(listJsonTitleSelector = it) } },
+                label = stringResource(R.string.plugin_list_json_title_selector),
+                hint = stringResource(R.string.plugin_json_selector_hint),
+                required = false,
+            )
+            selectorField(
+                value = state.listJsonUrlSelector,
+                onValueChange = { viewModel.updateState { copy(listJsonUrlSelector = it) } },
+                label = stringResource(R.string.plugin_list_json_url_selector),
+                hint = stringResource(R.string.plugin_json_selector_hint),
+                required = false,
+            )
+            selectorField(
+                value = state.listJsonImageSelector,
+                onValueChange = { viewModel.updateState { copy(listJsonImageSelector = it) } },
+                label = stringResource(R.string.plugin_list_json_image_selector),
+                hint = stringResource(R.string.plugin_json_selector_hint),
+                required = false,
+            )
+            selectorField(
+                value = state.listJsonTimeSelector,
+                onValueChange = { viewModel.updateState { copy(listJsonTimeSelector = it) } },
+                label = stringResource(R.string.plugin_list_json_time_selector),
+                hint = stringResource(R.string.plugin_json_selector_hint),
+                required = false,
+            )
             if (state.testResult.isNotBlank()) {
                 Text(
                     text = state.testResult,

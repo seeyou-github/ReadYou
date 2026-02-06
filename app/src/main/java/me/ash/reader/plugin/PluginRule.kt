@@ -35,6 +35,16 @@ data class PluginRule(
     val listImageSelector: String = "",
     @ColumnInfo
     val listTimeSelector: String = "",
+    @ColumnInfo
+    val listJsonArraySelector: String = "",
+    @ColumnInfo
+    val listJsonTitleSelector: String = "",
+    @ColumnInfo
+    val listJsonUrlSelector: String = "",
+    @ColumnInfo
+    val listJsonImageSelector: String = "",
+    @ColumnInfo
+    val listJsonTimeSelector: String = "",
     // 正文解析
     @ColumnInfo
     val detailTitleSelector: String = "",

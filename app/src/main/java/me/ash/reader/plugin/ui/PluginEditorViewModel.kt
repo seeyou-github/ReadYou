@@ -75,6 +75,11 @@ class PluginEditorViewModel @Inject constructor(
                     listUrlSelector = state.listUrlSelector.trim(),
                     listImageSelector = state.listImageSelector.trim(),
                     listTimeSelector = state.listTimeSelector.trim(),
+                    listJsonArraySelector = state.listJsonArraySelector.trim(),
+                    listJsonTitleSelector = state.listJsonTitleSelector.trim(),
+                    listJsonUrlSelector = state.listJsonUrlSelector.trim(),
+                    listJsonImageSelector = state.listJsonImageSelector.trim(),
+                    listJsonTimeSelector = state.listJsonTimeSelector.trim(),
                     detailTitleSelector = state.detailTitleSelector.trim(),
                     detailAuthorSelector = state.detailAuthorSelector.trim(),
                     detailTimeSelector = state.detailTimeSelector.trim(),
@@ -119,6 +124,11 @@ class PluginEditorViewModel @Inject constructor(
                     listUrlSelector = state.listUrlSelector.trim(),
                     listImageSelector = state.listImageSelector.trim(),
                     listTimeSelector = state.listTimeSelector.trim(),
+                    listJsonArraySelector = state.listJsonArraySelector.trim(),
+                    listJsonTitleSelector = state.listJsonTitleSelector.trim(),
+                    listJsonUrlSelector = state.listJsonUrlSelector.trim(),
+                    listJsonImageSelector = state.listJsonImageSelector.trim(),
+                    listJsonTimeSelector = state.listJsonTimeSelector.trim(),
                     detailTitleSelector = state.detailTitleSelector.trim(),
                     detailAuthorSelector = state.detailAuthorSelector.trim(),
                     detailTimeSelector = state.detailTimeSelector.trim(),
@@ -179,6 +189,11 @@ class PluginEditorViewModel @Inject constructor(
                     listUrlSelector = state.listUrlSelector.trim(),
                     listImageSelector = state.listImageSelector.trim(),
                     listTimeSelector = state.listTimeSelector.trim(),
+                    listJsonArraySelector = state.listJsonArraySelector.trim(),
+                    listJsonTitleSelector = state.listJsonTitleSelector.trim(),
+                    listJsonUrlSelector = state.listJsonUrlSelector.trim(),
+                    listJsonImageSelector = state.listJsonImageSelector.trim(),
+                    listJsonTimeSelector = state.listJsonTimeSelector.trim(),
                     detailTitleSelector = state.detailTitleSelector.trim(),
                     detailAuthorSelector = state.detailAuthorSelector.trim(),
                     detailTimeSelector = state.detailTimeSelector.trim(),
@@ -268,6 +283,11 @@ class PluginEditorViewModel @Inject constructor(
                     listUrlSelector = state.listUrlSelector.trim(),
                     listImageSelector = state.listImageSelector.trim(),
                     listTimeSelector = state.listTimeSelector.trim(),
+                    listJsonArraySelector = state.listJsonArraySelector.trim(),
+                    listJsonTitleSelector = state.listJsonTitleSelector.trim(),
+                    listJsonUrlSelector = state.listJsonUrlSelector.trim(),
+                    listJsonImageSelector = state.listJsonImageSelector.trim(),
+                    listJsonTimeSelector = state.listJsonTimeSelector.trim(),
                     detailTitleSelector = state.detailTitleSelector.trim(),
                     detailAuthorSelector = state.detailAuthorSelector.trim(),
                     detailTimeSelector = state.detailTimeSelector.trim(),
@@ -334,6 +354,11 @@ data class PluginEditorState(
     val listUrlSelector: String = "",
     val listImageSelector: String = "",
     val listTimeSelector: String = "",
+    val listJsonArraySelector: String = "",
+    val listJsonTitleSelector: String = "",
+    val listJsonUrlSelector: String = "",
+    val listJsonImageSelector: String = "",
+    val listJsonTimeSelector: String = "",
     val detailTitleSelector: String = "",
     val detailAuthorSelector: String = "",
     val detailTimeSelector: String = "",
@@ -353,19 +378,40 @@ data class PluginEditorState(
     val debugVisible: Boolean = false,
 ) {
     fun validate(): String? {
-        if (subscribeUrl.isBlank()) return "订阅URL不能为空"
-        if (listTitleSelector.isBlank()) return "标题列表选择器不能为空"
-        if (listUrlSelector.isBlank()) return "文章URL选择器不能为空"
-        if (detailContentSelectors.all { it.isBlank() }) return "正文选择器不能为空"
+        if (subscribeUrl.isBlank()) return "订阅URL 为空"
+        if (useJsonListRule()) {
+            if (listJsonArraySelector.isBlank()) return "JSON 标题数组规则为空"
+            if (listJsonTitleSelector.isBlank()) return "JSON 标题规则为空"
+            if (listJsonUrlSelector.isBlank()) return "JSON 正文url规则"
+        } else {
+            if (listTitleSelector.isBlank()) return "标题css选择器为空"
+            if (listUrlSelector.isBlank()) return "正文url 选择器为空"
+        }
+        if (detailContentSelectors.all { it.isBlank() }) return "正文内容选择器为空"
         return null
     }
 
     fun validateListOnly(): String? {
-        if (subscribeUrl.isBlank()) return "订阅URL不能为空"
-        if (listTitleSelector.isBlank()) return "标题列表选择器不能为空"
-        if (listUrlSelector.isBlank()) return "文章URL选择器不能为空"
+        if (subscribeUrl.isBlank()) return "订阅URL 为空"
+        if (useJsonListRule()) {
+            if (listJsonArraySelector.isBlank()) return "JSON 标题数组规则为空"
+            if (listJsonTitleSelector.isBlank()) return "JSON 标题规则为空"
+            if (listJsonUrlSelector.isBlank()) return "JSON 正文url规则"
+        } else {
+            if (listTitleSelector.isBlank()) return "标题css选择器为空"
+            if (listUrlSelector.isBlank()) return "正文url 选择器为空"
+        }
         return null
     }
+
+    private fun useJsonListRule(): Boolean {
+        return listJsonArraySelector.isNotBlank()
+            || listJsonTitleSelector.isNotBlank()
+            || listJsonUrlSelector.isNotBlank()
+            || listJsonImageSelector.isNotBlank()
+            || listJsonTimeSelector.isNotBlank()
+    }
+
 
     companion object {
         fun fromRule(rule: PluginRule): PluginEditorState {
@@ -385,6 +431,11 @@ data class PluginEditorState(
                 listUrlSelector = rule.listUrlSelector,
                 listImageSelector = rule.listImageSelector,
                 listTimeSelector = rule.listTimeSelector,
+                listJsonArraySelector = rule.listJsonArraySelector,
+                listJsonTitleSelector = rule.listJsonTitleSelector,
+                listJsonUrlSelector = rule.listJsonUrlSelector,
+                listJsonImageSelector = rule.listJsonImageSelector,
+                listJsonTimeSelector = rule.listJsonTimeSelector,
                 detailTitleSelector = rule.detailTitleSelector,
                 detailAuthorSelector = rule.detailAuthorSelector,
                 detailTimeSelector = rule.detailTimeSelector,

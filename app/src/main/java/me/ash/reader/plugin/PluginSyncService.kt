@@ -8,6 +8,11 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import me.ash.reader.domain.model.article.Article
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.model.feed.FeedWithArticle
@@ -33,6 +38,11 @@ class PluginSyncService @Inject constructor(
     private val articleDao: ArticleDao,
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
+    private val jsonParser =
+        Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
     suspend fun previewList(rule: PluginRule): Result<PreviewResult> {
         return withContext(ioDispatcher) {
             runCatching {
@@ -41,8 +51,7 @@ class PluginSyncService @Inject constructor(
                 if (listHtml.isBlank()) {
                     throw IOException("List HTML is empty")
                 }
-                val listDoc = Jsoup.parse(listHtml, rule.subscribeUrl)
-                val items = parseListItems(listDoc, rule)
+                val items = parseListItems(listHtml, rule.subscribeUrl, rule)
                 val titles = items.map { it.title }.filter { it.isNotBlank() }
                 PreviewResult(
                     total = items.size,
@@ -62,12 +71,14 @@ class PluginSyncService @Inject constructor(
                 if (listHtml.isBlank()) {
                     throw IOException("List HTML is empty")
                 }
-                val listDoc = Jsoup.parse(listHtml, rule.subscribeUrl)
-                val items = parseListItems(listDoc, rule)
+                val items = parseListItems(listHtml, rule.subscribeUrl, rule)
                 items.forEachIndexed { index, item ->
                     Log.d(TAG, "list item[$index]: title=${item.title} time=${item.time} image=${item.image}")
                 }
-                if (rule.listImageSelector.isNotBlank()) return@runCatching items
+                val hasListImageRule =
+                    if (useJsonListRule(rule)) rule.listJsonImageSelector.isNotBlank()
+                    else rule.listImageSelector.isNotBlank()
+                if (hasListImageRule) return@runCatching items
                 if (rule.detailImageSelector.isBlank()) return@runCatching items
 
                 // When list image selector is empty, fallback to first detail image (preview only).
@@ -90,8 +101,7 @@ class PluginSyncService @Inject constructor(
                 if (listHtml.isBlank()) {
                     throw IOException("List HTML is empty")
                 }
-                val listDoc = Jsoup.parse(listHtml, rule.subscribeUrl)
-                val items = parseListItems(listDoc, rule)
+                val items = parseListItems(listHtml, rule.subscribeUrl, rule)
                 val first = items.firstOrNull() ?: return@runCatching DetailResult()
                 val detail = parseDetail(first, rule)
                 Log.d(TAG, "preview detail result: title=${detail.title} time=${detail.time} contentLen=${detail.contentHtml.length}")
@@ -125,13 +135,18 @@ class PluginSyncService @Inject constructor(
                     )
                 }
                 val listDoc = Jsoup.parse(listHtml, rule.subscribeUrl)
+                val listItems =
+                    if (useJsonListRule(rule)) {
+                        buildJsonListDebug(listHtml, rule.subscribeUrl, rule).also { debugItems.addAll(it.debugItems) }.items
+                    } else {
+                        debugItems += buildDebugItem(listDoc, "List title selector", rule.listTitleSelector, sampleAttr = null)
+                        debugItems += buildDebugItem(listDoc, "List url selector", rule.listUrlSelector, sampleAttr = "href")
+                        debugItems += buildDebugItem(listDoc, "List image selector", rule.listImageSelector, sampleAttr = "src")
+                        debugItems += buildDebugItem(listDoc, "List time selector", rule.listTimeSelector, sampleAttr = null)
+                        parseListItemsFromHtml(listDoc, rule)
+                    }
 
-                debugItems += buildDebugItem(listDoc, "List title selector", rule.listTitleSelector, sampleAttr = null)
-                debugItems += buildDebugItem(listDoc, "List url selector", rule.listUrlSelector, sampleAttr = "href")
-                debugItems += buildDebugItem(listDoc, "List image selector", rule.listImageSelector, sampleAttr = "src")
-                debugItems += buildDebugItem(listDoc, "List time selector", rule.listTimeSelector, sampleAttr = null)
-
-                val firstItem = parseListItems(listDoc, rule).firstOrNull()
+                val firstItem = listItems.firstOrNull()
                 if (firstItem == null) {
                     debugItems += SelectorDebugItem(
                         label = "Detail page",
@@ -206,8 +221,7 @@ class PluginSyncService @Inject constructor(
                 Log.e(TAG, "list html empty: ${rule.subscribeUrl}")
                 return@withContext FeedWithArticle(feed = feed, articles = emptyList())
             }
-            val listDoc = Jsoup.parse(listHtml, rule.subscribeUrl)
-            val items = parseListItems(listDoc, rule)
+            val items = parseListItems(listHtml, rule.subscribeUrl, rule)
             if (items.isEmpty()) {
                 Log.w(TAG, "list items empty: ${rule.subscribeUrl}")
                 return@withContext FeedWithArticle(feed = feed, articles = emptyList())
@@ -236,7 +250,15 @@ class PluginSyncService @Inject constructor(
         }
     }
 
-    private fun parseListItems(doc: Document, rule: PluginRule): List<ListItem> {
+    private fun parseListItems(listBody: String, baseUrl: String, rule: PluginRule): List<ListItem> {
+        return if (useJsonListRule(rule)) {
+            parseListItemsFromJson(listBody, baseUrl, rule)
+        } else {
+            parseListItemsFromHtml(Jsoup.parse(listBody, baseUrl), rule)
+        }
+    }
+
+    private fun parseListItemsFromHtml(doc: Document, rule: PluginRule): List<ListItem> {
         if (rule.listTitleSelector.isBlank() || rule.listUrlSelector.isBlank()) {
             Log.w(TAG, "list selector missing: title='${rule.listTitleSelector}' url='${rule.listUrlSelector}'")
             return emptyList()
@@ -590,6 +612,11 @@ class PluginSyncService @Inject constructor(
         val samples: List<String>,
     )
 
+    private data class JsonListDebugResult(
+        val items: List<ListItem>,
+        val debugItems: List<SelectorDebugItem>,
+    )
+
     private fun buildDebugItem(
         doc: Document,
         label: String,
@@ -616,6 +643,140 @@ class PluginSyncService @Inject constructor(
             count = elements.size,
             samples = if (samples.isEmpty()) listOf("No match") else samples,
         )
+    }
+
+    private fun useJsonListRule(rule: PluginRule): Boolean {
+        return rule.listJsonArraySelector.isNotBlank()
+            || rule.listJsonTitleSelector.isNotBlank()
+            || rule.listJsonUrlSelector.isNotBlank()
+            || rule.listJsonImageSelector.isNotBlank()
+            || rule.listJsonTimeSelector.isNotBlank()
+    }
+
+    private fun parseListItemsFromJson(listBody: String, baseUrl: String, rule: PluginRule): List<ListItem> {
+        val root = parseJsonElement(listBody) ?: return emptyList()
+        val arrayElement = resolveJsonPath(root, rule.listJsonArraySelector)
+        val itemsArray = arrayElement as? JsonArray
+        if (itemsArray == null) {
+            Log.w(TAG, "list json array not found: ${rule.listJsonArraySelector}")
+            return emptyList()
+        }
+        return itemsArray.mapNotNull { item ->
+            val title = pickJsonString(item, rule.listJsonTitleSelector).orEmpty()
+            val link = pickJsonString(item, rule.listJsonUrlSelector).orEmpty()
+            if (link.isBlank()) return@mapNotNull null
+            val time = pickJsonString(item, rule.listJsonTimeSelector).orEmpty().ifBlank { null }
+            val imageRaw = pickJsonString(item, rule.listJsonImageSelector).orEmpty()
+            val image = imageRaw.takeIf { it.isNotBlank() }?.let { resolveUrl(baseUrl, it) }
+            ListItem(
+                title = title.ifBlank { link },
+                link = resolveUrl(baseUrl, link),
+                image = image,
+                time = time,
+            )
+        }.distinctBy { it.link }
+    }
+
+    private fun buildJsonListDebug(listBody: String, baseUrl: String, rule: PluginRule): JsonListDebugResult {
+        val debugItems = mutableListOf<SelectorDebugItem>()
+        val root = parseJsonElement(listBody)
+        if (root == null) {
+            return JsonListDebugResult(
+                items = emptyList(),
+                debugItems =
+                    listOf(
+                        SelectorDebugItem(
+                            label = "List JSON",
+                            selector = "Subscribe URL",
+                            count = 0,
+                            samples = listOf("List JSON is empty or invalid"),
+                        )
+                    ),
+            )
+        }
+        val arrayElement = resolveJsonPath(root, rule.listJsonArraySelector)
+        val itemsArray = arrayElement as? JsonArray
+        if (itemsArray == null) {
+            debugItems += SelectorDebugItem(
+                label = "List JSON array",
+                selector = rule.listJsonArraySelector,
+                count = 0,
+                samples = listOf("Array not found"),
+            )
+            return JsonListDebugResult(items = emptyList(), debugItems = debugItems)
+        }
+
+        debugItems += SelectorDebugItem(
+            label = "List JSON array",
+            selector = rule.listJsonArraySelector,
+            count = itemsArray.size,
+            samples = listOf("Items: ${itemsArray.size}"),
+        )
+        debugItems += buildJsonDebugItem(itemsArray, "List JSON title", rule.listJsonTitleSelector)
+        debugItems += buildJsonDebugItem(itemsArray, "List JSON url", rule.listJsonUrlSelector)
+        debugItems += buildJsonDebugItem(itemsArray, "List JSON image", rule.listJsonImageSelector)
+        debugItems += buildJsonDebugItem(itemsArray, "List JSON time", rule.listJsonTimeSelector)
+
+        return JsonListDebugResult(items = parseListItemsFromJson(listBody, baseUrl, rule), debugItems = debugItems)
+    }
+
+    private fun buildJsonDebugItem(items: JsonArray, label: String, selector: String): SelectorDebugItem {
+        if (selector.isBlank()) {
+            return SelectorDebugItem(label, selector, 0, listOf("Selector is empty"))
+        }
+        val samples =
+            items.take(3).mapNotNull { item ->
+                pickJsonString(item, selector)?.takeIf { it.isNotBlank() }
+            }
+        return SelectorDebugItem(
+            label = label,
+            selector = selector,
+            count = items.size,
+            samples = if (samples.isEmpty()) listOf("No match") else samples,
+        )
+    }
+
+    private fun parseJsonElement(content: String): JsonElement? {
+        if (content.isBlank()) return null
+        return runCatching { jsonParser.parseToJsonElement(content) }.getOrNull()
+    }
+
+    private fun pickJsonString(element: JsonElement, path: String): String? {
+        if (path.isBlank()) return null
+        val resolved = resolveJsonPath(element, path) ?: return null
+        return jsonElementToString(resolved)
+    }
+
+    private fun jsonElementToString(element: JsonElement?): String? {
+        return when (element) {
+            is JsonPrimitive -> element.content
+            is JsonArray -> element.firstOrNull()?.let { jsonElementToString(it) }
+            else -> null
+        }
+    }
+
+    private fun resolveJsonPath(element: JsonElement, path: String): JsonElement? {
+        if (path.isBlank()) return element
+        val segments =
+            path.replace("[", ".")
+                .replace("]", "")
+                .split(".")
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+        var current: JsonElement? = element
+        for (segment in segments) {
+            current =
+                when (val currentElement = current) {
+                    is JsonObject -> currentElement[segment]
+                    is JsonArray -> {
+                        val index = segment.toIntOrNull() ?: return null
+                        if (index < 0 || index >= currentElement.size) return null
+                        currentElement[index]
+                    }
+                    else -> return null
+                }
+        }
+        return current
     }
 
     companion object {
