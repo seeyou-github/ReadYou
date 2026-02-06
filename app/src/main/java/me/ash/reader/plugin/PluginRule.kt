@@ -54,6 +54,8 @@ data class PluginRule(
     val detailVideoSelector: String = "",
     @ColumnInfo
     val detailAudioSelector: String = "",
+    @ColumnInfo(defaultValue = "0")
+    val cacheContentOnUpdate: Boolean = false,
     // 是否显示在主页（启用则创建 Feed）
     @ColumnInfo(defaultValue = "0")
     val isEnabled: Boolean = false,

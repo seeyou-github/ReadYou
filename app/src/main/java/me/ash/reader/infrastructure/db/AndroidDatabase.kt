@@ -22,7 +22,7 @@ import java.util.*
 
 @Database(
     entities = [Account::class, Feed::class, Article::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class, PluginRule::class],
-    version = 24,
+    version = 25,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 5, to = 7),
@@ -296,6 +296,19 @@ abstract class AndroidDatabase : RoomDatabase() {
                     }
                 }
 
+                /**
+                 * ????????? 24 ??? 25
+                 *
+                 * 1. plugin_rule ?? cacheContentOnUpdate ??
+                 */
+                private val MIGRATION_24_25 = object : Migration(24, 25) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE plugin_rule ADD COLUMN cacheContentOnUpdate INTEGER NOT NULL DEFAULT 0"
+                        )
+                    }
+                }
+
         fun getInstance(context: Context): AndroidDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -314,7 +327,8 @@ abstract class AndroidDatabase : RoomDatabase() {
                     MIGRATION_20_21,
                     MIGRATION_21_22,
                     MIGRATION_22_23,
-                    MIGRATION_23_24
+                    MIGRATION_23_24,
+                    MIGRATION_24_25
                 )
                  .build().also {
                     instance = it

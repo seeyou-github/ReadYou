@@ -59,6 +59,7 @@ class PluginRuleTransferService @Inject constructor(
             detailImageSelector = rule.detailImageSelector,
             detailVideoSelector = rule.detailVideoSelector,
             detailAudioSelector = rule.detailAudioSelector,
+            cacheContentOnUpdate = rule.cacheContentOnUpdate,
             feedSettings =
                 FeedSettingsExport(
                     isNotification = feed.isNotification,
@@ -103,6 +104,7 @@ class PluginRuleTransferService @Inject constructor(
                     detailImageSelector = parsed.detailImageSelector,
                     detailVideoSelector = parsed.detailVideoSelector,
                     detailAudioSelector = parsed.detailAudioSelector,
+                    cacheContentOnUpdate = parsed.cacheContentOnUpdate,
                     isEnabled = true,
                     createdAt = System.currentTimeMillis(),
                     updatedAt = System.currentTimeMillis(),
@@ -188,6 +190,7 @@ data class LocalRuleExport(
     val detailImageSelector: String = "",
     val detailVideoSelector: String = "",
     val detailAudioSelector: String = "",
+    val cacheContentOnUpdate: Boolean = false,
     val feedSettings: FeedSettingsExport = FeedSettingsExport(),
 )
 
