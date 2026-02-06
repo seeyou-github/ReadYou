@@ -4,7 +4,6 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rometools.rome.feed.synd.SyndFeed
-import com.rometools.rome.feed.synd.SyndFeedImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.InputStream
 import javax.inject.Inject
@@ -182,26 +181,25 @@ constructor(
                 return@launch
             }
             val groups = groupsFlow.value
-            val firstGroupId = groups.firstOrNull()?.id
-            if (firstGroupId.isNullOrBlank()) {
-                _subscribeState.value = currentState.copy(errorMessage = androidStringsHelper.getString(R.string.unknown))
-                return@launch
-            }
+            val firstGroupId = groups.firstOrNull()?.id ?: return@launch
 
-            // ???? URL + ??????????
-            val job = viewModelScope.launch {
-                val placeholderFeed = SyndFeedImpl().apply { title = feedLink }
-                rssService.get().subscribe(
-                    searchedFeed = placeholderFeed,
-                    feedLink = feedLink,
-                    groupId = firstGroupId,
-                    isNotification = false,
-                    isFullContent = false,
-                    isBrowser = false,
-                    isAutoTranslate = false,
-                )
-                withContext(mainDispatcher) { hideDrawer() }
-            }
+            val job =
+                viewModelScope.launch {
+                    runCatching { rssHelper.searchFeed(feedLink) }
+                        .onSuccess {
+                            val groups = groupsFlow.value
+                            _subscribeState.value =
+                                SubscribeState.Configure(
+                                    searchedFeed = it,
+                                    feedLink = feedLink,
+                                    groups = groups,
+                                    selectedGroupId = firstGroupId,
+                                )
+                        }
+                        .onFailure {
+                            _subscribeState.value = currentState.copy(errorMessage = it.message)
+                        }
+                }
 
             _subscribeState.value =
                 SubscribeState.Fetching(linkState = currentState.linkState, job = job)

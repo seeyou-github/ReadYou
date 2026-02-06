@@ -95,10 +95,8 @@ abstract class AbstractRssRepository(
                 isFullContent = isFullContent,
                 isAutoTranslate = isAutoTranslate,
             )
-        val articles =
-            searchedFeed.entries.map { rssHelper.buildArticleFromSyndEntry(feed, accountId, it) }
+        // ??????????????? Feed??????
         feedDao.insert(feed)
-        articleDao.insertList(articles.map { it.copy(feedId = feed.id) })
     }
 
     open suspend fun addGroup(destFeed: Feed?, newGroupName: String): String {
