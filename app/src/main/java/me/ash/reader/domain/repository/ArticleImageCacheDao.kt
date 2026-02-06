@@ -27,6 +27,21 @@ interface ArticleImageCacheDao {
     @Query(
         """
         SELECT * FROM article_image_cache
+        WHERE articleId = :articleId
+        AND url = :url
+        AND type = :type
+        LIMIT 1
+        """
+    )
+    fun queryByArticleIdAndUrlSync(
+        articleId: String,
+        url: String,
+        type: String,
+    ): ArticleImageCache?
+
+    @Query(
+        """
+        SELECT * FROM article_image_cache
         WHERE articleId IN (:articleIds)
         """
     )

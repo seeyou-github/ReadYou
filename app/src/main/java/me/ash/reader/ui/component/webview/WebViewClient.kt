@@ -9,10 +9,18 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import me.ash.reader.ui.ext.isUrl
+import me.ash.reader.domain.model.article.ArticleImageCacheType
+import me.ash.reader.domain.repository.ArticleImageCacheDao
 import java.io.DataInputStream
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
+import java.net.URLConnection
 
 const val INJECTION_TOKEN = "/android_asset_font/"
 
@@ -21,13 +29,45 @@ class WebViewClient(
     private val refererDomain: String?,
     private val onOpenLink: (url: String) -> Unit,
     private val enableJavaScript: Boolean = true,
+    private val articleId: String? = null,
 ) : WebViewClient() {
+
+    private val cacheDao: ArticleImageCacheDao? by lazy {
+        runCatching {
+                EntryPointAccessors.fromApplication(
+                    context.applicationContext,
+                    ArticleImageCacheEntryPoint::class.java,
+                )
+            }
+            .getOrNull()
+            ?.articleImageCacheDao()
+    }
 
     override fun shouldInterceptRequest(
         view: WebView?,
         request: WebResourceRequest?,
     ): WebResourceResponse? {
         val url = request?.url?.toString()
+        if (url != null && articleId != null) {
+            try {
+                val cache =
+                    cacheDao?.queryByArticleIdAndUrlSync(
+                        articleId = articleId,
+                        url = url,
+                        type = ArticleImageCacheType.CONTENT,
+                    )
+                if (cache != null) {
+                    val file = File(cache.localPath)
+                    if (file.exists()) {
+                        val mime =
+                            URLConnection.guessContentTypeFromName(file.name) ?: "image/*"
+                        return WebResourceResponse(mime, null, file.inputStream())
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("RLog", "shouldInterceptRequest cache: $e")
+            }
+        }
         if (url != null && url.contains(INJECTION_TOKEN)) {
             try {
                 val assetPath = url.substring(
@@ -84,6 +124,12 @@ class WebViewClient(
 
     override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
         handler?.cancel()
+    }
+
+    @InstallIn(SingletonComponent::class)
+    @EntryPoint
+    interface ArticleImageCacheEntryPoint {
+        fun articleImageCacheDao(): ArticleImageCacheDao
     }
 
     companion object {

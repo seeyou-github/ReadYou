@@ -39,6 +39,8 @@ import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.DefaultDispatcher
 import me.ash.reader.infrastructure.di.IODispatcher
 import me.ash.reader.infrastructure.preference.SettingsProvider
+import me.ash.reader.plugin.PluginConstants
+import me.ash.reader.plugin.PluginRuleDao
 import javax.inject.Inject
 
 private const val TAG = "FeedsViewModel"
@@ -60,6 +62,7 @@ class FeedsViewModel @Inject constructor(
     private val diffMapHolder: DiffMapHolder,
     private val filterStateUseCase: FilterStateUseCase,
     private val groupWithFeedsListUseCase: GroupWithFeedsListUseCase,
+    private val pluginRuleDao: PluginRuleDao,
 ) : ViewModel() {
 
     private val _feedsUiState =
@@ -110,6 +113,9 @@ class FeedsViewModel @Inject constructor(
     // 2026-01-27: 新增 deleteFeed 方法
     // 修改原因：支持从排序对话框删除订阅源
     suspend fun deleteFeed(feed: Feed) {
+        syncLocalRuleIfNeeded(feed) { rule ->
+            rule.copy(isEnabled = false, updatedAt = System.currentTimeMillis())
+        }
         rssService.get().deleteFeed(feed)
     }
 
@@ -117,6 +123,16 @@ class FeedsViewModel @Inject constructor(
     // 修改原因：支持更新订阅源信息，包括排序
     suspend fun updateFeed(feed: me.ash.reader.domain.model.feed.Feed) {
         accountService.updateFeed(feed)
+    }
+
+    private suspend fun syncLocalRuleIfNeeded(
+        feed: Feed,
+        update: (me.ash.reader.plugin.PluginRule) -> me.ash.reader.plugin.PluginRule,
+    ) {
+        if (!feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) return
+        val ruleId = feed.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX)
+        val rule = pluginRuleDao.queryById(ruleId) ?: return
+        pluginRuleDao.insert(update(rule))
     }
 
     // 2026-01-28: 新增 markAllAsRead 方法

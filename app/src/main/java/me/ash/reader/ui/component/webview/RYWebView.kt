@@ -40,6 +40,7 @@ import me.ash.reader.ui.theme.palette.alwaysLight
 fun RYWebView(
     modifier: Modifier = Modifier,
     content: String,
+    articleId: String? = null,
     refererDomain: String? = null,
     enableJavaScript: Boolean = true,
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
@@ -88,6 +89,7 @@ fun RYWebView(
                                 context.openURL(url, openLink, openLinkSpecificBrowser)
                             },
                             enableJavaScript = enableJavaScript,
+                            articleId = articleId,
                         ),
                     enableJavaScript = enableJavaScript,
                     onImageClick = onImageClick,

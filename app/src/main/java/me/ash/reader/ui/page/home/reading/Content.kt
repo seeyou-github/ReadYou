@@ -39,6 +39,7 @@ import me.ash.reader.ui.ext.roundClick
 fun Content(
     modifier: Modifier = Modifier,
     content: String,
+    articleId: String?,
     feedName: String,
     title: String,
     author: String? = null,
@@ -103,6 +104,7 @@ fun Content(
                             RYWebView(
                                 modifier = Modifier.fillMaxSize(),
                                 content = content,
+                                articleId = articleId,
                                 refererDomain = link.extractOrigin(),
                                 enableJavaScript = !disableJavaScript,
                                 onImageClick = onImageClick,

@@ -78,21 +78,24 @@ constructor(
     }
 
     private suspend fun runPostSyncCacheTasks(accountId: Int, syncStartAt: Date) {
-        runStep(
+        runStepIf(
+            shouldRun = shouldCacheLocalRuleContent(accountId, syncStartAt),
             startMessage = "正在缓存本地规则正文内容",
             successMessage = "缓存本地规则正文内容完成",
             errorPrefix = "缓存本地规则正文内容出错，错误原因：",
         ) {
             cacheLocalRuleContent(accountId, syncStartAt)
         }
-        runStep(
+        runStepIf(
+            shouldRun = shouldCacheTitleImages(accountId, syncStartAt),
             startMessage = "正在缓存新增文章标题图片",
             successMessage = "缓存新增文章标题图片完成",
             errorPrefix = "缓存新增文章标题图片出错，错误原因：",
         ) {
             cacheTitleImages(accountId, syncStartAt)
         }
-        runStep(
+        runStepIf(
+            shouldRun = shouldCacheContentImages(accountId, syncStartAt),
             startMessage = "正在缓存新增文章正文图片",
             successMessage = "缓存新增文章正文图片完成",
             errorPrefix = "缓存新增文章正文图片出错，错误原因：",
@@ -101,18 +104,49 @@ constructor(
         }
     }
 
-    private suspend fun runStep(
+    private suspend fun runStepIf(
+        shouldRun: Boolean,
         startMessage: String,
         successMessage: String,
         errorPrefix: String,
         block: suspend () -> Unit,
     ) {
+        if (!shouldRun) return
         applicationContext.showToastSuspend(startMessage)
         try {
             block()
             applicationContext.showToastSuspend(successMessage)
         } catch (e: Exception) {
             applicationContext.showToastSuspend(errorPrefix + (e.message ?: "unknown"))
+        }
+    }
+
+    private suspend fun shouldCacheLocalRuleContent(accountId: Int, syncStartAt: Date): Boolean {
+        val newArticles = articleDao.queryByUpdateAtAfter(accountId, syncStartAt)
+        if (newArticles.isEmpty()) return false
+        val feedsById = feedDao.queryAll(accountId).associateBy { it.id }
+        val rulesById = pluginRuleDao.queryAll(accountId).associateBy { it.id }
+        return newArticles.any { article ->
+            val feed = feedsById[article.feedId] ?: return@any false
+            if (!feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) return@any false
+            val ruleId = feed.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX)
+            val rule = rulesById[ruleId] ?: return@any false
+            rule.cacheContentOnUpdate && article.rawDescription.isBlank()
+        }
+    }
+
+    private suspend fun shouldCacheTitleImages(accountId: Int, syncStartAt: Date): Boolean {
+        if (!settingsProvider.settings.cacheTitleImageOnUpdate.value) return false
+        val newArticles = articleDao.queryByUpdateAtAfter(accountId, syncStartAt)
+        return newArticles.any { !it.img.isNullOrBlank() }
+    }
+
+    private suspend fun shouldCacheContentImages(accountId: Int, syncStartAt: Date): Boolean {
+        if (!settingsProvider.settings.cacheContentImageOnUpdate.value) return false
+        val newArticles = articleDao.queryByUpdateAtAfter(accountId, syncStartAt)
+        return newArticles.any { article ->
+            val content = article.rawDescription
+            content.isNotBlank() && extractImageUrlsFromHtml(content).isNotEmpty()
         }
     }
 
@@ -147,13 +181,11 @@ constructor(
     }
 
     private suspend fun cacheTitleImages(accountId: Int, syncStartAt: Date) {
-        if (!settingsProvider.settings.cacheTitleImageOnUpdate.value) return
         val newArticles = articleDao.queryByUpdateAtAfter(accountId, syncStartAt)
         articleImageCacheService.cacheTitleImages(newArticles)
     }
 
     private suspend fun cacheContentImages(accountId: Int, syncStartAt: Date) {
-        if (!settingsProvider.settings.cacheContentImageOnUpdate.value) return
         val newArticles = articleDao.queryByUpdateAtAfter(accountId, syncStartAt)
         articleImageCacheService.cacheContentImages(newArticles) { html ->
             extractImageUrlsFromHtml(html)

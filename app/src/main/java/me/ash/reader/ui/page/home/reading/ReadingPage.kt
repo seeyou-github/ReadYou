@@ -419,6 +419,7 @@ fun ReadingPage(
                                                 ),
                                             contentPadding = paddings,
                                               content = displayContent.text ?: "",
+                                              articleId = readerState.articleId,
                                               feedName = readerState.feedName,
                                               title = displayTitle ?: "",
                                               author = readerState.author,
