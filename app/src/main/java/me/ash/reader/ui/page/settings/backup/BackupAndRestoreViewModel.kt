@@ -209,14 +209,14 @@ constructor(
                     payload.accountId.takeIf { accountService.getAccountById(it) != null }
                         ?: accountService.getCurrentAccountId()
 
-                payload.preferencesJson.fromJSONStringToDataStore(context)
+                payload.preferencesJson?.fromJSONStringToDataStore(context)
 
                 blacklistKeywordDao.deleteAll()
                 pluginRuleDao.queryAll(accountId).forEach { pluginRuleDao.delete(it) }
                 feedDao.deleteByAccountId(accountId)
                 groupDao.deleteByAccountId(accountId)
 
-                val groups = payload.groups.map { it.copy(accountId = accountId) }
+                val groups = payload.groups.orEmpty().map { it.copy(accountId = accountId) }
                 if (groups.isNotEmpty()) {
                     groupDao.insertAll(groups)
                 }
@@ -226,14 +226,14 @@ constructor(
                     groupDao.insert(defaultGroup)
                 }
 
-                val feeds = payload.feeds.map { it.copy(accountId = accountId) }
+                val feeds = payload.feeds.orEmpty().map { it.copy(accountId = accountId) }
                 if (feeds.isNotEmpty()) {
                     feedDao.insertAll(feeds)
                 }
 
-                payload.pluginRules.forEach { rule ->
+                payload.pluginRules.orEmpty().forEach { rule ->
                     val safeGroupId =
-                        rule.groupId.takeIf { it.isNotBlank() } ?: defaultGroupId
+                        rule.groupId?.takeIf { it.isNotBlank() } ?: defaultGroupId
                     pluginRuleDao.insert(
                         rule.copy(
                             accountId = accountId,
@@ -241,7 +241,7 @@ constructor(
                         )
                     )
                 }
-                payload.keywords.forEach { keyword ->
+                payload.keywords.orEmpty().forEach { keyword ->
                     blacklistKeywordDao.insert(keyword.copy(id = 0))
                 }
 
@@ -285,11 +285,11 @@ data class OneClickBackupPayload(
     val version: Int,
     val exportedAt: Long,
     val accountId: Int,
-    val preferencesJson: String,
-    val groups: List<Group>,
-    val feeds: List<Feed>,
-    val keywords: List<BlacklistKeyword>,
-    val pluginRules: List<PluginRule>,
+    val preferencesJson: String? = null,
+    val groups: List<Group>? = emptyList(),
+    val feeds: List<Feed>? = emptyList(),
+    val keywords: List<BlacklistKeyword>? = emptyList(),
+    val pluginRules: List<PluginRule>? = emptyList(),
 )
 
 data class KeywordsBackupPayload(
