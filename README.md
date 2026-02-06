@@ -1,8 +1,6 @@
 ## 此修改版特点
+- 修改了很多，增加了很多功能，自己体会
 
-- ui界面 某些设置仅支持中文。
-- AI翻译功能仅支持：英->中
-- 修改代码主要由AI生成，本人基本没review，再加上改的比较随意就不提PR了。
 
 ## 吐槽
 
@@ -29,41 +27,3 @@
 
 
 不得不说：**国产AI任重道远，虽然便宜免费，但在编程方面用起来真是难受，谁用谁知道，特别是这种Android项目。**
-
-
-
-## 修改与新增功能：
-
-<img src="screenshot/1.png" alt="1" width="200" /><img src="screenshot/2.png" alt="2" width="200" /><img src="screenshot/3.png" alt="3" width="200" />
-
-
----
-
-<img src="screenshot/4.png" alt="1" width="200" /><img src="screenshot/5.png" alt="2" width="200" /><img src="screenshot/6.png" alt="3" width="200" />
-
-
-
----
-
-<img src="screenshot/7.png" alt="1" width="200" /><img src="screenshot/8.png" alt="2" width="200" /><img src="screenshot/9.png" alt="3" width="200" />
-
-
-
----
-
-<img src="screenshot/10.png" alt="1" width="200" /><img src="screenshot/11.png" alt="2" width="200" />
-
-## Build
-
-- fork 然后 使用 git action
-- 本地编译
-
-
-
-### Special Thanks
-
-这是源仓库：https://github.com/ReadYouApp/ReadYou
-
-## License
-
-GNU GPL v3.0 © [Read You](https://github.com/ReadYouApp/ReadYou/blob/main/LICENSE)
