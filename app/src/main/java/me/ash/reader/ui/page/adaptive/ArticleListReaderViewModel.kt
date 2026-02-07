@@ -378,7 +378,8 @@ class ArticleListReaderViewModel
 
     suspend fun ReaderState.renderContent(articleWithFeed: ArticleWithFeed): ReaderState {
         val contentState = if (articleWithFeed.feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) {
-            val content = ensurePluginContent(articleWithFeed)
+            val forceFullContent = articleWithFeed.feed.isFullContent
+            val content = ensurePluginContent(articleWithFeed, forceFullContent)
             if (content.isNullOrBlank()) {
                 ReaderState.Description("")
             } else {
@@ -434,21 +435,26 @@ class ArticleListReaderViewModel
         }
     }
 
-    private suspend fun ensurePluginContent(articleWithFeed: ArticleWithFeed): String? {
+    private suspend fun ensurePluginContent(
+        articleWithFeed: ArticleWithFeed,
+        forceFullContent: Boolean = false
+    ): String? {
         val article = articleWithFeed.article
-        if (article.rawDescription.isNotBlank()) return article.rawDescription
+        if (!forceFullContent && article.rawDescription.isNotBlank()) return article.rawDescription
+        if (forceFullContent && !article.fullContent.isNullOrBlank()) return article.fullContent
         val feed = articleWithFeed.feed
         val ruleId = feed.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX)
         val rule = pluginRuleDao.queryById(ruleId) ?: return null
         val detail = pluginSyncService.fetchDetail(rule, article.link).getOrNull() ?: return null
         val content = detail.contentHtml
-        if (content.isBlank()) return null
+        if (content.isBlank()) return article.rawDescription.ifBlank { null }
         val plainText = Jsoup.parse(content).text()
         val updated =
             article.copy(
                 title = detail.title ?: article.title,
                 author = detail.author ?: article.author,
                 rawDescription = content,
+                fullContent = content,
                 shortDescription = plainText.take(280),
                 img = detail.coverImage ?: article.img,
                 sourceTime = detail.time ?: article.sourceTime,
