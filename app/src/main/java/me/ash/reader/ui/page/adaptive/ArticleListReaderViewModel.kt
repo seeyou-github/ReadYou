@@ -377,25 +377,36 @@ class ArticleListReaderViewModel
     }
 
     suspend fun ReaderState.renderContent(articleWithFeed: ArticleWithFeed): ReaderState {
-        val contentState = if (articleWithFeed.feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) {
-            val forceFullContent = articleWithFeed.feed.isFullContent
-            val content = ensurePluginContent(articleWithFeed, forceFullContent)
+        val latestFeed = rssService.get().findFeedById(articleWithFeed.feed.id) ?: articleWithFeed.feed
+        val isLocalRule = latestFeed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)
+        val forceFullContent = latestFeed.isFullContent
+        Timber.tag("LocalRuleFullContent").d(
+            "renderContent: articleId=%s feedId=%s isLocalRule=%s forceFullContent=%s rawDescLen=%s fullContentLen=%s",
+            articleWithFeed.article.id,
+            latestFeed.id,
+            isLocalRule,
+            forceFullContent,
+            articleWithFeed.article.rawDescription.length,
+            articleWithFeed.article.fullContent?.length ?: 0,
+        )
+        val contentState = if (isLocalRule) {
+            val content = ensurePluginContent(articleWithFeed.copy(feed = latestFeed), forceFullContent)
             if (content.isNullOrBlank()) {
                 ReaderState.Description("")
             } else {
                 val filtered =
                     readerCacheHelper.removeFilteredImagesIfNeeded(
                         content,
-                        articleWithFeed.feed,
+                        latestFeed,
                     )
-                ReaderState.Description(filtered)
+                if (forceFullContent) ReaderState.FullContent(filtered) else ReaderState.Description(filtered)
             }
-        } else if (articleWithFeed.feed.isFullContent) {
+        } else if (latestFeed.isFullContent) {
             val fullContent =
                 readerCacheHelper.readFullContent(articleWithFeed.article.id).getOrNull()
             if (fullContent != null) {
                 val filtered =
-                    readerCacheHelper.removeFilteredImagesIfNeeded(fullContent, articleWithFeed.feed)
+                    readerCacheHelper.removeFilteredImagesIfNeeded(fullContent, latestFeed)
                 ReaderState.FullContent(filtered)
             }
             else {
@@ -406,7 +417,7 @@ class ArticleListReaderViewModel
             val filtered =
                 readerCacheHelper.removeFilteredImagesIfNeeded(
                     articleWithFeed.article.rawDescription,
-                    articleWithFeed.feed,
+                    latestFeed,
                 )
             ReaderState.Description(filtered)
         }
@@ -440,14 +451,47 @@ class ArticleListReaderViewModel
         forceFullContent: Boolean = false
     ): String? {
         val article = articleWithFeed.article
-        if (!forceFullContent && article.rawDescription.isNotBlank()) return article.rawDescription
-        if (forceFullContent && !article.fullContent.isNullOrBlank()) return article.fullContent
+        Timber.tag("LocalRuleFullContent").d(
+            "ensurePluginContent: articleId=%s feedId=%s forceFullContent=%s rawDescLen=%s fullContentLen=%s",
+            article.id,
+            articleWithFeed.feed.id,
+            forceFullContent,
+            article.rawDescription.length,
+            article.fullContent?.length ?: 0,
+        )
+        if (!forceFullContent && article.rawDescription.isNotBlank()) {
+            Timber.tag("LocalRuleFullContent").d("ensurePluginContent: use rawDescription")
+            return article.rawDescription
+        }
+        if (forceFullContent && !article.fullContent.isNullOrBlank()) {
+            Timber.tag("LocalRuleFullContent").d("ensurePluginContent: use cached fullContent")
+            return article.fullContent
+        }
         val feed = articleWithFeed.feed
         val ruleId = feed.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX)
-        val rule = pluginRuleDao.queryById(ruleId) ?: return null
-        val detail = pluginSyncService.fetchDetail(rule, article.link).getOrNull() ?: return null
+        val rule = pluginRuleDao.queryById(ruleId)
+        if (rule == null) {
+            Timber.tag("LocalRuleFullContent").w("ensurePluginContent: rule not found ruleId=%s", ruleId)
+            return null
+        }
+        val detail = pluginSyncService.fetchDetail(rule, article.link).getOrNull()
+        if (detail == null) {
+            Timber.tag("LocalRuleFullContent").w("ensurePluginContent: fetchDetail failed link=%s", article.link)
+            return null
+        }
         val content = detail.contentHtml
-        if (content.isBlank()) return article.rawDescription.ifBlank { null }
+        if (content.isBlank()) {
+            Timber.tag("LocalRuleFullContent").w("ensurePluginContent: detail content empty, fallback=%s", forceFullContent)
+            if (forceFullContent) {
+                val fallback = readerCacheHelper.readOrFetchFullContent(article).getOrNull()
+                Timber.tag("LocalRuleFullContent").d(
+                    "ensurePluginContent: fallback readability len=%s",
+                    fallback?.length ?: 0,
+                )
+                return fallback?.ifBlank { null }
+            }
+            return article.rawDescription.ifBlank { null }
+        }
         val plainText = Jsoup.parse(content).text()
         val updated =
             article.copy(
@@ -461,6 +505,10 @@ class ArticleListReaderViewModel
             )
         articleDao.update(updated)
         _readingUiState.update { it.copy(articleWithFeed = articleWithFeed.copy(article = updated)) }
+        Timber.tag("LocalRuleFullContent").d(
+            "ensurePluginContent: updated article content len=%s",
+            content.length
+        )
         return content
     }
 

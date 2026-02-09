@@ -126,6 +126,14 @@ constructor(
             _feedOptionUiState.value.feed?.let {
                 val isFullContent = !it.isFullContent
                 val isBrowser = if (isFullContent) false else it.isBrowser
+                Timber.tag("LocalRuleFullContent").d(
+                    "changeParseFullContentPreset: feedId=%s url=%s isLocalRule=%s from=%s to=%s",
+                    it.id,
+                    it.url,
+                    it.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX),
+                    it.isFullContent,
+                    isFullContent,
+                )
                 rssService
                     .get()
                     .updateFeed(it.copy(isFullContent = isFullContent, isBrowser = isBrowser))
