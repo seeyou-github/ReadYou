@@ -115,6 +115,7 @@ import me.ash.reader.R
 import me.ash.reader.domain.data.PagerData
 import me.ash.reader.domain.model.article.ArticleFlowItem
 import me.ash.reader.domain.model.article.ArticleWithFeed
+import me.ash.reader.domain.model.general.MarkAsReadConditions
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListDateStickyHeader
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListFeedIcon
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListItemSpacing
@@ -273,7 +274,6 @@ fun FlowPage(
 
 
     val focusRequester = remember { FocusRequester() }
-    var markAsRead by remember { mutableStateOf(false) }
     var onSearch by rememberSaveable { mutableStateOf(false) }
 
     var currentPullToLoadState: PullToLoadState? by remember { mutableStateOf(null) }
@@ -486,27 +486,16 @@ fun FlowPage(
                                 FeedbackIconButton(
                                     imageVector = Icons.Rounded.DoneAll,
                                     contentDescription = stringResource(R.string.mark_all_as_read),
-                                    tint =
-                                        if (markAsRead) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurface
-                                        },
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                 ) {
-                                    if (markAsRead) {
-                                        markAsRead = false
-                                    } else {
-                                        scope
-                                            .launch {
-                                                if (listState.firstVisibleItemIndex != 0) {
-                                                    listState.animateScrollToItem(0)
-                                                }
-                                            }
-                                            .invokeOnCompletion {
-                                                markAsRead = true
-                                                onSearch = false
-                                            }
-                                    }
+                                    onSearch = false
+                                    viewModel.updateReadStatus(
+                                        groupId = filterUiState.group?.id,
+                                        feedId = filterUiState.feed?.id,
+                                        articleId = null,
+                                        conditions = MarkAsReadConditions.All,
+                                        isUnread = false,
+                                    )
                                 }
                             }
                             FeedbackIconButton(
@@ -531,7 +520,6 @@ fun FlowPage(
                                         .invokeOnCompletion {
                                             scope.launch {
                                                 onSearch = true
-                                                markAsRead = false
                                                 delay(100)
                                                 focusRequester.requestFocus()
                                             }
@@ -654,20 +642,6 @@ fun FlowPage(
                     )
                 }
 
-                RYExtensibleVisibility(markAsRead) {
-                    BackHandler(markAsRead) { markAsRead = false }
-
-                    MarkAsReadBar(colorTheme = selectedColorTheme) {
-                        markAsRead = false
-                        viewModel.updateReadStatus(
-                            groupId = filterUiState.group?.id,
-                            feedId = filterUiState.feed?.id,
-                            articleId = null,
-                            conditions = it,
-                            isUnread = false,
-                        )
-                    }
-                }
                 val contentTransitionVertical =
                     sharedYAxisTransitionExpressive(direction = Direction.Forward)
                 val contentTransitionBackward =
@@ -842,9 +816,6 @@ fun FlowPage(
                                             }
                                         },
                                         onScroll = {
-                                            if (it < -10f) {
-                                                markAsRead = false
-                                            }
                                         },
                                     )
                                     // 2026-01-21: 新增过滤栏自动隐藏功能的滑动检测

@@ -22,6 +22,10 @@ class ArticleImageCacheService @Inject constructor(
     private val okHttpClient: OkHttpClient,
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
+    private companion object {
+        const val SQL_IN_CHUNK_SIZE = 500
+    }
+
     private val cacheDir = context.cacheDir.resolve("article_images")
     private val md = MessageDigest.getInstance("SHA-256")
 
@@ -56,14 +60,17 @@ class ArticleImageCacheService @Inject constructor(
 
     suspend fun deleteByArticleIds(articleIds: List<String>) {
         if (articleIds.isEmpty()) return
-        val caches = articleImageCacheDao.queryByArticleIds(articleIds)
-        caches.forEach { cache ->
-            runCatching {
-                val file = File(cache.localPath)
-                if (file.exists()) file.delete()
+
+        articleIds.chunked(SQL_IN_CHUNK_SIZE).forEach { chunk ->
+            val caches = articleImageCacheDao.queryByArticleIds(chunk)
+            caches.forEach { cache ->
+                runCatching {
+                    val file = File(cache.localPath)
+                    if (file.exists()) file.delete()
+                }
             }
+            articleImageCacheDao.deleteByArticleIds(chunk)
         }
-        articleImageCacheDao.deleteByArticleIds(articleIds)
     }
 
     suspend fun deleteByAccountId(accountId: Int) {

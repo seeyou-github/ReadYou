@@ -24,7 +24,7 @@ import java.util.*
 
 @Database(
     entities = [Account::class, Feed::class, Article::class, ArticleImageCache::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class, PluginRule::class],
-    version = 27,
+    version = 28,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 5, to = 7),
@@ -41,6 +41,7 @@ import java.util.*
     SyncOnlyOnWiFiConverters::class,
     SyncOnlyWhenChargingConverters::class,
     KeepArchivedConverters::class,
+    AutoMarkAsReadConverters::class,
     SyncBlockListConverters::class,
 )
 abstract class AndroidDatabase : RoomDatabase() {
@@ -368,6 +369,18 @@ abstract class AndroidDatabase : RoomDatabase() {
                         )
                     }
                 }
+                /**
+                 * 数据库迁移：从版本 27 到版本 28
+                 *
+                 * 1. account 新增 autoMarkAsRead 字段
+                 */
+                private val MIGRATION_27_28 = object : Migration(27, 28) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE account ADD COLUMN autoMarkAsRead INTEGER NOT NULL DEFAULT 86400000"
+                        )
+                    }
+                }
 
         fun getInstance(context: Context): AndroidDatabase {
             return instance ?: synchronized(this) {
@@ -390,7 +403,8 @@ abstract class AndroidDatabase : RoomDatabase() {
                     MIGRATION_23_24,
                     MIGRATION_24_25,
                     MIGRATION_25_26,
-                    MIGRATION_26_27
+                    MIGRATION_26_27,
+                    MIGRATION_27_28
                 )
                  .build().also {
                     instance = it

@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.ash.reader.R
 import me.ash.reader.domain.model.account.AccountType
+import me.ash.reader.infrastructure.preference.AutoMarkAsReadPreference
 import me.ash.reader.infrastructure.preference.KeepArchivedPreference
 import me.ash.reader.infrastructure.preference.LocalCacheContentImageOnUpdate
 import me.ash.reader.infrastructure.preference.LocalCacheTitleImageOnUpdate
@@ -100,6 +101,7 @@ fun AccountDetailsPage(
     var blockListDialogVisible by remember { mutableStateOf(false) }
     var syncIntervalDialogVisible by remember { mutableStateOf(false) }
     var keepArchivedDialogVisible by remember { mutableStateOf(false) }
+    var autoMarkAsReadDialogVisible by remember { mutableStateOf(false) }
     var exportOPMLModeDialogVisible by remember { mutableStateOf(false) }
     val cacheTitleImageOnUpdate = LocalCacheTitleImageOnUpdate.current
     val cacheContentImageOnUpdate = LocalCacheContentImageOnUpdate.current
@@ -247,6 +249,11 @@ fun AccountDetailsPage(
                                 cacheContentImageOnUpdate.toggle(context, scope)
                             }
                         }
+                        SettingItem(
+                            title = stringResource(R.string.auto_mark_as_read),
+                            desc = selectedAccount?.autoMarkAsRead?.toDesc(context),
+                            onClick = { autoMarkAsReadDialogVisible = true },
+                        ) {}
                     }
                     SettingItem(
                         title = stringResource(R.string.keep_archived_articles),
@@ -321,6 +328,22 @@ fun AccountDetailsPage(
             },
     ) {
         syncIntervalDialogVisible = false
+    }
+
+    RadioDialog(
+        visible = autoMarkAsReadDialogVisible,
+        title = stringResource(R.string.auto_mark_as_read),
+        options =
+            AutoMarkAsReadPreference.values.map {
+                RadioDialogOption(
+                    text = it.toDesc(context),
+                    selected = it == selectedAccount?.autoMarkAsRead,
+                ) {
+                    selectedAccount?.id?.let { accountId -> it.put(accountId, viewModel) }
+                }
+            },
+    ) {
+        autoMarkAsReadDialogVisible = false
     }
 
     RadioDialog(

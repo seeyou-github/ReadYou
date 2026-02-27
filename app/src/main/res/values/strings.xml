@@ -274,6 +274,8 @@
     <string name="for_1_day">1 day</string>
     <string name="for_2_days">2 days</string>
     <string name="for_3_days">3 days</string>
+    <string name="for_4_days">4 days</string>
+    <string name="for_5_days">5 days</string>
     <string name="for_1_week">1 week</string>
     <string name="for_2_weeks">2 weeks</string>
     <string name="for_1_month">1 month</string>
@@ -302,6 +304,7 @@
     <string name="only_on_wifi">Only on Wi-Fi</string>
     <string name="only_when_charging">Only when charging</string>
     <string name="keep_archived_articles">Keep archived articles</string>
+    <string name="auto_mark_as_read">Auto mark as read</string>
     <string name="block_list">Block list</string>
     <!-- 2026-01-24: 新增关键词屏蔽相关字符串 -->
     <string name="blacklist">关键词屏蔽</string>

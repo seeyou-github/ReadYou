@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOn
 import me.ash.reader.domain.model.account.Account
+import me.ash.reader.domain.model.account.AccountType
 import me.ash.reader.domain.model.article.ArchivedArticle
 import me.ash.reader.domain.model.article.Article
 import me.ash.reader.domain.model.article.ArticleWithFeed
@@ -196,6 +197,13 @@ abstract class AbstractRssRepository(
             }
         }
         return emptyList()
+    }
+
+    suspend fun autoMarkAsRead(accountId: Int = accountService.getCurrentAccountId()) {
+        val account = accountService.getAccountById(accountId) ?: return
+        if (account.type.id != AccountType.Local.id) return
+        val beforeDate = Date(System.currentTimeMillis() - account.autoMarkAsRead.value)
+        articleDao.markAllAsRead(accountId = accountId, isUnread = false, before = beforeDate)
     }
 
     fun cancelSync() {

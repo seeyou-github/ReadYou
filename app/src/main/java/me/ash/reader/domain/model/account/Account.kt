@@ -33,6 +33,8 @@ data class Account(
     val syncOnlyWhenCharging: SyncOnlyWhenChargingPreference = SyncOnlyWhenChargingPreference.default,
     @ColumnInfo(defaultValue = "2592000000")
     val keepArchived: KeepArchivedPreference = KeepArchivedPreference.default,
+    @ColumnInfo(defaultValue = "86400000")
+    val autoMarkAsRead: AutoMarkAsReadPreference = AutoMarkAsReadPreference.default,
     @ColumnInfo(defaultValue = "")
     val syncBlockList: SyncBlockList = SyncBlockListPreference.default,
     @ColumnInfo(defaultValue = DESUtils.empty)

@@ -16,6 +16,8 @@ val LocalSyncOnlyWhenCharging =
     compositionLocalOf<SyncOnlyWhenChargingPreference> { SyncOnlyWhenChargingPreference.default }
 val LocalKeepArchived =
     compositionLocalOf<KeepArchivedPreference> { KeepArchivedPreference.default }
+val LocalAutoMarkAsRead =
+    compositionLocalOf<AutoMarkAsReadPreference> { AutoMarkAsReadPreference.default }
 val LocalSyncBlockList = compositionLocalOf { SyncBlockListPreference.default }
 
 @Composable
@@ -31,6 +33,8 @@ fun AccountSettingsProvider(accountService: AccountService, content: @Composable
         LocalSyncOnlyWhenCharging provides
             (currentAccount?.syncOnlyWhenCharging ?: SyncOnlyWhenChargingPreference.default),
         LocalKeepArchived provides (currentAccount?.keepArchived ?: KeepArchivedPreference.default),
+        LocalAutoMarkAsRead provides
+            (currentAccount?.autoMarkAsRead ?: AutoMarkAsReadPreference.default),
         LocalSyncBlockList provides
             (currentAccount?.syncBlockList ?: SyncBlockListPreference.default),
     ) {

@@ -52,6 +52,7 @@ constructor(
         rssService.get().clearKeepArchivedArticles().forEach {
             readerCacheHelper.deleteCacheFor(articleId = it.id)
         }
+        rssService.get().autoMarkAsRead(accountId = accountId)
 
         if (result is ListenableWorker.Result.Success) {
             runPostSyncCacheTasks(accountId, syncStartAt)
