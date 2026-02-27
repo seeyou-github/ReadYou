@@ -22,6 +22,13 @@ import me.ash.reader.domain.repository.GroupDao
 import me.ash.reader.domain.service.AccountService
 import me.ash.reader.domain.service.OpmlService
 import me.ash.reader.infrastructure.di.IODispatcher
+import me.ash.reader.infrastructure.preference.AutoMarkAsReadPreference
+import me.ash.reader.infrastructure.preference.KeepArchivedPreference
+import me.ash.reader.infrastructure.preference.SyncBlockListPreference
+import me.ash.reader.infrastructure.preference.SyncIntervalPreference
+import me.ash.reader.infrastructure.preference.SyncOnStartPreference
+import me.ash.reader.infrastructure.preference.SyncOnlyOnWiFiPreference
+import me.ash.reader.infrastructure.preference.SyncOnlyWhenChargingPreference
 import me.ash.reader.ui.ext.fromDataStoreToJSONString
 import me.ash.reader.ui.ext.fromJSONStringToDataStore
 import me.ash.reader.ui.ext.getDefaultGroupId
@@ -166,11 +173,25 @@ constructor(
             _backupUiState.update { it.copy(isBackingUp = true, backupSuccess = false, backupError = null) }
             try {
                 val accountId = accountService.getCurrentAccountId()
+                val account = accountService.getAccountById(accountId)
                 val payload =
                     OneClickBackupPayload(
-                        version = 1,
+                        version = 2,
                         exportedAt = System.currentTimeMillis(),
                         accountId = accountId,
+                        autoMarkAsReadMs = account?.autoMarkAsRead?.value,
+                        accountSettings =
+                            account?.let {
+                                AccountSettingsBackupPayload(
+                                    syncIntervalMinutes = it.syncInterval.value,
+                                    syncOnStart = it.syncOnStart.value,
+                                    syncOnlyOnWiFi = it.syncOnlyOnWiFi.value,
+                                    syncOnlyWhenCharging = it.syncOnlyWhenCharging.value,
+                                    keepArchivedMs = it.keepArchived.value,
+                                    autoMarkAsReadMs = it.autoMarkAsRead.value,
+                                    syncBlockList = it.syncBlockList.joinToString("\n"),
+                                )
+                            },
                         preferencesJson = context.fromDataStoreToJSONString(),
                         groups = groupDao.queryAll(accountId),
                         feeds = feedDao.queryAll(accountId),
@@ -208,6 +229,54 @@ constructor(
                 val accountId =
                     payload.accountId.takeIf { accountService.getAccountById(it) != null }
                         ?: accountService.getCurrentAccountId()
+                val settings = payload.accountSettings
+                if (settings != null || payload.autoMarkAsReadMs != null) {
+                    accountService.update(accountId) {
+                        val syncInterval =
+                            settings?.syncIntervalMinutes?.let { value ->
+                                SyncIntervalPreference.values.find { it.value == value }
+                            } ?: this.syncInterval
+                        val syncOnStart =
+                            settings?.syncOnStart?.let { value ->
+                                SyncOnStartPreference.values.find { it.value == value }
+                            } ?: this.syncOnStart
+                        val syncOnlyOnWiFi =
+                            settings?.syncOnlyOnWiFi?.let { value ->
+                                SyncOnlyOnWiFiPreference.values.find { it.value == value }
+                            } ?: this.syncOnlyOnWiFi
+                        val syncOnlyWhenCharging =
+                            settings?.syncOnlyWhenCharging?.let { value ->
+                                SyncOnlyWhenChargingPreference.values.find { it.value == value }
+                            } ?: this.syncOnlyWhenCharging
+                        val keepArchived =
+                            settings?.keepArchivedMs?.let { value ->
+                                KeepArchivedPreference.values.find { it.value == value }
+                            } ?: this.keepArchived
+                        val autoMarkAsRead =
+                            settings?.autoMarkAsReadMs?.let { value ->
+                                AutoMarkAsReadPreference.values.find { it.value == value }
+                            } ?: payload.autoMarkAsReadMs?.let { value ->
+                                AutoMarkAsReadPreference.values.find { it.value == value }
+                            } ?: this.autoMarkAsRead
+
+                        copy(
+                            syncInterval = syncInterval,
+                            syncOnStart = syncOnStart,
+                            syncOnlyOnWiFi = syncOnlyOnWiFi,
+                            syncOnlyWhenCharging = syncOnlyWhenCharging,
+                            keepArchived = keepArchived,
+                            autoMarkAsRead = autoMarkAsRead,
+                            syncBlockList =
+                                settings?.syncBlockList?.let { value ->
+                                    if (value.isBlank()) {
+                                        this.syncBlockList
+                                    } else {
+                                        SyncBlockListPreference.of(value)
+                                    }
+                                } ?: this.syncBlockList,
+                        )
+                    }
+                }
 
                 payload.preferencesJson?.fromJSONStringToDataStore(context)
 
@@ -285,11 +354,23 @@ data class OneClickBackupPayload(
     val version: Int,
     val exportedAt: Long,
     val accountId: Int,
+    val autoMarkAsReadMs: Long? = null,
+    val accountSettings: AccountSettingsBackupPayload? = null,
     val preferencesJson: String? = null,
     val groups: List<Group>? = emptyList(),
     val feeds: List<Feed>? = emptyList(),
     val keywords: List<BlacklistKeyword>? = emptyList(),
     val pluginRules: List<PluginRule>? = emptyList(),
+)
+
+data class AccountSettingsBackupPayload(
+    val syncIntervalMinutes: Long? = null,
+    val syncOnStart: Boolean? = null,
+    val syncOnlyOnWiFi: Boolean? = null,
+    val syncOnlyWhenCharging: Boolean? = null,
+    val keepArchivedMs: Long? = null,
+    val autoMarkAsReadMs: Long? = null,
+    val syncBlockList: String? = null,
 )
 
 data class KeywordsBackupPayload(

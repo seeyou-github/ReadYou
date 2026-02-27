@@ -236,6 +236,8 @@
     <string name="for_1_day">1 天</string>
     <string name="for_2_days">2 天</string>
     <string name="for_3_days">3 天</string>
+    <string name="for_4_days">4 天</string>
+    <string name="for_5_days">5 天</string>
     <string name="for_1_week">1 周</string>
     <string name="for_2_weeks">2 周</string>
     <string name="for_1_month">1 个月</string>
@@ -255,6 +257,7 @@
     <string name="only_on_wifi">仅限连接 Wi-Fi 时</string>
     <string name="only_when_charging">仅限连接充电器时</string>
     <string name="keep_archived_articles">保留已归档的文章</string>
+    <string name="auto_mark_as_read">自动标为已读</string>
     <string name="block_list">屏蔽列表</string>
     <string name="export_as_opml">导出为 OPML</string>
     <string name="clear_all_articles">清空所有文章</string>
