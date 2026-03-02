@@ -31,6 +31,8 @@ import me.ash.reader.infrastructure.preference.KeepArchivedPreference
 import me.ash.reader.infrastructure.preference.SyncIntervalPreference
 import me.ash.reader.infrastructure.rss.RssHelper
 import me.ash.reader.infrastructure.rss.ArticleImageCacheService
+import me.ash.reader.infrastructure.rss.ReaderCacheHelper
+import me.ash.reader.infrastructure.translate.cache.ArticleTranslationCacheService
 import timber.log.Timber
 import me.ash.reader.ui.ext.decodeHTML
 import me.ash.reader.ui.ext.spacerDollar
@@ -43,6 +45,8 @@ abstract class AbstractRssRepository(
     private val rssHelper: RssHelper,
     private val notificationHelper: NotificationHelper,
     private val articleImageCacheService: ArticleImageCacheService,
+    private val readerCacheHelper: ReaderCacheHelper,
+    private val articleTranslationCacheService: ArticleTranslationCacheService,
     private val dispatcherIO: CoroutineDispatcher,
     private val dispatcherDefault: CoroutineDispatcher,
     private val accountService: AccountService,
@@ -176,7 +180,7 @@ abstract class AbstractRssRepository(
         articleDao.markAsStarredByArticleId(accountId, articleId, isStarred)
     }
 
-    suspend fun clearKeepArchivedArticles(): List<Article> {
+    open suspend fun clearKeepArchivedArticles(): List<Article> {
         val accountId = accountService.getCurrentAccountId()
         val currentAccount = accountService.getCurrentAccount()
         val keepArchived = currentAccount.keepArchived
@@ -187,7 +191,12 @@ abstract class AbstractRssRepository(
                     Date(System.currentTimeMillis() - keepArchived.value),
                 )
             if (archivedArticles.isNotEmpty()) {
-                articleImageCacheService.deleteByArticleIds(archivedArticles.map { it.id })
+                val archivedArticleIds = archivedArticles.map { it.id }
+                articleImageCacheService.deleteByArticleIds(archivedArticleIds)
+                articleTranslationCacheService.deleteByArticleIds(archivedArticleIds)
+                archivedArticleIds.forEach { articleId ->
+                    readerCacheHelper.deleteCacheFor(accountId, articleId)
+                }
             }
             articleDao.delete(*archivedArticles.toTypedArray())
             return archivedArticles.also {
@@ -203,7 +212,7 @@ abstract class AbstractRssRepository(
         val account = accountService.getAccountById(accountId) ?: return
         if (account.type.id != AccountType.Local.id) return
         val beforeDate = Date(System.currentTimeMillis() - account.autoMarkAsRead.value)
-        articleDao.markAllAsRead(accountId = accountId, isUnread = false, before = beforeDate)
+        articleDao.markAllAsReadByUpdateAt(accountId = accountId, isUnread = false, before = beforeDate)
     }
 
     fun cancelSync() {
@@ -431,9 +440,11 @@ abstract class AbstractRssRepository(
         }
     }
 
-    suspend fun deleteAccountArticles(accountId: Int) {
+    open suspend fun deleteAccountArticles(accountId: Int) {
         val articleIds = articleDao.queryIdsByAccountId(accountId)
         articleImageCacheService.deleteByArticleIds(articleIds)
+        articleTranslationCacheService.deleteByAccountId(accountId)
+        readerCacheHelper.clearCache(accountId)
         articleDao.deleteByAccountId(accountId)
     }
 

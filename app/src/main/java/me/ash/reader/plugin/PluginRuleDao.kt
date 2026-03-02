@@ -45,4 +45,22 @@ interface PluginRuleDao {
 
     @Delete
     suspend fun delete(rule: PluginRule)
+
+    @Query(
+        """
+        UPDATE plugin_rule
+        SET listHtmlCache = ''
+        WHERE id IN (:ruleIds)
+        """
+    )
+    suspend fun clearListHtmlCacheByRuleIds(ruleIds: List<String>)
+
+    @Query(
+        """
+        UPDATE plugin_rule
+        SET listHtmlCache = ''
+        WHERE accountId = :accountId
+        """
+    )
+    suspend fun clearListHtmlCacheByAccountId(accountId: Int)
 }

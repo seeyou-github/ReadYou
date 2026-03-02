@@ -16,6 +16,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import me.ash.reader.domain.data.SyncLogger
 import me.ash.reader.domain.model.account.AccountType
+import me.ash.reader.domain.model.article.Article
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.model.feed.FeedWithArticle
 import me.ash.reader.domain.repository.ArticleDao
@@ -27,6 +28,8 @@ import me.ash.reader.infrastructure.di.DefaultDispatcher
 import me.ash.reader.infrastructure.di.IODispatcher
 import me.ash.reader.infrastructure.rss.RssHelper
 import me.ash.reader.infrastructure.rss.ArticleImageCacheService
+import me.ash.reader.infrastructure.rss.ReaderCacheHelper
+import me.ash.reader.infrastructure.translate.cache.ArticleTranslationCacheService
 import me.ash.reader.plugin.PluginConstants
 import me.ash.reader.plugin.PluginRuleDao
 import me.ash.reader.plugin.PluginSyncService
@@ -44,6 +47,8 @@ constructor(
     private val notificationHelper: NotificationHelper,
     private val groupDao: GroupDao,
     private val articleImageCacheService: ArticleImageCacheService,
+    private val readerCacheHelper: ReaderCacheHelper,
+    private val articleTranslationCacheService: ArticleTranslationCacheService,
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
     private val workManager: WorkManager,
@@ -61,6 +66,8 @@ constructor(
         rssHelper,
         notificationHelper,
         articleImageCacheService,
+        readerCacheHelper,
+        articleTranslationCacheService,
         ioDispatcher,
         defaultDispatcher,
         accountService,
@@ -185,5 +192,29 @@ constructor(
             feed = feed.copy(isNotification = feed.isNotification && articles.isNotEmpty()),
             articles = articles,
         )
+    }
+
+    override suspend fun clearKeepArchivedArticles(): List<Article> {
+        val archivedArticles = super.clearKeepArchivedArticles()
+        if (archivedArticles.isEmpty()) return archivedArticles
+
+        val feedsById = feedDao.queryAll(accountService.getCurrentAccountId()).associateBy { it.id }
+        val ruleIds =
+            archivedArticles
+                .mapNotNull { article ->
+                    val feed = feedsById[article.feedId] ?: return@mapNotNull null
+                    if (!feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) return@mapNotNull null
+                    feed.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX)
+                }
+                .distinct()
+        if (ruleIds.isNotEmpty()) {
+            pluginRuleDao.clearListHtmlCacheByRuleIds(ruleIds)
+        }
+        return archivedArticles
+    }
+
+    override suspend fun deleteAccountArticles(accountId: Int) {
+        super.deleteAccountArticles(accountId)
+        pluginRuleDao.clearListHtmlCacheByAccountId(accountId)
     }
 }

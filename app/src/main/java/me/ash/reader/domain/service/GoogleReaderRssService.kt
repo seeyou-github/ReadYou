@@ -46,6 +46,7 @@ import me.ash.reader.infrastructure.html.Readability
 import me.ash.reader.infrastructure.net.onFailure
 import me.ash.reader.infrastructure.net.onSuccess
 import me.ash.reader.infrastructure.rss.ArticleImageCacheService
+import me.ash.reader.infrastructure.rss.ReaderCacheHelper
 import me.ash.reader.infrastructure.rss.RssHelper
 import me.ash.reader.infrastructure.rss.provider.greader.GoogleReaderAPI
 import me.ash.reader.infrastructure.rss.provider.greader.GoogleReaderAPI.Companion.dbId
@@ -60,6 +61,7 @@ import me.ash.reader.ui.ext.decodeHTML
 import me.ash.reader.ui.ext.dollarLast
 import me.ash.reader.ui.ext.isFuture
 import me.ash.reader.ui.ext.spacerDollar
+import me.ash.reader.infrastructure.translate.cache.ArticleTranslationCacheService
 import timber.log.Timber
 
 private const val TAG = "GoogleReaderRssService"
@@ -74,6 +76,8 @@ constructor(
     private val notificationHelper: NotificationHelper,
     private val groupDao: GroupDao,
     private val articleImageCacheService: ArticleImageCacheService,
+    private val readerCacheHelper: ReaderCacheHelper,
+    private val articleTranslationCacheService: ArticleTranslationCacheService,
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
     @MainDispatcher private val mainDispatcher: CoroutineDispatcher,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
@@ -90,6 +94,8 @@ constructor(
         rssHelper,
         notificationHelper,
         articleImageCacheService,
+        readerCacheHelper,
+        articleTranslationCacheService,
         ioDispatcher,
         defaultDispatcher,
         accountService,

@@ -383,6 +383,21 @@ interface ArticleDao {
     @Query(
         """
         UPDATE article SET isUnread = :isUnread 
+        WHERE accountId = :accountId
+        AND COALESCE(updateAt, date) < :before
+        AND isUnread != :isUnread
+        """
+    )
+    suspend fun markAllAsReadByUpdateAt(
+        accountId: Int,
+        isUnread: Boolean,
+        before: Date,
+    )
+
+    @Transaction
+    @Query(
+        """
+        UPDATE article SET isUnread = :isUnread 
         WHERE feedId IN (
             SELECT id FROM feed 
             WHERE groupId = :groupId
@@ -1006,6 +1021,36 @@ interface ArticleDao {
         """
     )
     suspend fun queryAllByFeedId(accountId: Int, feedId: String): List<Article>
+
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM article
+        WHERE feedId = :feedId
+        AND accountId = :accountId
+        AND COALESCE(updateAt, date) >= :start
+        AND COALESCE(updateAt, date) < :endExclusive
+        ORDER BY date DESC
+        """
+    )
+    suspend fun queryByFeedIdUpdatedBetween(
+        accountId: Int,
+        feedId: String,
+        start: Date,
+        endExclusive: Date,
+    ): List<Article>
+
+    @Query(
+        """
+        SELECT MAX(COALESCE(updateAt, date)) FROM article
+        WHERE feedId = :feedId
+        AND accountId = :accountId
+        """
+    )
+    suspend fun queryLatestUpdateAtByFeedId(
+        accountId: Int,
+        feedId: String,
+    ): Date?
 
     @Transaction
     suspend fun insertListIfNotExist(articles: List<Article>, feed: Feed): List<Article> {

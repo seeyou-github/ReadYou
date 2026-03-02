@@ -10,7 +10,6 @@ import java.util.Date
 import me.ash.reader.domain.model.account.Account
 import me.ash.reader.domain.repository.ArticleDao
 import me.ash.reader.domain.repository.FeedDao
-import me.ash.reader.infrastructure.rss.ReaderCacheHelper
 import me.ash.reader.infrastructure.rss.ArticleImageCacheService
 import me.ash.reader.infrastructure.preference.SettingsProvider
 import me.ash.reader.plugin.PluginConstants
@@ -26,7 +25,6 @@ constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val rssService: RssService,
-    private val readerCacheHelper: ReaderCacheHelper,
     private val articleDao: ArticleDao,
     private val feedDao: FeedDao,
     private val pluginRuleDao: PluginRuleDao,
@@ -49,9 +47,7 @@ constructor(
                 .get()
                 .sync(accountId = accountId, feedId = feedId, groupId = groupId)
 
-        rssService.get().clearKeepArchivedArticles().forEach {
-            readerCacheHelper.deleteCacheFor(articleId = it.id)
-        }
+        rssService.get().clearKeepArchivedArticles()
         rssService.get().autoMarkAsRead(accountId = accountId)
 
         if (result is ListenableWorker.Result.Success) {

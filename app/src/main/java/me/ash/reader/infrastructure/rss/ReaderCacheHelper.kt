@@ -28,6 +28,8 @@ constructor(
     private val currentCacheDir: File
         get() = cacheDir.resolve(accountService.getCurrentAccountId().toString())
 
+    private fun cacheDirFor(accountId: Int): File = cacheDir.resolve(accountId.toString())
+
     @OptIn(ExperimentalStdlibApi::class)
     private fun getFileNameFor(articleId: String): String {
         val bytes = articleId.toByteArray()
@@ -101,9 +103,13 @@ constructor(
     }
 
     suspend fun deleteCacheFor(articleId: String): Boolean {
+        return deleteCacheFor(accountService.getCurrentAccountId(), articleId)
+    }
+
+    suspend fun deleteCacheFor(accountId: Int, articleId: String): Boolean {
         return withContext(ioDispatcher) {
             runCatching {
-                    val file = currentCacheDir.resolve(getFileNameFor(articleId))
+                    val file = cacheDirFor(accountId).resolve(getFileNameFor(articleId))
                     if (!file.exists()) return@runCatching false
                     return@runCatching file.delete()
                 }
@@ -121,9 +127,13 @@ constructor(
     }
 
     suspend fun clearCache(): Boolean {
+        return clearCache(accountService.getCurrentAccountId())
+    }
+
+    suspend fun clearCache(accountId: Int): Boolean {
         return withContext(ioDispatcher) {
             runCatching {
-                    return@withContext currentCacheDir.deleteRecursively()
+                    return@withContext cacheDirFor(accountId).deleteRecursively()
                 }
                 .fold(onSuccess = { true }, onFailure = { false })
         }

@@ -25,6 +25,12 @@ interface ArticleTranslationCacheDao {
     @Query("DELETE FROM article_translation_cache WHERE articleId = :articleId")
     suspend fun deleteByArticleId(articleId: String)
 
+    @Query("DELETE FROM article_translation_cache WHERE articleId IN (:articleIds)")
+    suspend fun deleteByArticleIds(articleIds: List<String>)
+
+    @Query("DELETE FROM article_translation_cache WHERE feedId IN (SELECT id FROM feed WHERE accountId = :accountId)")
+    suspend fun deleteByAccountId(accountId: Int)
+
     @Query("DELETE FROM article_translation_cache WHERE translatedAt < :timestamp")
     suspend fun deleteOlderThan(timestamp: Long)
 
