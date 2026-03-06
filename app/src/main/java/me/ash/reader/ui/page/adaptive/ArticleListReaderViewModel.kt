@@ -195,6 +195,13 @@ class ArticleListReaderViewModel
         }
     }
 
+    fun autoMarkAsReadOnFeedEntered(feedId: String?) {
+        if (feedId == null) return
+        applicationScope.launch(ioDispatcher) {
+            rssService.get().autoMarkAsRead()
+        }
+    }
+
     fun updateStarredStatus(articleId: String?, isStarred: Boolean) {
         applicationScope.launch(ioDispatcher) {
             if (articleId != null) {

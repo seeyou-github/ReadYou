@@ -194,11 +194,11 @@ constructor(
         )
     }
 
-    override suspend fun clearKeepArchivedArticles(): List<Article> {
-        val archivedArticles = super.clearKeepArchivedArticles()
+    override suspend fun clearKeepArchivedArticles(accountId: Int): List<Article> {
+        val archivedArticles = super.clearKeepArchivedArticles(accountId)
         if (archivedArticles.isEmpty()) return archivedArticles
 
-        val feedsById = feedDao.queryAll(accountService.getCurrentAccountId()).associateBy { it.id }
+        val feedsById = feedDao.queryAll(accountId).associateBy { it.id }
         val ruleIds =
             archivedArticles
                 .mapNotNull { article ->

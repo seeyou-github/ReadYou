@@ -375,6 +375,10 @@ fun FlowPage(
         )
     }
 
+    LaunchedEffect(filterUiState.feed?.id) {
+        viewModel.autoMarkAsReadOnFeedEntered(filterUiState.feed?.id)
+    }
+
     LaunchedEffect(filterUiState.group?.id, filterUiState.feed?.id) {
         val groupId = filterUiState.group?.id
         val feedId = filterUiState.feed?.id

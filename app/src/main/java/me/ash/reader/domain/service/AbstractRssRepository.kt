@@ -180,15 +180,22 @@ abstract class AbstractRssRepository(
         articleDao.markAsStarredByArticleId(accountId, articleId, isStarred)
     }
 
-    open suspend fun clearKeepArchivedArticles(): List<Article> {
-        val accountId = accountService.getCurrentAccountId()
-        val currentAccount = accountService.getCurrentAccount()
+    open suspend fun clearKeepArchivedArticles(
+        accountId: Int = accountService.getCurrentAccountId(),
+    ): List<Article> {
+        val currentAccount = accountService.getAccountById(accountId) ?: return emptyList()
         val keepArchived = currentAccount.keepArchived
         if (keepArchived != KeepArchivedPreference.Always) {
+            val now = System.currentTimeMillis()
+            val lastCleanupAt = currentAccount.lastArchivedCleanupAt?.time
+            if (lastCleanupAt != null && now - lastCleanupAt < keepArchived.value) {
+                return emptyList()
+            }
+
             val archivedArticles =
                 articleDao.queryArchivedArticleBefore(
                     accountId,
-                    Date(System.currentTimeMillis() - keepArchived.value),
+                    Date(now - keepArchived.value),
                 )
             if (archivedArticles.isNotEmpty()) {
                 val archivedArticleIds = archivedArticles.map { it.id }
@@ -198,6 +205,7 @@ abstract class AbstractRssRepository(
                     readerCacheHelper.deleteCacheFor(accountId, articleId)
                 }
             }
+            accountService.update(currentAccount.copy(lastArchivedCleanupAt = Date(now)))
             articleDao.delete(*archivedArticles.toTypedArray())
             return archivedArticles.also {
                 feedDao.insertArchivedArticles(
@@ -211,8 +219,13 @@ abstract class AbstractRssRepository(
     suspend fun autoMarkAsRead(accountId: Int = accountService.getCurrentAccountId()) {
         val account = accountService.getAccountById(accountId) ?: return
         if (account.type.id != AccountType.Local.id) return
-        val beforeDate = Date(System.currentTimeMillis() - account.autoMarkAsRead.value)
+        val now = System.currentTimeMillis()
+        val lastAutoMarkAt = account.lastAutoMarkAsReadAt?.time
+        if (lastAutoMarkAt != null && now - lastAutoMarkAt < account.autoMarkAsRead.value) return
+
+        val beforeDate = Date(now - account.autoMarkAsRead.value)
         articleDao.markAllAsReadByUpdateAt(accountId = accountId, isUnread = false, before = beforeDate)
+        accountService.update(account.copy(lastAutoMarkAsReadAt = Date(now)))
     }
 
     fun cancelSync() {

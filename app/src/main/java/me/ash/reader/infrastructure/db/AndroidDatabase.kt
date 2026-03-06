@@ -24,7 +24,7 @@ import java.util.*
 
 @Database(
     entities = [Account::class, Feed::class, Article::class, ArticleImageCache::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class, PluginRule::class],
-    version = 28,
+    version = 30,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 5, to = 7),
@@ -381,6 +381,30 @@ abstract class AndroidDatabase : RoomDatabase() {
                         )
                     }
                 }
+                /**
+                 * 数据库迁移：从版本 28 到版本 29
+                 *
+                 * 1. account 新增 lastArchivedCleanupAt 字段
+                 */
+                private val MIGRATION_28_29 = object : Migration(28, 29) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE account ADD COLUMN lastArchivedCleanupAt INTEGER"
+                        )
+                    }
+                }
+                /**
+                 * 数据库迁移：从版本 29 到版本 30
+                 *
+                 * 1. account 新增 lastAutoMarkAsReadAt 字段
+                 */
+                private val MIGRATION_29_30 = object : Migration(29, 30) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE account ADD COLUMN lastAutoMarkAsReadAt INTEGER"
+                        )
+                    }
+                }
 
         fun getInstance(context: Context): AndroidDatabase {
             return instance ?: synchronized(this) {
@@ -404,7 +428,9 @@ abstract class AndroidDatabase : RoomDatabase() {
                     MIGRATION_24_25,
                     MIGRATION_25_26,
                     MIGRATION_26_27,
-                    MIGRATION_27_28
+                    MIGRATION_27_28,
+                    MIGRATION_28_29,
+                    MIGRATION_29_30
                 )
                  .build().also {
                     instance = it
