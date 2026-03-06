@@ -194,13 +194,13 @@ constructor(
         )
     }
 
-    override suspend fun clearKeepArchivedArticles(accountId: Int): List<Article> {
-        val archivedArticles = super.clearKeepArchivedArticles(accountId)
-        if (archivedArticles.isEmpty()) return archivedArticles
+    override suspend fun cleanupDeletedArticleResources(accountId: Int, articles: List<Article>) {
+        super.cleanupDeletedArticleResources(accountId, articles)
+        if (articles.isEmpty()) return
 
         val feedsById = feedDao.queryAll(accountId).associateBy { it.id }
         val ruleIds =
-            archivedArticles
+            articles
                 .mapNotNull { article ->
                     val feed = feedsById[article.feedId] ?: return@mapNotNull null
                     if (!feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) return@mapNotNull null
@@ -210,7 +210,6 @@ constructor(
         if (ruleIds.isNotEmpty()) {
             pluginRuleDao.clearListHtmlCacheByRuleIds(ruleIds)
         }
-        return archivedArticles
     }
 
     override suspend fun deleteAccountArticles(accountId: Int) {

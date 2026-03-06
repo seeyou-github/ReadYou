@@ -376,6 +376,7 @@ fun FlowPage(
     }
 
     LaunchedEffect(filterUiState.feed?.id) {
+        viewModel.clearKeepArchivedArticlesOnFeedEntered(filterUiState.feed?.id)
         viewModel.autoMarkAsReadOnFeedEntered(filterUiState.feed?.id)
     }
 

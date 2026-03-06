@@ -11,6 +11,7 @@ class ArticleTranslationCacheService @Inject constructor(
 ) {
     companion object {
         private const val TAG = "ArticleTranslationCache"
+        private const val SQL_IN_CHUNK_SIZE = 500
     }
 
     suspend fun getCache(articleId: String): ArticleTranslationCache? {
@@ -71,7 +72,9 @@ class ArticleTranslationCacheService @Inject constructor(
 
     suspend fun deleteByArticleIds(articleIds: List<String>) {
         if (articleIds.isEmpty()) return
-        cacheDao.deleteByArticleIds(articleIds)
+        articleIds.chunked(SQL_IN_CHUNK_SIZE).forEach { chunk ->
+            cacheDao.deleteByArticleIds(chunk)
+        }
         Timber.Forest.d("[$TAG] caches deleted by article ids: count=${articleIds.size}")
     }
 

@@ -47,7 +47,6 @@ constructor(
                 .get()
                 .sync(accountId = accountId, feedId = feedId, groupId = groupId)
 
-        rssService.get().clearKeepArchivedArticles(accountId = accountId)
         if (result is ListenableWorker.Result.Success) {
             runPostSyncCacheTasks(accountId, syncStartAt)
         }

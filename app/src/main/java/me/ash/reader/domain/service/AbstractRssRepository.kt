@@ -198,12 +198,7 @@ abstract class AbstractRssRepository(
                     Date(now - keepArchived.value),
                 )
             if (archivedArticles.isNotEmpty()) {
-                val archivedArticleIds = archivedArticles.map { it.id }
-                articleImageCacheService.deleteByArticleIds(archivedArticleIds)
-                articleTranslationCacheService.deleteByArticleIds(archivedArticleIds)
-                archivedArticleIds.forEach { articleId ->
-                    readerCacheHelper.deleteCacheFor(accountId, articleId)
-                }
+                cleanupDeletedArticleResources(accountId, archivedArticles)
             }
             accountService.update(currentAccount.copy(lastArchivedCleanupAt = Date(now)))
             articleDao.delete(*archivedArticles.toTypedArray())
@@ -214,6 +209,19 @@ abstract class AbstractRssRepository(
             }
         }
         return emptyList()
+    }
+
+    protected open suspend fun cleanupDeletedArticleResources(
+        accountId: Int,
+        articles: List<Article>,
+    ) {
+        if (articles.isEmpty()) return
+        val articleIds = articles.map { it.id }
+        articleImageCacheService.deleteByArticleIds(articleIds)
+        articleTranslationCacheService.deleteByArticleIds(articleIds)
+        articleIds.forEach { articleId ->
+            readerCacheHelper.deleteCacheFor(accountId, articleId)
+        }
     }
 
     suspend fun autoMarkAsRead(accountId: Int = accountService.getCurrentAccountId()) {
@@ -420,17 +428,19 @@ abstract class AbstractRssRepository(
         feed: Feed? = null,
         includeStarred: Boolean = false,
     ) {
+        val accountId = accountService.getCurrentAccountId()
         when {
             group != null -> {
                 val articleIds =
                     articleDao.queryIdsByGroupId(
-                        accountService.getCurrentAccountId(),
+                        accountId,
                         group.id,
                         includeStarred,
                     )
-                articleImageCacheService.deleteByArticleIds(articleIds)
+                val articles = articleDao.queryByIds(articleIds)
+                cleanupDeletedArticleResources(accountId, articles)
                 articleDao.deleteByGroupId(
-                    accountService.getCurrentAccountId(),
+                    accountId,
                     group.id,
                     includeStarred,
                 )
@@ -439,13 +449,14 @@ abstract class AbstractRssRepository(
             feed != null -> {
                 val articleIds =
                     articleDao.queryIdsByFeedId(
-                        accountService.getCurrentAccountId(),
+                        accountId,
                         feed.id,
                         includeStarred,
                     )
-                articleImageCacheService.deleteByArticleIds(articleIds)
+                val articles = articleDao.queryByIds(articleIds)
+                cleanupDeletedArticleResources(accountId, articles)
                 articleDao.deleteByFeedId(
-                    accountService.getCurrentAccountId(),
+                    accountId,
                     feed.id,
                     includeStarred,
                 )

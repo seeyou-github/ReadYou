@@ -329,6 +329,14 @@ interface ArticleDao {
 
     @Query(
         """
+        SELECT * FROM article
+        WHERE id IN (:articleIds)
+        """
+    )
+    suspend fun queryByIds(articleIds: List<String>): List<Article>
+
+    @Query(
+        """
         SELECT id FROM article
         WHERE accountId = :accountId
         AND feedId = :feedId
