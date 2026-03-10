@@ -40,7 +40,12 @@ constructor(
         require(accountId != -1)
         val feedId = data.getString("feedId")
         val groupId = data.getString("groupId")
+        val ignoreArchivedForFeedSync = data.getBoolean("ignoreArchivedForFeedSync", false)
         val syncStartAt = Date()
+
+        if (ignoreArchivedForFeedSync && !feedId.isNullOrBlank()) {
+            feedDao.deleteArchivedByFeedId(feedId)
+        }
 
         val result =
             rssService

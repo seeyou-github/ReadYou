@@ -271,11 +271,13 @@ class ArticleListReaderViewModel
                 is LocalRssService -> service.doSyncOneTime(
                     feedId = filterState.feed?.id,
                     groupId = filterState.group?.id,
+                    ignoreArchivedForFeedSync = filterState.feed != null && filterState.group == null,
                 )
 
                 is GoogleReaderRssService -> service.doSyncOneTime(
                     feedId = filterState.feed?.id,
                     groupId = filterState.group?.id,
+                    ignoreArchivedForFeedSync = filterState.feed != null && filterState.group == null,
                 )
 
                 else -> service.doSyncOneTime()

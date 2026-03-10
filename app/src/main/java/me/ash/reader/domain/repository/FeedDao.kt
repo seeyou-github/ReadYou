@@ -211,6 +211,14 @@ interface FeedDao {
 
     @Query(
         """
+        DELETE FROM archived_article
+        WHERE feedId = :feedId
+        """
+    )
+    suspend fun deleteArchivedByFeedId(feedId: String)
+
+    @Query(
+        """
         SELECT * FROM archived_article
         WHERE feedId = :feedId
         """

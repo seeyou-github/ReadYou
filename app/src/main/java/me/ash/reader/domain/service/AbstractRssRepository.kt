@@ -245,10 +245,16 @@ abstract class AbstractRssRepository(
         accountId: Int = accountService.getCurrentAccountId(),
         feedId: String? = null,
         groupId: String? = null,
+        ignoreArchivedForFeedSync: Boolean = false,
     ) {
         SyncWorker.enqueueOneTimeWork(
             workManager,
-            workDataOf("accountId" to accountId, "feedId" to feedId, "groupId" to groupId),
+            workDataOf(
+                "accountId" to accountId,
+                "feedId" to feedId,
+                "groupId" to groupId,
+                "ignoreArchivedForFeedSync" to ignoreArchivedForFeedSync,
+            ),
         )
     }
 
