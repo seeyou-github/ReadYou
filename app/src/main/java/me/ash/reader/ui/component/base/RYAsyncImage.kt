@@ -22,6 +22,7 @@ import coil.size.Scale
 import coil.size.Size
 import android.util.Log
 import me.ash.reader.ui.ext.extractOrigin
+import me.ash.reader.infrastructure.net.UserAgentHolder
 
 val SIZE_1000 = Size(1000, 1000)
 
@@ -59,9 +60,11 @@ fun RYAsyncImage(
                         } else {
                             Log.d("RLog", "RYAsyncImage request: url=$data, referer=disabled")
                         }
-                        if (!userAgent.isNullOrBlank()) {
-                            addHeader("User-Agent", userAgent)
-                            Log.d("RLog", "RYAsyncImage request: url=$data, ua=$userAgent")
+                        val resolvedUserAgent =
+                            userAgent?.takeIf { it.isNotBlank() }?.let { UserAgentHolder.get() }
+                        if (!resolvedUserAgent.isNullOrBlank()) {
+                            addHeader("User-Agent", resolvedUserAgent)
+                            Log.d("RLog", "RYAsyncImage request: url=$data, ua=$resolvedUserAgent")
                         }
                         // 2026-01-23: 浣跨敤 key 寮哄埗 Coil 鍦ㄦ暟鎹彉鍖栨椂閲嶆柊鍔犺浇
                         if (key != null) {

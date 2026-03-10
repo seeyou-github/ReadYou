@@ -84,6 +84,7 @@ import me.ash.reader.infrastructure.preference.LocalFlowArticleListImageSize
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListRoundedCorners
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListColorThemes
 import me.ash.reader.infrastructure.preference.LocalReadingImageBrightness
+import me.ash.reader.infrastructure.preference.LocalSettings
 import me.ash.reader.infrastructure.preference.SwipeEndActionPreference
 import me.ash.reader.infrastructure.preference.SwipeStartActionPreference
 import me.ash.reader.ui.component.FeedIcon
@@ -158,8 +159,7 @@ fun ArticleItem(
     forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
 ) {
     val articleListFeedIcon = LocalFlowArticleListFeedIcon.current
-    val titleImageUserAgent =
-        "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
+    val titleImageUserAgent = LocalSettings.current.userAgent
     val articleListFeedName = LocalFlowArticleListFeedName.current
     // 2026-01-29: 计算是否显示订阅源名称（考虑强制显示标志）
     val shouldShowFeedName = articleListFeedName.value || forceShowFeedName

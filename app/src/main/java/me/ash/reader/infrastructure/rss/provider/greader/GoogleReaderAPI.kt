@@ -8,7 +8,7 @@ import kotlin.text.startsWith
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import me.ash.reader.domain.data.SyncLogger
-import me.ash.reader.infrastructure.di.USER_AGENT_STRING
+import me.ash.reader.infrastructure.net.UserAgentHolder
 import me.ash.reader.infrastructure.exception.GoogleReaderAPIException
 import me.ash.reader.infrastructure.exception.RetryException
 import me.ash.reader.infrastructure.net.ApiResult
@@ -89,7 +89,7 @@ private constructor(
                     .newCall(
                         Request.Builder()
                             .url("${serverUrl}accounts/ClientLogin")
-                            .header("User-Agent", USER_AGENT_STRING)
+                            .header("User-Agent", UserAgentHolder.get())
                             .post(
                                 FormBody.Builder()
                                     .add("output", "json")
@@ -219,7 +219,7 @@ private constructor(
                             "$serverUrl$query?output=json${params?.joinToString(separator = "") { "&${it.first}=${it.second}" } ?: ""}"
                         )
                         .addHeader("Authorization", "GoogleLogin auth=${authData.clientLoginToken}")
-                        .addHeader("User-Agent", USER_AGENT_STRING)
+                        .addHeader("User-Agent", UserAgentHolder.get())
                         .get()
                         .build()
                 )
@@ -258,7 +258,7 @@ private constructor(
                         )
                         .addHeader("Authorization", "GoogleLogin auth=${authData.clientLoginToken}")
                         .addHeader("Content-Type", "application/x-www-form-urlencoded")
-                        .addHeader("User-Agent", USER_AGENT_STRING)
+                        .addHeader("User-Agent", UserAgentHolder.get())
                         .post(
                             FormBody.Builder()
                                 .apply {

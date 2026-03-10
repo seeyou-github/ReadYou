@@ -129,6 +129,9 @@ data class Settings(
     val cacheTitleImageOnUpdate: CacheTitleImageOnUpdatePreference = CacheTitleImageOnUpdatePreference.default,
     val cacheContentImageOnUpdate: CacheContentImageOnUpdatePreference = CacheContentImageOnUpdatePreference.default,
 
+    // Network
+    val userAgent: String = UserAgentPreference.default,
+
     // Languages
     val languages: LanguagesPreference = LanguagesPreference.default,
 )

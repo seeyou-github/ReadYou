@@ -51,6 +51,7 @@ import me.ash.reader.ui.page.settings.color.reading.ReadingVideoPage
 import me.ash.reader.ui.page.settings.interaction.InteractionPage
 import me.ash.reader.ui.page.settings.languages.LanguagesPage
 import me.ash.reader.ui.page.settings.other.OtherPage
+import me.ash.reader.ui.page.settings.other.UserAgentPage
 import me.ash.reader.ui.page.settings.backup.BackupAndRestorePage
 import me.ash.reader.ui.page.settings.blacklist.BlacklistPage
 import me.ash.reader.infrastructure.translate.ui.AITranslationPage
@@ -352,10 +353,12 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                             OtherPage(
                                 onBack = onBack,
                                 navigateToLanguages = { backStack.add(Route.Languages) },
+                                navigateToUserAgent = { backStack.add(Route.UserAgent) },
                                 navigateToTroubleshooting = { backStack.add(Route.Troubleshooting) },
                                 navigateToTipsAndSupport = { backStack.add(Route.TipsAndSupport) },
                             )
                         }
+                    Route.UserAgent -> NavEntry(key) { UserAgentPage(onBack = onBack) }
                     else -> NavEntry(key) { throw Exception("Unknown destination") }
                 }
             },

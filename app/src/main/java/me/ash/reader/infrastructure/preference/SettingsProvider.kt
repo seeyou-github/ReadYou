@@ -17,6 +17,7 @@ import me.ash.reader.infrastructure.datastore.get
 import me.ash.reader.infrastructure.datastore.getOrDefault
 import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.IODispatcher
+import me.ash.reader.infrastructure.net.UserAgentHolder
 import me.ash.reader.infrastructure.translate.preference.LocalCerebrasConfig
 
 import me.ash.reader.infrastructure.translate.preference.LocalQuickTranslateModel
@@ -58,7 +59,9 @@ class SettingsProvider @Inject constructor(
     init {
         coroutineScope.launch(ioDispatcher) {
             preferencesFlow.collect {
-                _settingsFlow.value = it.toSettings()
+                val settings = it.toSettings()
+                _settingsFlow.value = settings
+                UserAgentHolder.update(settings.userAgent)
             }
         }
     }

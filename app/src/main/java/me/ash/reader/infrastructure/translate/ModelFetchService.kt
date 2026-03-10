@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.ash.reader.infrastructure.di.UserAgentInterceptor
 import me.ash.reader.infrastructure.translate.model.ModelInfo
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -28,6 +29,7 @@ class ModelFetchService @Inject constructor() {
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
+                .addNetworkInterceptor(UserAgentInterceptor)
                 .build()
         }
 

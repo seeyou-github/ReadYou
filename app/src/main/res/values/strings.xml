@@ -124,6 +124,10 @@
     <string name="backup_and_restore">Backup &amp; restore</string>
     <string name="backup_and_restore_desc">Import/Export preferences and subscriptions</string>
     <string name="other_desc">Languages, troubleshooting, support</string>
+    <string name="user_agent_setting">UA settings</string>
+    <string name="user_agent_setting_desc">Set the user agent used for requests</string>
+    <string name="user_agent_current">Current User-Agent</string>
+    <string name="user_agent_placeholder">Enter User-Agent</string>
     <string name="languages">Languages</string>
     <string name="help_translate">Help translate</string>
     <string name="translatable_url" translatable="false">https://hosted.weblate.org/projects/readyou/</string>

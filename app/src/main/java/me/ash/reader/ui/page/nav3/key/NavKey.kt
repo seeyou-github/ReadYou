@@ -75,6 +75,7 @@ sealed interface Route : NavKey {
 
     // Other
     @Serializable data object Other : Route
+    @Serializable data object UserAgent : Route
 
     // Languages
     @Serializable data object Languages : Route

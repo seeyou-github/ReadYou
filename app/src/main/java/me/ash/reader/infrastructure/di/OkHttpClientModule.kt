@@ -29,6 +29,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import me.ash.reader.BuildConfig
+import me.ash.reader.infrastructure.net.UserAgentHolder
 import okhttp3.Cache
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -165,10 +166,11 @@ fun OkHttpClient.Builder.setupSsl(
 object UserAgentInterceptor : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
+        val userAgent = UserAgentHolder.get()
         return chain.proceed(
             chain.request()
                 .newBuilder()
-                .header("User-Agent", USER_AGENT_STRING)
+                .header("User-Agent", userAgent)
                 .build()
         )
     }

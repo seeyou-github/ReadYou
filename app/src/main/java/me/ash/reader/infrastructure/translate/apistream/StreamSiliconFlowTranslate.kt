@@ -6,6 +6,7 @@ import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import me.ash.reader.infrastructure.di.UserAgentInterceptor
 import me.ash.reader.infrastructure.translate.cache.TranslateCache
 import me.ash.reader.infrastructure.translate.model.TranslateModelConfig
 import okhttp3.MediaType.Companion.toMediaType
@@ -62,6 +63,7 @@ class StreamSiliconFlowTranslate @Inject constructor(
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(0, TimeUnit.SECONDS)  // 流式必须设为0，防止超时断开
                 .writeTimeout(60, TimeUnit.SECONDS)
+                .addNetworkInterceptor(UserAgentInterceptor)
                 .build()
         }
 

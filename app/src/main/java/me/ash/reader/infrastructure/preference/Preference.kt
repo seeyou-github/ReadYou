@@ -130,6 +130,9 @@ fun Preferences.toSettings(): Settings {
         cacheTitleImageOnUpdate = CacheTitleImageOnUpdatePreference.fromPreferences(this),
         cacheContentImageOnUpdate = CacheContentImageOnUpdatePreference.fromPreferences(this),
 
+        // Network
+        userAgent = UserAgentPreference.fromPreferences(this),
+
         // Languages
         languages = LanguagesPreference.fromPreferences(this),
 
