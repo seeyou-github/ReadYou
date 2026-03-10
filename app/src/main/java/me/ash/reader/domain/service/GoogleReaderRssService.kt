@@ -563,7 +563,7 @@ constructor(
             // notice user
             // the error
             //                }
-            ListenableWorker.Result.retry()
+            ListenableWorker.Result.failure()
         }
     }
 

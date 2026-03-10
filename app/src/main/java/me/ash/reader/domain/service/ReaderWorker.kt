@@ -36,6 +36,6 @@ constructor(
                 }
             }
 
-        return if (deferredList.awaitAll().any { !it }) Result.retry() else Result.success()
+        return if (deferredList.awaitAll().any { !it }) Result.failure() else Result.success()
     }
 }

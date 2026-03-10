@@ -214,7 +214,7 @@ constructor(
                 AbstractRssRepository.clearSyncProgress()
                 syncLogger.log(it)
             }
-            .getOrNull() ?: ListenableWorker.Result.retry()
+            .getOrNull() ?: ListenableWorker.Result.failure()
     }
 
     private suspend fun syncSingleFeedWithDiagnostics(
@@ -235,8 +235,8 @@ constructor(
                 )
                 return FeedWithArticle(feed = feed, articles = emptyList())
             }
+            val listHtml = pluginSyncService.downloadListHtml(rule.subscribeUrl).getOrDefault("")
             return runCatching {
-                val listHtml = pluginSyncService.downloadListHtml(rule.subscribeUrl).getOrDefault("")
                 if (listHtml.isBlank()) {
                     SyncErrorHolder.report(
                         SyncErrorReport(
@@ -264,7 +264,6 @@ constructor(
                 }
                 pluginSyncService.syncByRule(feed, rule, preDate, listHtml)
             }.getOrElse { e ->
-                val listHtml = pluginSyncService.downloadListHtml(rule.subscribeUrl).getOrDefault("")
                 SyncErrorHolder.report(
                     SyncErrorReport(
                         feedId = feed.id,
@@ -279,8 +278,8 @@ constructor(
             }
         }
 
+        val raw = rssHelper.fetchRssRaw(feed.url)
         return runCatching {
-            val raw = rssHelper.fetchRssRaw(feed.url)
             if (raw == null || raw.body.isBlank()) {
                 SyncErrorHolder.report(
                     SyncErrorReport(
@@ -312,9 +311,8 @@ constructor(
                     .asSequence()
                     .map { rssHelper.buildArticleFromSyndEntry(feed, accountId, it, preDate) }
                     .toList()
-            FeedWithArticle(feed = feed, articles = articles)
+                FeedWithArticle(feed = feed, articles = articles)
         }.getOrElse { e ->
-            val raw = rssHelper.fetchRssRaw(feed.url)
             SyncErrorHolder.report(
                 SyncErrorReport(
                     feedId = feed.id,

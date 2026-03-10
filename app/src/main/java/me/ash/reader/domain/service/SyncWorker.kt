@@ -56,22 +56,17 @@ constructor(
             runPostSyncCacheTasks(accountId, syncStartAt)
         }
 
-        workManager
-            .beginUniqueWork(
-                uniqueWorkName = POST_SYNC_WORK_NAME,
-                existingWorkPolicy = ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<ReaderWorker>()
-                    .addTag(READER_TAG)
-                    .addTag(ONETIME_WORK_TAG)
-                    .setBackoffCriteria(
-                        backoffPolicy = BackoffPolicy.EXPONENTIAL,
-                        backoffDelay = 30,
-                        timeUnit = TimeUnit.SECONDS,
-                    )
-                    .build(),
-            )
-            .then(OneTimeWorkRequestBuilder<WidgetUpdateWorker>().build())
-            .enqueue()
+            workManager
+                .beginUniqueWork(
+                    uniqueWorkName = POST_SYNC_WORK_NAME,
+                    existingWorkPolicy = ExistingWorkPolicy.KEEP,
+                    OneTimeWorkRequestBuilder<ReaderWorker>()
+                        .addTag(READER_TAG)
+                        .addTag(ONETIME_WORK_TAG)
+                        .build(),
+                )
+                .then(OneTimeWorkRequestBuilder<WidgetUpdateWorker>().build())
+                .enqueue()
 
         return result
     }
@@ -257,10 +252,10 @@ constructor(
                     ExistingPeriodicWorkPolicy.UPDATE
                 else ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE
 
-            workManager.enqueueUniquePeriodicWork(
-                SYNC_WORK_NAME_PERIODIC,
-                policy,
-                PeriodicWorkRequestBuilder<SyncWorker>(syncInterval.value, TimeUnit.MINUTES)
+                workManager.enqueueUniquePeriodicWork(
+                    SYNC_WORK_NAME_PERIODIC,
+                    policy,
+                    PeriodicWorkRequestBuilder<SyncWorker>(syncInterval.value, TimeUnit.MINUTES)
                     .setConstraints(
                         Constraints.Builder()
                             .setRequiresCharging(syncOnlyWhenCharging.value)
@@ -269,11 +264,6 @@ constructor(
                                 else NetworkType.CONNECTED
                             )
                             .build()
-                    )
-                    .setBackoffCriteria(
-                        backoffPolicy = BackoffPolicy.EXPONENTIAL,
-                        backoffDelay = 30,
-                        timeUnit = TimeUnit.SECONDS,
                     )
                     .setInputData(workDataOf("accountId" to account.id))
                     .addTag(SYNC_TAG)

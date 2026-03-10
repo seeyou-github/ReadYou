@@ -8,7 +8,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 
 data class RetryConfig(
-    val attempts: Int = 2,
+    val attempts: Int = 1,
     val timeoutPerAttempt: Long = 10000L,
     val initialDelay: Long = 1000L,
     val maxDelay: Long = 5000L,

@@ -85,6 +85,8 @@ fun cachingHttpClient(
     builder
         .connectTimeout(connectTimeoutSecs, TimeUnit.SECONDS)
         .readTimeout(readTimeoutSecs, TimeUnit.SECONDS)
+        .callTimeout(connectTimeoutSecs, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(false)
         .followRedirects(true)
 
     if (!clientCertificateAlias.isNullOrBlank() || trustAllCerts) {
