@@ -213,10 +213,15 @@ class PluginSyncService @Inject constructor(
         }
     }
 
-    suspend fun syncByRule(feed: Feed, rule: PluginRule, preDate: Date = Date()): FeedWithArticle {
+    suspend fun syncByRule(
+        feed: Feed,
+        rule: PluginRule,
+        preDate: Date = Date(),
+        listHtmlOverride: String? = null,
+    ): FeedWithArticle {
         return withContext(ioDispatcher) {
             Log.d(TAG, "sync start: rule=${rule.id} url=${rule.subscribeUrl}")
-            val listHtml = fetchHtml(rule.subscribeUrl)
+            val listHtml = listHtmlOverride ?: fetchHtml(rule.subscribeUrl)
             if (listHtml.isBlank()) {
                 Log.e(TAG, "list html empty: ${rule.subscribeUrl}")
                 return@withContext FeedWithArticle(feed = feed, articles = emptyList())
@@ -248,6 +253,10 @@ class PluginSyncService @Inject constructor(
             Log.d(TAG, "sync end: newArticles=${articles.size}")
             FeedWithArticle(feed = feed, articles = articles)
         }
+    }
+
+    fun parseListItemsForDebug(listHtml: String, rule: PluginRule): List<ListItem> {
+        return parseListItems(listHtml, rule.subscribeUrl, rule)
     }
 
     private fun parseListItems(listBody: String, baseUrl: String, rule: PluginRule): List<ListItem> {

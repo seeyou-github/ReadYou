@@ -54,8 +54,11 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -113,6 +116,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 
 import me.ash.reader.R
 import me.ash.reader.domain.data.PagerData
+import me.ash.reader.domain.data.SyncErrorHolder
 import me.ash.reader.domain.model.article.ArticleFlowItem
 import me.ash.reader.domain.model.article.ArticleWithFeed
 import me.ash.reader.domain.model.general.MarkAsReadConditions
@@ -605,6 +609,27 @@ fun FlowPage(
                         text = { Text(error.message ?: stringResource(R.string.translate_error_hint)) },
                         confirmButton = {
                             TextButton(onClick = { viewModel.titleTranslateEntry.translationError.value = null }) {
+                                Text(stringResource(R.string.confirm))
+                            }
+                        },
+                    )
+                }
+
+                val syncError by SyncErrorHolder.errorFlow.collectAsState()
+                syncError?.let { error ->
+                    AlertDialog(
+                        onDismissRequest = { SyncErrorHolder.clear() },
+                        title = { Text(stringResource(R.string.sync_error_title)) },
+                        text = {
+                            SelectionContainer {
+                                Text(
+                                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                                    text = error.toDisplayString(),
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { SyncErrorHolder.clear() }) {
                                 Text(stringResource(R.string.confirm))
                             }
                         },

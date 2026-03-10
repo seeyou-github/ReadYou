@@ -14,6 +14,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import me.ash.reader.domain.data.SyncErrorHolder
+import me.ash.reader.domain.data.SyncErrorReport
 import me.ash.reader.domain.data.SyncLogger
 import me.ash.reader.domain.model.account.AccountType
 import me.ash.reader.domain.model.article.Article
@@ -33,6 +35,9 @@ import me.ash.reader.infrastructure.translate.cache.ArticleTranslationCacheServi
 import me.ash.reader.plugin.PluginConstants
 import me.ash.reader.plugin.PluginRuleDao
 import me.ash.reader.plugin.PluginSyncService
+import com.rometools.rome.io.SyndFeedInput
+import com.rometools.rome.io.XmlReader
+import java.io.ByteArrayInputStream
 import timber.log.Timber
 
 private const val TAG = "LocalRssService"
@@ -102,6 +107,49 @@ constructor(
             AbstractRssRepository.setSyncProgress(0, totalFeeds)
 
             val completedCount = AtomicInteger(0)
+            if (feedId != null && feedsToSync.size == 1) {
+                val currentFeed = feedsToSync.first()
+                val fetchedFeed = syncSingleFeedWithDiagnostics(currentFeed, preDate)
+                val archivedArticles =
+                    feedDao
+                        .queryArchivedArticles(currentFeed.id)
+                        .map { it.link }
+                        .toSet()
+                var fetchedArticles =
+                    fetchedFeed.articles.filterNot {
+                        archivedArticles.contains(it.link)
+                    }
+
+                val blacklistKeywords = blacklistKeywordDao.getAllSync()
+                if (blacklistKeywords.isNotEmpty()) {
+                    fetchedArticles = fetchedArticles.filterNot { article ->
+                        blacklistKeywords.any { keyword ->
+                            keyword.enabled && article.title.contains(
+                                keyword.keyword,
+                                ignoreCase = true
+                            ) && (keyword.feedUrls.isNullOrBlank() || keyword.feedUrls.split(
+                                ","
+                            ).contains(currentFeed.url))
+                        }
+                    }
+                }
+
+                val newArticles =
+                    articleDao.insertListIfNotExist(
+                        articles = fetchedArticles,
+                        feed = currentFeed,
+                    )
+                if (currentFeed.isNotification && newArticles.isNotEmpty()) {
+                    notificationHelper.notify(
+                        fetchedFeed.copy(articles = newArticles, feed = currentFeed)
+                    )
+                }
+
+                AbstractRssRepository.setSyncProgress(1, totalFeeds)
+                clearSyncProgress()
+                accountService.update(currentAccount.copy(updateAt = Date()))
+                return@supervisorScope ListenableWorker.Result.success()
+            }
             feedsToSync
                 .mapIndexed { index, currentFeed ->
                     async(Dispatchers.IO) {
@@ -167,6 +215,119 @@ constructor(
                 syncLogger.log(it)
             }
             .getOrNull() ?: ListenableWorker.Result.retry()
+    }
+
+    private suspend fun syncSingleFeedWithDiagnostics(
+        feed: Feed,
+        preDate: Date,
+    ): FeedWithArticle {
+        if (feed.url.startsWith(PluginConstants.PLUGIN_URL_PREFIX)) {
+            val ruleId = feed.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX)
+            val rule = pluginRuleDao.queryById(ruleId)
+            if (rule == null) {
+                SyncErrorHolder.report(
+                    SyncErrorReport(
+                        feedId = feed.id,
+                        feedName = feed.name,
+                        feedUrl = feed.url,
+                        message = "Plugin rule not found: $ruleId",
+                    )
+                )
+                return FeedWithArticle(feed = feed, articles = emptyList())
+            }
+            return runCatching {
+                val listHtml = pluginSyncService.downloadListHtml(rule.subscribeUrl).getOrDefault("")
+                if (listHtml.isBlank()) {
+                    SyncErrorHolder.report(
+                        SyncErrorReport(
+                            feedId = feed.id,
+                            feedName = feed.name,
+                            feedUrl = feed.url,
+                            message = "List HTML is empty",
+                            rawContent = listHtml,
+                        )
+                    )
+                    return@runCatching FeedWithArticle(feed = feed, articles = emptyList())
+                }
+                val items = pluginSyncService.parseListItemsForDebug(listHtml, rule)
+                if (items.isEmpty()) {
+                    SyncErrorHolder.report(
+                        SyncErrorReport(
+                            feedId = feed.id,
+                            feedName = feed.name,
+                            feedUrl = feed.url,
+                            message = "List items empty",
+                            rawContent = listHtml,
+                        )
+                    )
+                    return@runCatching FeedWithArticle(feed = feed, articles = emptyList())
+                }
+                pluginSyncService.syncByRule(feed, rule, preDate, listHtml)
+            }.getOrElse { e ->
+                val listHtml = pluginSyncService.downloadListHtml(rule.subscribeUrl).getOrDefault("")
+                SyncErrorHolder.report(
+                    SyncErrorReport(
+                        feedId = feed.id,
+                        feedName = feed.name,
+                        feedUrl = feed.url,
+                        message = e.message ?: "Unknown error",
+                        stackTrace = e.stackTraceToString(),
+                        rawContent = listHtml,
+                    )
+                )
+                FeedWithArticle(feed = feed, articles = emptyList())
+            }
+        }
+
+        return runCatching {
+            val raw = rssHelper.fetchRssRaw(feed.url)
+            if (raw == null || raw.body.isBlank()) {
+                SyncErrorHolder.report(
+                    SyncErrorReport(
+                        feedId = feed.id,
+                        feedName = feed.name,
+                        feedUrl = feed.url,
+                        message = "RSS response is empty",
+                        rawContent = raw?.body,
+                        contentType = raw?.contentType,
+                    )
+                )
+                return@runCatching FeedWithArticle(feed = feed, articles = emptyList())
+            }
+
+            val contentType = raw.contentType
+            val httpContentType =
+                contentType?.let {
+                    if (it.contains("charset=", ignoreCase = true)) it
+                    else "$it; charset=UTF-8"
+                } ?: "text/xml; charset=UTF-8"
+
+            val accountId = accountService.getCurrentAccountId()
+            val syndFeed =
+                SyndFeedInput()
+                    .apply { isPreserveWireFeed = true }
+                    .build(XmlReader(ByteArrayInputStream(raw.body.toByteArray()), httpContentType))
+            val articles =
+                syndFeed.entries
+                    .asSequence()
+                    .map { rssHelper.buildArticleFromSyndEntry(feed, accountId, it, preDate) }
+                    .toList()
+            FeedWithArticle(feed = feed, articles = articles)
+        }.getOrElse { e ->
+            val raw = rssHelper.fetchRssRaw(feed.url)
+            SyncErrorHolder.report(
+                SyncErrorReport(
+                    feedId = feed.id,
+                    feedName = feed.name,
+                    feedUrl = feed.url,
+                    message = e.message ?: "Unknown error",
+                    stackTrace = e.stackTraceToString(),
+                    rawContent = raw?.body,
+                    contentType = raw?.contentType,
+                )
+            )
+            FeedWithArticle(feed = feed, articles = emptyList())
+        }
     }
 
     private suspend fun syncFeed(feed: Feed, preDate: Date = Date()): FeedWithArticle {

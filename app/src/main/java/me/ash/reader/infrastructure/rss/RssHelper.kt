@@ -50,6 +50,11 @@ constructor(
     private val okHttpClient: OkHttpClient,
 ) {
 
+    data class RawFetchResult(
+        val body: String,
+        val contentType: String?,
+    )
+
     @Throws(Exception::class)
     suspend fun searchFeed(feedLink: String): SyndFeed {
         return withContext(ioDispatcher) {
@@ -443,6 +448,17 @@ constructor(
                 }
             }.onFailure { Log.e("RLog", "rss debug parse failed: ${it.message}") }
             bodyString
+        }
+
+    suspend fun fetchRssRaw(url: String): RawFetchResult? =
+        withContext(ioDispatcher) {
+            val response = response(okHttpClient, url)
+            val contentType = response.header("Content-Type")
+            val bytes = response.body?.bytes() ?: return@withContext null
+            val charsetName =
+                contentType?.substringAfter("charset=", "UTF-8")?.trim()?.ifBlank { "UTF-8" } ?: "UTF-8"
+            val bodyString = bytes.toString(Charset.forName(charsetName))
+            RawFetchResult(body = bodyString, contentType = contentType)
         }
 
     private fun logLong(tag: String, message: String) {
