@@ -33,6 +33,7 @@ import me.ash.reader.infrastructure.translate.model.TranslateModelConfig
 import timber.log.Timber
 
 private const val TAG = "TitleTranslateEntry"
+private const val TITLE_TRANSLATION_BATCH_SIZE = 50
 
 private data class PendingTitleUpdate(
     val translatedTitle: String,
@@ -163,17 +164,29 @@ constructor(
 
         publishLiveTranslatedTitles(cachedTranslatedTitles)
 
+        val batch = articlesNeedingTranslation.take(TITLE_TRANSLATION_BATCH_SIZE)
+
         Timber.tag(TAG).d(
-            "title translation candidates: cached=${cachedTranslatedTitles.size}, needApi=${articlesNeedingTranslation.size}"
+            "title translation candidates: cached=${cachedTranslatedTitles.size}, " +
+                "needApi=${articlesNeedingTranslation.size}, batch=${batch.size}"
         )
 
-        return articlesNeedingTranslation
+        return batch
     }
 
     private suspend fun cachedTranslatedTitle(article: Article): String? {
         article.translatedTitle?.takeIf { it.isNotBlank() }?.let { return it }
         liveTranslatedTitles.value[article.id]?.takeIf { it.isNotBlank() }?.let { return it }
         return translationCacheService.getCache(article.id)?.translatedTitle?.takeIf { it.isNotBlank() }
+    }
+
+    fun shouldRequestTitleTranslation(
+        article: Article,
+        liveTranslatedTitle: String? = liveTranslatedTitles.value[article.id],
+    ): Boolean {
+        if (!article.translatedTitle.isNullOrBlank()) return false
+        if (!liveTranslatedTitle.isNullOrBlank()) return false
+        return needsTranslation(article.title)
     }
 
     private fun dayBounds(baseDate: Date): Pair<Date, Date> {

@@ -106,6 +106,7 @@ import androidx.compose.ui.zIndex
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -766,6 +767,60 @@ fun FlowPage(
                             // 直接调用 TitleTranslateEntry，传入触发来源
                             viewModel.titleTranslateEntry.triggerTranslation(feed.id, "flow_page")
                         }
+                    }
+
+                    LaunchedEffect(pagingItems, filterState.feed?.id, filterState.group?.id) {
+                        snapshotFlow {
+                            if (isTranslatingTitle.value) {
+                                null
+                            } else {
+                                val articleItems = pagingItems.itemSnapshotList.items
+                                listState.layoutInfo.visibleItemsInfo
+                                    .asSequence()
+                                    .mapNotNull { visibleItem ->
+                                        if (visibleItem.contentType != CONTENT_TYPE_ARTICLE) {
+                                            return@mapNotNull null
+                                        }
+                                        val visibleArticleId = visibleItem.key as? String
+                                            ?: return@mapNotNull null
+                                        val item =
+                                            articleItems.firstOrNull {
+                                                it is ArticleFlowItem.Article &&
+                                                    it.articleWithFeed.article.id == visibleArticleId
+                                            } as? ArticleFlowItem.Article
+                                                ?: return@mapNotNull null
+                                        val articleWithFeed = item.articleWithFeed
+                                        val feed = filterState.feed ?: articleWithFeed.feed
+                                        val article = articleWithFeed.article
+
+                                        if (
+                                            feed.isAutoTranslateTitle &&
+                                                viewModel.titleTranslateEntry
+                                                    .shouldRequestTitleTranslation(
+                                                        article = article,
+                                                        liveTranslatedTitle =
+                                                            liveTranslatedTitles[article.id],
+                                                    )
+                                        ) {
+                                            feed.id to article.id
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                    .firstOrNull()
+                            }
+                        }
+                            .filterNotNull()
+                            .distinctUntilChanged()
+                            .collect { (feedId, articleId) ->
+                                Timber.tag("AutoTranslateTitle").d(
+                                    "FlowPage: visible untranslated title, trigger next batch, feedId=$feedId, articleId=$articleId"
+                                )
+                                viewModel.titleTranslateEntry.triggerTranslation(
+                                    feedId,
+                                    "visible_untranslated_title",
+                                )
+                            }
                     }
 
                     val loadAction =
