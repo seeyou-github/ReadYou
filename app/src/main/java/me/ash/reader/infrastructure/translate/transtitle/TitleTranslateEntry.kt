@@ -1,8 +1,6 @@
 package me.ash.reader.infrastructure.translate.transtitle
 
 import androidx.compose.runtime.mutableStateOf
-import java.util.Calendar
-import java.util.Date
 import java.util.regex.Pattern
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -127,28 +125,7 @@ constructor(
         }
 
     private suspend fun findArticlesNeedingTranslation(feedId: String, accountId: Int): List<Article> {
-        val (todayStart, todayEndExclusive) = dayBounds(Date())
-        var articles =
-            articleDao.queryByFeedIdUpdatedBetween(
-                accountId = accountId,
-                feedId = feedId,
-                start = todayStart,
-                endExclusive = todayEndExclusive,
-            )
-
-        if (articles.isEmpty()) {
-            val latestUpdateAt = articleDao.queryLatestUpdateAtByFeedId(accountId, feedId)
-            if (latestUpdateAt != null) {
-                val (latestStart, latestEndExclusive) = dayBounds(latestUpdateAt)
-                articles =
-                    articleDao.queryByFeedIdUpdatedBetween(
-                        accountId = accountId,
-                        feedId = feedId,
-                        start = latestStart,
-                        endExclusive = latestEndExclusive,
-                    )
-            }
-        }
+        val articles = articleDao.queryAllByFeedId(accountId, feedId)
 
         val cachedTranslatedTitles = mutableMapOf<String, String>()
         val articlesNeedingTranslation = mutableListOf<Article>()
@@ -187,20 +164,6 @@ constructor(
         if (!article.translatedTitle.isNullOrBlank()) return false
         if (!liveTranslatedTitle.isNullOrBlank()) return false
         return needsTranslation(article.title)
-    }
-
-    private fun dayBounds(baseDate: Date): Pair<Date, Date> {
-        val calendar =
-            Calendar.getInstance().apply {
-                time = baseDate
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }
-        val start = calendar.time
-        calendar.add(Calendar.DAY_OF_MONTH, 1)
-        return start to calendar.time
     }
 
     private fun needsTranslation(title: String): Boolean {
