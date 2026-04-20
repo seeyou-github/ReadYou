@@ -440,6 +440,7 @@ fun FlowPage(
     val titleTranslationProgress = viewModel.titleTranslateEntry.translationProgress.value
     val titleTranslationTotal = viewModel.titleTranslateEntry.translationTotal.value
     val titleTranslationError = viewModel.titleTranslateEntry.translationError.collectAsState()
+    val liveTranslatedTitles by viewModel.titleTranslateEntry.liveTranslatedTitles.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         RYScaffold(
@@ -870,7 +871,12 @@ fun FlowPage(
                                                     colorTheme = selectedColorTheme,
                                                     translatedTitleProvider = { articleWithFeed ->
                                                         val feed = filterUiState.feed ?: articleWithFeed.feed
-                                                        if (feed.isAutoTranslateTitle) articleWithFeed.article.translatedTitle else null
+                                                        if (feed.isAutoTranslateTitle) {
+                                                            liveTranslatedTitles[articleWithFeed.article.id]
+                                                                ?: articleWithFeed.article.translatedTitle
+                                                        } else {
+                                                            null
+                                                        }
                                                     },
                                                     onClick = { articleWithFeed, index ->
                                                         if (articleWithFeed.feed.isBrowser) {

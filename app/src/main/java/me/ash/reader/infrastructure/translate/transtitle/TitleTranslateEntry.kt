@@ -6,18 +6,27 @@ import java.util.Date
 import java.util.regex.Pattern
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.ash.reader.domain.model.article.Article
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.repository.ArticleDao
 import me.ash.reader.domain.repository.FeedDao
+import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.IODispatcher
 import me.ash.reader.infrastructure.preference.SettingsProvider
 import me.ash.reader.infrastructure.translate.TranslateProvider
+import me.ash.reader.infrastructure.translate.apistream.StreamTranslateService
 import me.ash.reader.infrastructure.translate.apistream.StreamTranslateServiceFactory
 import me.ash.reader.infrastructure.translate.cache.ArticleTranslationCacheService
 import me.ash.reader.infrastructure.translate.model.TranslateModelConfig
@@ -25,11 +34,18 @@ import timber.log.Timber
 
 private const val TAG = "TitleTranslateEntry"
 
+private data class PendingTitleUpdate(
+    val translatedTitle: String,
+    val provider: String,
+    val model: String,
+)
+
 @Singleton
 class TitleTranslateEntry
 @Inject
 constructor(
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
+    @ApplicationScope private val applicationScope: CoroutineScope,
     private val articleDao: ArticleDao,
     private val feedDao: FeedDao,
     private val translationCacheService: ArticleTranslationCacheService,
@@ -41,11 +57,16 @@ constructor(
     val translationProgress = mutableStateOf(0)
     val translationTotal = mutableStateOf(0)
     val translationError = MutableStateFlow<Throwable?>(null)
+    private val _liveTranslatedTitles = MutableStateFlow<Map<String, String>>(emptyMap())
+    val liveTranslatedTitles: StateFlow<Map<String, String>> = _liveTranslatedTitles.asStateFlow()
 
     private val debounceTime = 500L
     private var lastTriggerTime = 0L
     private var translatingFeedId: String? = null
     private var currentTranslationJob: Job? = null
+    private var currentTranslateService: StreamTranslateService? = null
+    private val pendingTitleUpdatesLock = Any()
+    private val pendingTitleUpdates = mutableMapOf<String, PendingTitleUpdate>()
 
     suspend fun triggerTranslation(feedId: String, triggerSource: String = "unknown") =
         withContext(ioDispatcher) {
@@ -86,12 +107,21 @@ constructor(
 
             try {
                 performTranslation(articlesToTranslate, feed)
+            } catch (e: CancellationException) {
+                withContext(NonCancellable) {
+                    persistPendingTitleUpdatesSafely()
+                }
+                Timber.tag(TAG).d("title translation cancelled")
+                throw e
             } catch (e: Exception) {
+                persistPendingTitleUpdatesSafely()
                 translationError.value = e
                 Timber.tag(TAG).e(e, "title translation failed")
             } finally {
                 isTranslating.value = false
                 translatingFeedId = null
+                currentTranslationJob = null
+                currentTranslateService = null
             }
         }
 
@@ -119,9 +149,31 @@ constructor(
             }
         }
 
-        return articles.filter { article ->
-            article.translatedTitle.isNullOrBlank() && needsTranslation(article.title)
+        val cachedTranslatedTitles = mutableMapOf<String, String>()
+        val articlesNeedingTranslation = mutableListOf<Article>()
+
+        articles.forEach { article ->
+            val cachedTitle = cachedTranslatedTitle(article)
+            if (!cachedTitle.isNullOrBlank()) {
+                cachedTranslatedTitles[article.id] = cachedTitle
+            } else if (needsTranslation(article.title)) {
+                articlesNeedingTranslation += article
+            }
         }
+
+        publishLiveTranslatedTitles(cachedTranslatedTitles)
+
+        Timber.tag(TAG).d(
+            "title translation candidates: cached=${cachedTranslatedTitles.size}, needApi=${articlesNeedingTranslation.size}"
+        )
+
+        return articlesNeedingTranslation
+    }
+
+    private suspend fun cachedTranslatedTitle(article: Article): String? {
+        article.translatedTitle?.takeIf { it.isNotBlank() }?.let { return it }
+        liveTranslatedTitles.value[article.id]?.takeIf { it.isNotBlank() }?.let { return it }
+        return translationCacheService.getCache(article.id)?.translatedTitle?.takeIf { it.isNotBlank() }
     }
 
     private fun dayBounds(baseDate: Date): Pair<Date, Date> {
@@ -161,14 +213,18 @@ constructor(
                 )
 
         val translateService = streamTranslateServiceFactory.getService(config.provider)
+        currentTranslateService = translateService
         val titleTranslateService = TitleTranslateService(translateService)
 
-        val results =
-            titleTranslateService.translateTitles(
+        titleTranslateService.translateTitles(
                 titles = articles.map { it.title },
                 articleIds = articles.map { it.id },
                 config = config,
                 translateService = translateService,
+                onTitleTranslated = { articleId, translatedTitle ->
+                    publishLiveTranslatedTitle(articleId, translatedTitle)
+                    rememberPendingTitleUpdate(articleId, translatedTitle, config)
+                },
                 onProgress = { completed, _ ->
                     translationProgress.value = completed
                 },
@@ -177,36 +233,113 @@ constructor(
                 },
             )
 
-        results.forEach { (articleId, translatedTitle) ->
-            updateCacheAndDatabase(articleId, translatedTitle, config)
+        persistPendingTitleUpdates()
+    }
+
+    private fun publishLiveTranslatedTitle(articleId: String, translatedTitle: String) {
+        publishLiveTranslatedTitles(mapOf(articleId to translatedTitle))
+    }
+
+    private fun publishLiveTranslatedTitles(translatedTitles: Map<String, String>) {
+        if (translatedTitles.isEmpty()) return
+        _liveTranslatedTitles.update { current ->
+            current + translatedTitles
         }
     }
 
-    private suspend fun updateCacheAndDatabase(
+    private fun rememberPendingTitleUpdate(
         articleId: String,
         translatedTitle: String,
         config: TranslateModelConfig,
     ) {
-        articleDao.updateTranslatedTitle(articleId, translatedTitle)
+        synchronized(pendingTitleUpdatesLock) {
+            pendingTitleUpdates[articleId] =
+                PendingTitleUpdate(
+                    translatedTitle = translatedTitle,
+                    provider = config.provider,
+                    model = config.model,
+                )
+        }
+    }
+
+    private fun persistPendingTitleUpdatesAsync() {
+        val hasPendingUpdates =
+            synchronized(pendingTitleUpdatesLock) {
+                pendingTitleUpdates.isNotEmpty()
+            }
+        if (!hasPendingUpdates) return
+
+        applicationScope.launch(ioDispatcher) {
+            persistPendingTitleUpdatesSafely()
+        }
+    }
+
+    private suspend fun persistPendingTitleUpdatesSafely() {
+        try {
+            persistPendingTitleUpdates()
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "failed to persist completed title translations")
+        }
+    }
+
+    private suspend fun persistPendingTitleUpdates() {
+        val updates =
+            synchronized(pendingTitleUpdatesLock) {
+                pendingTitleUpdates.toMap()
+            }
+        if (updates.isEmpty()) return
+
+        articleDao.batchUpdateTranslatedTitle(
+            updates.mapValues { (_, update) -> update.translatedTitle }
+        )
+
+        updates.forEach { (articleId, update) ->
+            updateTitleCache(
+                articleId = articleId,
+                translatedTitle = update.translatedTitle,
+                provider = update.provider,
+                model = update.model,
+            )
+        }
+
+        synchronized(pendingTitleUpdatesLock) {
+            updates.forEach { (articleId, update) ->
+                if (pendingTitleUpdates[articleId] == update) {
+                    pendingTitleUpdates.remove(articleId)
+                }
+            }
+        }
+    }
+
+    private suspend fun updateTitleCache(
+        articleId: String,
+        translatedTitle: String,
+        provider: String,
+        model: String,
+    ) {
         translationCacheService.updateTitleOnly(
             articleId = articleId,
             translatedTitle = translatedTitle,
-            provider = config.provider,
-            model = config.model,
+            provider = provider,
+            model = model,
         )
     }
 
     fun cancelTranslation(feedId: String) {
         if (translatingFeedId != feedId) return
+        currentTranslateService?.cancel()
         currentTranslationJob?.cancel()
         currentTranslationJob = null
         isTranslating.value = false
+        persistPendingTitleUpdatesAsync()
     }
 
     fun cancelAllTranslations() {
+        currentTranslateService?.cancel()
         currentTranslationJob?.cancel()
         currentTranslationJob = null
         isTranslating.value = false
         translatingFeedId = null
+        persistPendingTitleUpdatesAsync()
     }
 }

@@ -128,7 +128,7 @@ fun LazyListScope.ArticleList(
                     item(key = key(item), contentType = contentType(item)) {
                         val article = item.articleWithFeed.article
                         val hasImage = article.img != null
-                    val translatedTitle = translatedTitleProvider(item.articleWithFeed)
+                        val translatedTitle = translatedTitleProvider(item.articleWithFeed)
 
                         // 2026-01-27: 判断是否应该显示大图模式
                         // 第一篇有图片的文章（index == 1，因为 index == 0 是 ArticleFlowItem.Date）
@@ -143,6 +143,7 @@ fun LazyListScope.ArticleList(
                             LargeImageArticleItem(
                                 modifier = Modifier.padding(horizontal = 1.dp, vertical = 1.dp),
                                 articleWithFeed = item.articleWithFeed,
+                                translatedTitle = translatedTitle,
                                 onClick = { onClick(it, index) }
                             )
                         } else {
@@ -150,6 +151,7 @@ fun LazyListScope.ArticleList(
                             SwipeableArticleItem(
                                 articleWithFeed = item.articleWithFeed,
                                 isUnread = diffMap[article.id]?.isUnread ?: article.isUnread,
+                                translatedTitle = translatedTitle,
                                 articleListTonalElevation = articleListTonalElevation,
                                 colorTheme = colorTheme,
                                 onClick = { onClick(it, index) },

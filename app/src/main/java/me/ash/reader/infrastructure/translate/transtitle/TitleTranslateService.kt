@@ -28,6 +28,7 @@ class TitleTranslateService(
      * @param articleIds 对应的文章 ID 列表（索引与 titles 一一对应）
      * @param config 翻译配置
      * @param translateService 翻译服务（用于取消）
+     * @param onTitleTranslated 单个标题完成回调 (articleId, translatedTitle)
      * @param onProgress 进度回调 (completed, total)
      * @param onError 错误回调
      * @return 文章 ID 到翻译结果的映射（按顺序对应）
@@ -37,6 +38,7 @@ class TitleTranslateService(
         articleIds: List<String>,
         config: TranslateModelConfig,
         translateService: StreamTranslateService,
+        onTitleTranslated: (articleId: String, translatedTitle: String) -> Unit,
         onProgress: (completed: Int, total: Int) -> Unit,
         onError: (error: Throwable) -> Unit
     ): Map<String, String> {
@@ -57,6 +59,14 @@ class TitleTranslateService(
                 config = config,
                 onNodeCompleted = { nodeId, translatedText ->
                     Timber.tag(TAG).d("节点 $nodeId 翻译完成：$translatedText")
+                    val articleId = articleIds.getOrNull(nodeId)
+                    if (articleId == null) {
+                        Timber.tag(TAG).w("节点 $nodeId 超出文章ID列表范围")
+                    } else {
+                        result[articleId] = translatedText
+                        onTitleTranslated(articleId, translatedText)
+                        Timber.tag(TAG).d("文章 $articleId 的标题实时翻译完成：$translatedText")
+                    }
                 },
                 onProgress = { completed, total ->
                     Timber.tag(TAG).d("翻译进度：$completed / $total")
@@ -72,12 +82,15 @@ class TitleTranslateService(
             coroutineContext.ensureActive()
 
             // 直接按顺序映射：返回的原文列表按顺序对应到文章ID
-            Timber.tag(TAG).d("解析翻译结果，按顺序映射")
+            Timber.tag(TAG).d("解析翻译结果，补齐未通过节点回调返回的标题")
             translatedTexts.forEachIndexed { index, translatedTitle ->
                 if (index < articleIds.size) {
                     val articleId = articleIds[index]
-                    result[articleId] = translatedTitle
-                    Timber.tag(TAG).d("文章 $articleId 的标题翻译完成：$translatedTitle")
+                    if (!result.containsKey(articleId)) {
+                        result[articleId] = translatedTitle
+                        onTitleTranslated(articleId, translatedTitle)
+                        Timber.tag(TAG).d("文章 $articleId 的标题翻译补齐完成：$translatedTitle")
+                    }
                 } else {
                     Timber.tag(TAG).w("索引 $index 超出文章ID列表范围")
                 }
