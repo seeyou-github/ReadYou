@@ -1,6 +1,7 @@
 package me.ash.reader.infrastructure.translate.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -51,6 +54,8 @@ import me.ash.reader.ui.component.base.DisplayText
 import me.ash.reader.ui.component.base.FeedbackIconButton
 import me.ash.reader.ui.component.base.RYScaffold
 import me.ash.reader.ui.theme.palette.onLight
+
+private fun displayEnabledModelName(modelId: String): String = modelId.substringAfterLast("/")
 
 /**
  * 提供商配置页面
@@ -104,6 +109,19 @@ fun ProviderConfigPage(
                 rpm = rpm
             )
             QuickTranslateModelPreference.put(context, scope, updatedModelConfig)
+        }
+    }
+
+    fun saveEnabledModels(enabledModels: List<String>) {
+        val newConfig = TranslateProviderConfig(
+            providerId = providerId,
+            apiKey = apiKey,
+            rpm = rpm,
+            enabledModels = enabledModels
+        )
+        when (providerId) {
+            "siliconflow" -> SiliconFlowConfigPreference.put(context, scope, newConfig)
+            "cerebras" -> CerebrasConfigPreference.put(context, scope, newConfig)
         }
     }
 
@@ -195,12 +213,29 @@ fun ProviderConfigPage(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             config.enabledModels.forEach { modelId ->
-                                Text(
-                                    text = modelId,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = displayEnabledModelName(modelId),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            saveEnabledModels(config.enabledModels - modelId)
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Close,
+                                            contentDescription = "删除模型"
+                                        )
+                                    }
+                                }
                             }
                         } else {
                             Text(
