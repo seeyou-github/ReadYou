@@ -92,5 +92,39 @@ images.forEach(function(img) {
         console.error("Failed to load image:", img.src);
     };
 });
+
+function mediaAspectRatio(media) {
+    const width = Number.parseFloat(media.getAttribute("width"));
+    const height = Number.parseFloat(media.getAttribute("height"));
+
+    if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+        return width / height;
+    }
+
+    if (media.tagName === "VIDEO" && media.videoWidth > 0 && media.videoHeight > 0) {
+        return media.videoWidth / media.videoHeight;
+    }
+
+    return 16 / 9;
+}
+
+function resizeEmbeddedMedia() {
+    document.querySelectorAll("iframe, embed, object, video").forEach(function(media) {
+        const ratio = mediaAspectRatio(media);
+        media.style.aspectRatio = ratio;
+        media.style.width = "100%";
+        media.style.maxWidth = "100%";
+
+        if (media.tagName !== "VIDEO" || media.videoWidth === 0 || media.videoHeight === 0) {
+            media.style.height = (media.clientWidth / ratio) + "px";
+        }
+    });
+}
+
+resizeEmbeddedMedia();
+window.addEventListener("resize", resizeEmbeddedMedia);
+document.querySelectorAll("video").forEach(function(video) {
+    video.addEventListener("loadedmetadata", resizeEmbeddedMedia);
+});
 """
 }

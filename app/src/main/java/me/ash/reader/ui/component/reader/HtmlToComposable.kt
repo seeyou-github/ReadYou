@@ -22,6 +22,7 @@ package me.ash.reader.ui.component.reader
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,7 +39,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -50,6 +54,7 @@ import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import java.io.InputStream
 import me.ash.reader.R
 import me.ash.reader.infrastructure.preference.LocalReadingImageBrightness
@@ -657,28 +662,32 @@ private fun TextComposer.appendTextChildren(
                         if (video != null) {
                             appendImage(onLinkClick = onLinkClick) {
                                 lazyListScope.item {
-                                    val contentWidth = LocalImageContentWidth.current
+                                    val contentWidth = LocalTextContentWidth.current
+                                    val aspectRatio = element.videoAspectRatio()
                                     Column(
                                         modifier =
                                             Modifier.width(contentWidth)
-                                                .padding(vertical = 32.dp)
+                                                .padding(
+                                                    horizontal = textHorizontalPadding().dp,
+                                                    vertical = 32.dp,
+                                                )
                                     ) {
                                         DisableSelection {
-                                            Box() {
-                                                ArticleImage(
-                                                    data = video.imageUrl,
-                                                    shape = imageShape(),
-                                                    onClick = { onLinkClick(video.link) },
+                                            Box(modifier = Modifier.aspectRatio(aspectRatio)) {
+                                                AsyncImage(
+                                                    model = video.imageUrl,
                                                     contentDescription =
                                                         stringResource(
                                                             R.string.touch_to_play_video
                                                         ),
-                                                    fillMaxWidth = true,
-                                                    contentPadding =
-                                                        PaddingValues(
-                                                            horizontal = imageHorizontalPadding().dp
-                                                        ),
-                                                    brightness = imageBrightness,
+                                                    contentScale = ContentScale.Crop,
+                                                    colorFilter = videoBrightnessFilter(imageBrightness),
+                                                    modifier =
+                                                        Modifier.matchParentSize()
+                                                            .clip(imageShape())
+                                                            .clickable {
+                                                                onLinkClick(video.link)
+                                                            },
                                                 )
                                                 Box(
                                                     modifier =
@@ -735,6 +744,28 @@ private fun TextComposer.appendTextChildren(
         node = node.nextSibling()
     }
 }
+
+private fun Element.videoAspectRatio(): Float {
+    val width = attr("width").toFloatOrNull()
+    val height = attr("height").toFloatOrNull()
+
+    return if (width != null && height != null && width > 0f && height > 0f) {
+        (width / height).coerceIn(0.5f, 3f)
+    } else {
+        16 / 9f
+    }
+}
+
+private fun videoBrightnessFilter(brightness: Int): ColorFilter? =
+    if (brightness < 100) {
+        val brightnessValue = brightness / 100f
+        ColorFilter.lighting(
+            multiply = Color(brightnessValue, brightnessValue, brightnessValue),
+            add = Color.Transparent,
+        )
+    } else {
+        null
+    }
 
 private fun String.asFontFamily(): FontFamily? =
     when (this.lowercase()) {

@@ -174,10 +174,6 @@ div > a {
 }
 
 /* Image  */
-iframe,
-video,
-embed,
-object,
 img {
     margin-top: 0.5em !important;
     margin-left: calc(0px - var(--text-margin) + var(--img-margin)) !important;
@@ -189,6 +185,25 @@ img {
 
 img {
      height: auto !important;
+}
+
+/* Embedded videos should align with the text column, not the wider image column. */
+iframe,
+video,
+embed,
+object {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-top: 0.5em !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-radius: var(--img-border-radius) !important;
+    filter: brightness(var(--img-brightness)) !important;
+}
+
+video {
+    height: auto !important;
 }
 
 img::after {
