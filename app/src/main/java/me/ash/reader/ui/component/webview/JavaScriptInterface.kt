@@ -17,6 +17,9 @@ interface JavaScriptInterface {
     @JavascriptInterface
     fun onImgTagClick(imgUrl: String?, alt: String?)
 
+    @JavascriptInterface
+    fun onMediaAspectRatioChanged(width: Float, height: Float)
+
     // ========== 翻译相关回调 ==========
 
     /**

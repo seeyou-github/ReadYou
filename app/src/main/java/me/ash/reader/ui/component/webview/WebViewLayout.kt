@@ -18,8 +18,9 @@ object WebViewLayout {
         enableJavaScript: Boolean = true,
         onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
     ) = WebView(context).apply {
+        val fullscreenWebChromeClient = FullscreenWebChromeClient(context)
         this.webViewClient = webViewClient
-        webChromeClient = FullscreenWebChromeClient(context)
+        webChromeClient = fullscreenWebChromeClient
         scrollBarSize = 0
         isHorizontalScrollBarEnabled = false
         isVerticalScrollBarEnabled = true
@@ -52,6 +53,11 @@ object WebViewLayout {
                     if (onImageClick != null && imgUrl != null) {
                         onImageClick.invoke(imgUrl, alt ?: "")
                     }
+                }
+
+                @JavascriptInterface
+                override fun onMediaAspectRatioChanged(width: Float, height: Float) {
+                    fullscreenWebChromeClient.updateMediaAspectRatio(width, height)
                 }
 
                 @JavascriptInterface

@@ -84,8 +84,8 @@ class PluginSyncService @Inject constructor(
                 // When list image selector is empty, fallback to first detail image (preview only).
                 items.take(10).map { item ->
                     if (!item.image.isNullOrBlank()) return@map item
-                    val detail = parseDetail(item, rule)
-                    item.copy(image = detail.coverImage)
+                    val detail = runCatching { parseDetail(item, rule) }.getOrNull()
+                    item.copy(image = detail?.coverImage)
                 }
             }.onFailure {
                 Log.e(TAG, "preview list items failed: ${it.message}")

@@ -108,7 +108,37 @@ function mediaAspectRatio(media) {
     return 16 / 9;
 }
 
+function mediaIntrinsicSize(media) {
+    const attrWidth = Number.parseFloat(media.getAttribute("width"));
+    const attrHeight = Number.parseFloat(media.getAttribute("height"));
+
+    if (Number.isFinite(attrWidth) && Number.isFinite(attrHeight) && attrWidth > 0 && attrHeight > 0) {
+        return { width: attrWidth, height: attrHeight };
+    }
+
+    if (media.tagName === "VIDEO" && media.videoWidth > 0 && media.videoHeight > 0) {
+        return { width: media.videoWidth, height: media.videoHeight };
+    }
+
+    if (media.clientWidth > 0 && media.clientHeight > 0) {
+        return { width: media.clientWidth, height: media.clientHeight };
+    }
+
+    return { width: 16, height: 9 };
+}
+
+function reportMediaAspectRatio(media) {
+    try {
+        const size = mediaIntrinsicSize(media);
+        JavaScriptInterface.onMediaAspectRatioChanged(size.width, size.height);
+    } catch (e) {
+        console.error("Failed to report media aspect ratio:", e);
+    }
+}
+
 function resizeEmbeddedMedia() {
+    let largestMedia = null;
+    let largestArea = 0;
     document.querySelectorAll("iframe, embed, object, video").forEach(function(media) {
         const ratio = mediaAspectRatio(media);
         media.style.aspectRatio = ratio;
@@ -118,13 +148,34 @@ function resizeEmbeddedMedia() {
         if (media.tagName !== "VIDEO" || media.videoWidth === 0 || media.videoHeight === 0) {
             media.style.height = (media.clientWidth / ratio) + "px";
         }
+
+        const area = media.clientWidth * media.clientHeight;
+        if (area > largestArea) {
+            largestArea = area;
+            largestMedia = media;
+        }
     });
+
+    if (largestMedia !== null) {
+        reportMediaAspectRatio(largestMedia);
+    }
 }
 
 resizeEmbeddedMedia();
 window.addEventListener("resize", resizeEmbeddedMedia);
+document.querySelectorAll("iframe, embed, object, video").forEach(function(media) {
+    media.addEventListener("pointerdown", function() {
+        reportMediaAspectRatio(media);
+    });
+    media.addEventListener("click", function() {
+        reportMediaAspectRatio(media);
+    });
+});
 document.querySelectorAll("video").forEach(function(video) {
-    video.addEventListener("loadedmetadata", resizeEmbeddedMedia);
+    video.addEventListener("loadedmetadata", function() {
+        reportMediaAspectRatio(video);
+        resizeEmbeddedMedia();
+    });
 });
 """
 }

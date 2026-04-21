@@ -504,10 +504,11 @@ class ArticleListReaderViewModel
         if (rule == null) {
             val reason = "Local rule not found: $ruleId"
             Timber.tag("LocalRuleFullContent").w("ensurePluginContent: %s", reason)
-            _readingUiState.update { it.copy(localRuleContentError = reason) }
+            updateLocalRuleContentErrorIfCurrent(article.id, reason)
             return null
         }
-        val detailResult = fetchPluginDetailWithRetry(rule, article.link)
+        val detailResult = fetchPluginDetailWithRetry(rule, article)
+        if (!isCurrentReadingArticle(article.id)) return null
         val detail = detailResult.getOrNull()
         if (detail == null) {
             val reason = detailResult.exceptionOrNull()?.message ?: "Unknown detail fetch error"
@@ -516,8 +517,7 @@ class ArticleListReaderViewModel
                 article.link,
                 reason,
             )
-            _readingUiState.update { it.copy(localRuleContentError = reason) }
-            return null
+            return fetchFallbackFullContent(article, reason)
         }
         val content = detail.contentHtml
         if (content.isBlank()) {
@@ -544,7 +544,7 @@ class ArticleListReaderViewModel
                 sourceTime = detail.time ?: article.sourceTime,
             )
         articleDao.update(updated)
-        _readingUiState.update { it.copy(articleWithFeed = articleWithFeed.copy(article = updated)) }
+        updateReadingArticleIfCurrent(article.id, articleWithFeed.copy(article = updated))
         Timber.tag("LocalRuleFullContent").d(
             "ensurePluginContent: updated article content len=%s",
             content.length
@@ -554,11 +554,14 @@ class ArticleListReaderViewModel
 
     private suspend fun fetchPluginDetailWithRetry(
         rule: me.ash.reader.plugin.PluginRule,
-        link: String,
+        article: Article,
     ): Result<PluginSyncService.DetailResult> {
         var lastError: Throwable? = null
         repeat(2) { attempt ->
-            val result = pluginSyncService.fetchDetail(rule, link)
+            if (!isCurrentReadingArticle(article.id)) {
+                return Result.failure(IllegalStateException("Article changed"))
+            }
+            val result = pluginSyncService.fetchDetail(rule, article.link)
             val detail = result.getOrNull()
             if (detail != null && detail.contentHtml.isNotBlank()) {
                 return Result.success(detail)
@@ -568,10 +571,51 @@ class ArticleListReaderViewModel
                 result.exceptionOrNull()
                     ?: IllegalStateException("Detail content is empty")
             if (attempt == 0) {
-                _readerEvent.emit(ReaderEvent.LocalRuleContentRetrying)
+                emitLocalRuleRetryingIfCurrent(article.id)
             }
         }
         return Result.failure(lastError ?: IllegalStateException("Unknown detail fetch error"))
+    }
+
+    private suspend fun fetchFallbackFullContent(article: Article, localRuleReason: String): String? {
+        val fallbackResult = readerCacheHelper.readOrFetchFullContent(article)
+        val fallback = fallbackResult.getOrNull()?.ifBlank { null }
+        if (fallback != null) {
+            Timber.tag("LocalRuleFullContent").d(
+                "ensurePluginContent: fallback readability len=%s",
+                fallback.length,
+            )
+            return fallback
+        }
+
+        val fallbackReason = fallbackResult.exceptionOrNull()?.message
+            ?: "Fallback full content parsing failed"
+        updateLocalRuleContentErrorIfCurrent(
+            article.id,
+            "$localRuleReason; $fallbackReason",
+        )
+        return null
+    }
+
+    private fun isCurrentReadingArticle(articleId: String): Boolean =
+        _readingUiState.value.articleWithFeed?.article?.id == articleId
+
+    private suspend fun emitLocalRuleRetryingIfCurrent(articleId: String) {
+        if (isCurrentReadingArticle(articleId)) {
+            _readerEvent.emit(ReaderEvent.LocalRuleContentRetrying)
+        }
+    }
+
+    private fun updateLocalRuleContentErrorIfCurrent(articleId: String, reason: String) {
+        if (isCurrentReadingArticle(articleId)) {
+            _readingUiState.update { it.copy(localRuleContentError = reason) }
+        }
+    }
+
+    private fun updateReadingArticleIfCurrent(articleId: String, articleWithFeed: ArticleWithFeed) {
+        if (isCurrentReadingArticle(articleId)) {
+            _readingUiState.update { it.copy(articleWithFeed = articleWithFeed) }
+        }
     }
 
     fun renderDescriptionContent() {
