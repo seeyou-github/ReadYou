@@ -19,6 +19,7 @@ object WebViewLayout {
         onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
     ) = WebView(context).apply {
         this.webViewClient = webViewClient
+        webChromeClient = FullscreenWebChromeClient(context)
         scrollBarSize = 0
         isHorizontalScrollBarEnabled = false
         isVerticalScrollBarEnabled = true
@@ -44,6 +45,7 @@ object WebViewLayout {
             }
             domStorageEnabled = true
             javaScriptEnabled = enableJavaScript
+            mediaPlaybackRequiresUserGesture = false
             addJavascriptInterface(object : JavaScriptInterface {
                 @JavascriptInterface
                 override fun onImgTagClick(imgUrl: String?, alt: String?) {

@@ -331,12 +331,12 @@ class PluginSyncService @Inject constructor(
     private fun parseDetail(item: ListItem, rule: PluginRule): DetailResult {
         if (rule.detailContentSelector.isBlank() && rule.detailContentSelectors.isBlank()) {
             Log.w(TAG, "detail content selector missing")
-            return DetailResult()
+            throw PluginDetailException("Detail content selector is empty")
         }
-        val html = fetchHtml(item.link)
+        val html = fetchHtmlOrThrow(item.link)
         if (html.isBlank()) {
             Log.w(TAG, "detail html empty: ${item.link}")
-            return DetailResult()
+            throw PluginDetailException("Detail HTML is empty")
         }
         val doc = Jsoup.parse(html, item.link)
 
@@ -348,12 +348,16 @@ class PluginSyncService @Inject constructor(
         val images = selectMediaHtml(doc, rule.detailImageSelector, "img", "src")
         val videos = selectMediaHtml(doc, rule.detailVideoSelector, "video", "src")
         val audios = selectMediaHtml(doc, rule.detailAudioSelector, "audio", "src")
+        val mergedContent = mergeContent(contentHtml, images, videos, audios)
+        if (mergedContent.isBlank()) {
+            throw PluginDetailException("Detail content selector matched no content")
+        }
 
         return DetailResult(
             title = title,
             author = author,
             time = time,
-            contentHtml = mergeContent(contentHtml, images, videos, audios),
+            contentHtml = mergedContent,
             coverImage = images.firstOrNull(),
         )
     }
@@ -397,14 +401,22 @@ class PluginSyncService @Inject constructor(
 
     private fun fetchHtml(url: String): String {
         return runCatching {
-            val request = Request.Builder().url(url.formatUrl()).build()
-            okHttpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) throw IOException("http ${response.code}")
-                response.body?.string().orEmpty()
-            }
+            fetchHtmlOrThrow(url)
         }.onFailure {
             Log.e(TAG, "fetch html failed: $url ${it.message}")
         }.getOrDefault("")
+    }
+
+    private fun fetchHtmlOrThrow(url: String): String {
+        val request = Request.Builder().url(url.formatUrl()).build()
+        return okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("HTTP ${response.code} ${response.message}".trim())
+            }
+            response.body?.string().orEmpty().ifBlank {
+                throw IOException("HTML response body is empty")
+            }
+        }
     }
 
     private fun pickText(element: Element): String {
@@ -792,3 +804,5 @@ class PluginSyncService @Inject constructor(
         private const val TAG = "PluginSync"
     }
 }
+
+private class PluginDetailException(message: String) : IOException(message)

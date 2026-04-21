@@ -18,8 +18,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +70,7 @@ import me.ash.reader.ui.component.dialogs.ReadingPageStyleDialog
 import me.ash.reader.ui.component.reader.LocalReaderPaints
 import me.ash.reader.ui.page.adaptive.ArticleListReaderViewModel
 import me.ash.reader.ui.page.adaptive.NavigationAction
+import me.ash.reader.ui.page.adaptive.ReaderEvent
 import me.ash.reader.ui.page.adaptive.ReaderState
 import me.ash.reader.ui.page.home.reading.tts.TtsButton
 import me.ash.reader.infrastructure.translate.ui.TranslateButton
@@ -105,6 +109,22 @@ fun ReadingPage(
 
     // 2026-01-21: 新增阅读界面样式设置对话框状态
     var showReadingPageStyleDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(viewModel) {
+        viewModel.readerEvent.collect { event ->
+            when (event) {
+                ReaderEvent.LocalRuleContentRetrying -> {
+                    context.showToast(context.getString(R.string.local_rule_content_retrying))
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(readingUiState.localRuleContentError) {
+        if (readingUiState.localRuleContentError != null) {
+            context.showToast(context.getString(R.string.local_rule_content_failed_toast))
+        }
+    }
 
     // 2026-01-21: 修改 onNavigateToStylePage 的行为，显示对话框而不是导航
     // 由于 onNavigateToStylePage 是一个参数，我们需要在调用时设置对话框状态
@@ -551,6 +571,26 @@ fun ReadingPage(
             onDismiss = { showReadingPageStyleDialog = false },
             context = context,
             scope = coroutineScope
+        )
+    }
+
+    readingUiState.localRuleContentError?.let { reason ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissLocalRuleContentError() },
+            title = { Text(text = context.getString(R.string.local_rule_content_failed_title)) },
+            text = {
+                Text(
+                    text = context.getString(
+                        R.string.local_rule_content_failed_message,
+                        reason,
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissLocalRuleContentError() }) {
+                    Text(text = context.getString(R.string.confirm))
+                }
+            },
         )
     }
 

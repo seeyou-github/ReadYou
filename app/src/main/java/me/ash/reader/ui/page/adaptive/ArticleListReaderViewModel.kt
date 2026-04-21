@@ -15,8 +15,11 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -309,6 +312,9 @@ class ArticleListReaderViewModel
     private val _readingUiState = MutableStateFlow(ReadingUiState())
     val readingUiState: StateFlow<ReadingUiState> = _readingUiState.asStateFlow()
 
+    private val _readerEvent = MutableSharedFlow<ReaderEvent>(extraBufferCapacity = 1)
+    val readerEvent: SharedFlow<ReaderEvent> = _readerEvent.asSharedFlow()
+
     private val _readerState: MutableStateFlow<ReaderState> = MutableStateFlow(ReaderState())
     val readerStateStateFlow = _readerState.asStateFlow()
 
@@ -358,7 +364,12 @@ class ArticleListReaderViewModel
             }
             item.run {
                 _readingUiState.update {
-                    it.copy(articleWithFeed = this, isStarred = article.isStarred, isUnread = false)
+                    it.copy(
+                        articleWithFeed = this,
+                        isStarred = article.isStarred,
+                        isUnread = false,
+                        localRuleContentError = null,
+                    )
                 }
                 // 清理旧的 StreamTranslateManager（如果存在）
                 streamTranslateManager?.destroy()
@@ -390,6 +401,10 @@ class ArticleListReaderViewModel
     fun clearReadingData() {
         _readingUiState.update { ReadingUiState() }
         _readerState.update { ReaderState() }
+    }
+
+    fun dismissLocalRuleContentError() {
+        _readingUiState.update { it.copy(localRuleContentError = null) }
     }
 
     suspend fun ReaderState.renderContent(articleWithFeed: ArticleWithFeed): ReaderState {
@@ -487,12 +502,21 @@ class ArticleListReaderViewModel
         val ruleId = feed.url.removePrefix(PluginConstants.PLUGIN_URL_PREFIX)
         val rule = pluginRuleDao.queryById(ruleId)
         if (rule == null) {
-            Timber.tag("LocalRuleFullContent").w("ensurePluginContent: rule not found ruleId=%s", ruleId)
+            val reason = "Local rule not found: $ruleId"
+            Timber.tag("LocalRuleFullContent").w("ensurePluginContent: %s", reason)
+            _readingUiState.update { it.copy(localRuleContentError = reason) }
             return null
         }
-        val detail = pluginSyncService.fetchDetail(rule, article.link).getOrNull()
+        val detailResult = fetchPluginDetailWithRetry(rule, article.link)
+        val detail = detailResult.getOrNull()
         if (detail == null) {
-            Timber.tag("LocalRuleFullContent").w("ensurePluginContent: fetchDetail failed link=%s", article.link)
+            val reason = detailResult.exceptionOrNull()?.message ?: "Unknown detail fetch error"
+            Timber.tag("LocalRuleFullContent").w(
+                "ensurePluginContent: fetchDetail failed link=%s reason=%s",
+                article.link,
+                reason,
+            )
+            _readingUiState.update { it.copy(localRuleContentError = reason) }
             return null
         }
         val content = detail.contentHtml
@@ -526,6 +550,28 @@ class ArticleListReaderViewModel
             content.length
         )
         return content
+    }
+
+    private suspend fun fetchPluginDetailWithRetry(
+        rule: me.ash.reader.plugin.PluginRule,
+        link: String,
+    ): Result<PluginSyncService.DetailResult> {
+        var lastError: Throwable? = null
+        repeat(2) { attempt ->
+            val result = pluginSyncService.fetchDetail(rule, link)
+            val detail = result.getOrNull()
+            if (detail != null && detail.contentHtml.isNotBlank()) {
+                return Result.success(detail)
+            }
+
+            lastError =
+                result.exceptionOrNull()
+                    ?: IllegalStateException("Detail content is empty")
+            if (attempt == 0) {
+                _readerEvent.emit(ReaderEvent.LocalRuleContentRetrying)
+            }
+        }
+        return Result.failure(lastError ?: IllegalStateException("Unknown detail fetch error"))
     }
 
     fun renderDescriptionContent() {
@@ -1025,7 +1071,12 @@ data class ReadingUiState(
     val articleWithFeed: ArticleWithFeed? = null,
     val isUnread: Boolean = false,
     val isStarred: Boolean = false,
+    val localRuleContentError: String? = null,
 )
+
+sealed interface ReaderEvent {
+    data object LocalRuleContentRetrying : ReaderEvent
+}
 
 data class TranslationState(
     val translateState: TranslateState = TranslateState.Idle,  // 翻译状态

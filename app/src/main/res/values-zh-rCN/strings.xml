@@ -408,6 +408,10 @@
     <string name="import_icon">导入图标</string>
     <string name="export_icon">导出图标</string>
     <string name="plugin_cache_content_on_update">更新时缓存正文</string>
+    <string name="local_rule_content_retrying">文章正文加载失败，正在重试…</string>
+    <string name="local_rule_content_failed_toast">文章正文加载失败</string>
+    <string name="local_rule_content_failed_title">文章正文加载失败</string>
+    <string name="local_rule_content_failed_message">本地规则无法下载或解析这篇文章。\n\n原因：%1$s</string>
     <string name="cache_title_image_on_update">更新时缓存标题图片</string>
     <string name="cache_content_image_on_update">更新时缓存正文图片</string>
 

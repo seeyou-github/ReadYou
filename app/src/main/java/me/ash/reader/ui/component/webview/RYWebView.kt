@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -103,6 +104,7 @@ fun RYWebView(
         else if (readingFonts is ReadingFontsPreference.GoogleSans) {
             "/android_res/font/google_sans_flex.ttf"
         } else null
+    var loadedHtml by remember(webView) { mutableStateOf<String?>(null) }
 
     AndroidView(
         modifier = modifier,
@@ -113,8 +115,7 @@ fun RYWebView(
                 Log.i("RLog", "readingFont: ${context.filesDir.absolutePath}")
 //                Log.i("RLog", "CustomWebView: ${content}")
                 settings.defaultFontSize = fontSize
-                loadDataWithBaseURL(
-                    null,
+                val html =
                     WebViewHtml.HTML.format(
                         WebViewStyle.get(
                             fontSize = fontSize,
@@ -141,11 +142,17 @@ fun RYWebView(
                         url,
                         content,
                         WebViewScript.get(boldCharacters.value),
-                    ),
-                    "text/HTML",
-                    "UTF-8",
-                    null,
-                )
+                    )
+                if (loadedHtml != html) {
+                    loadedHtml = html
+                    loadDataWithBaseURL(
+                        null,
+                        html,
+                        "text/HTML",
+                        "UTF-8",
+                        null,
+                    )
+                }
                 // 通知 WebView 已准备就绪
                 onWebViewReady?.invoke(it)
             }
