@@ -51,7 +51,6 @@ constructor(
                 database.invalidationTracker.addObserver(tableObserver)
                 merge(
                     context.dataStore.data
-                        .drop(1)
                         .map { preferences ->
                             preferences.asMap()
                                 .filterKeys { key ->
@@ -59,6 +58,7 @@ constructor(
                                 }
                         }
                         .distinctUntilChanged()
+                        .drop(1)
                         .map { },
                     databaseChanges,
                 )
