@@ -5,33 +5,33 @@ import android.net.Uri
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
-import androidx.compose.runtime.LaunchedEffect
-import android.widget.Toast
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,7 +48,6 @@ import me.ash.reader.ui.component.base.RYScaffold
 import me.ash.reader.ui.component.base.RadioDialogOption
 import me.ash.reader.ui.component.base.Subtitle
 import me.ash.reader.ui.ext.MimeType
-import me.ash.reader.ui.ext.getCurrentVersion
 import me.ash.reader.ui.ext.collectAsStateValue
 import me.ash.reader.ui.page.settings.SettingItem
 import me.ash.reader.ui.theme.palette.onLight
@@ -60,6 +59,10 @@ fun BackupAndRestorePage(
 ) {
     val context = LocalContext.current
     val uiState = viewModel.backupUiState.collectAsStateValue()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadAutoBackupDirectory(context)
+    }
 
     // Show backup success/error toast
     LaunchedEffect(uiState.backupSuccess, uiState.backupError) {
@@ -119,6 +122,14 @@ fun BackupAndRestorePage(
             viewModel.tryRestoreOneClick(context, inputStream.readBytes())
         }
     }}
+
+    val autoBackupDirectoryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let {
+            viewModel.setAutoBackupDirectory(context, it)
+        }
+    }
 
     val exportOPMLLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(MimeType.ANY)
@@ -214,6 +225,24 @@ fun BackupAndRestorePage(
                                 Text(text = stringResource(R.string.one_click_restore))
                             }
                         }
+                    }
+                    SettingItem(
+                        title = stringResource(R.string.auto_backup_directory),
+                        desc =
+                            uiState.autoBackupDirectoryUri
+                                .takeIf { it.isNotBlank() }
+                                ?: stringResource(R.string.backup_not_set),
+                        onClick = {
+                            autoBackupDirectoryLauncher.launch(null)
+                        },
+                    )
+                    uiState.autoBackupDirectoryError?.let { error ->
+                        Text(
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                            text = stringResource(R.string.auto_backup_directory_failed, error),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                 }

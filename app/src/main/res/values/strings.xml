@@ -416,6 +416,8 @@
     <string name="one_click_backup_desc">Backup subscriptions, keywords, and app settings</string>
     <string name="backup_location">Backup location</string>
     <string name="backup_not_set">Not set</string>
+    <string name="auto_backup_directory">Automatic backup directory</string>
+    <string name="auto_backup_directory_failed">Automatic backup directory is not readable and writable: %1$s</string>
     <string name="one_click_restore">One-click restore</string>
     <string name="one_click_restore_warning">This will overwrite current settings, subscriptions, and keywords. Continue?</string>
     <string name="backup_success">Backup completed successfully</string>

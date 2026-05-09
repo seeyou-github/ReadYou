@@ -29,6 +29,7 @@ import me.ash.reader.infrastructure.rss.OPMLDataSource
 import me.ash.reader.infrastructure.rss.RssHelper
 import me.ash.reader.ui.ext.del
 import me.ash.reader.ui.ext.getLatestApk
+import me.ash.reader.ui.page.settings.backup.AutoBackupManager
 //import me.ash.reader.ui.ext.isGitHub
 import okhttp3.OkHttpClient
 import timber.log.Timber
@@ -87,6 +88,8 @@ class AndroidApp : Application(), Configuration.Provider {
 
     @Inject lateinit var diffMapHolder: DiffMapHolder
 
+    @Inject lateinit var autoBackupManager: AutoBackupManager
+
     /**
      * When the application startup.
      * 1. Set the uncaught exception handler
@@ -102,6 +105,7 @@ class AndroidApp : Application(), Configuration.Provider {
         }
         applicationScope.launch {
             accountInit()
+            autoBackupManager.start()
             // 2026-01-22: 注释掉自动同步
             // 修改原因：用户需求，进入app时不自动执行更新订阅操作
             // workerInit()

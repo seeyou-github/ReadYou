@@ -247,6 +247,7 @@ sealed interface PreferencesKey {
         const val longPressTranslateModel = "long_press_translate_model"
         const val siliconFlowConfig = "siliconflow_config"
         const val cerebrasConfig = "cerebras_config"
+        const val autoBackupDirectoryUri = "auto_backup_directory_uri"
 
         private val keyList =
             listOf(
@@ -364,6 +365,7 @@ sealed interface PreferencesKey {
                 StringKey(longPressTranslateModel),
                 StringKey(siliconFlowConfig),
                 StringKey(cerebrasConfig),
+                StringKey(autoBackupDirectoryUri),
             )
 
         val keys = keyList.associateBy { it.name }
@@ -495,6 +497,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val longPressTranslateModel = "long_press_translate_model"
         const val siliconFlowConfig = "siliconflow_config"
         const val cerebrasConfig = "cerebras_config"
+        const val autoBackupDirectoryUri = "auto_backup_directory_uri"
 
         val keys: MutableMap<String, DataStoreKey<*>> =
             mutableMapOf(
@@ -725,6 +728,8 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(stringPreferencesKey(siliconFlowConfig), String::class.java),
                 cerebrasConfig to
                     DataStoreKey(stringPreferencesKey(cerebrasConfig), String::class.java),
+                autoBackupDirectoryUri to
+                    DataStoreKey(stringPreferencesKey(autoBackupDirectoryUri), String::class.java),
             )
     }
 }
@@ -734,6 +739,7 @@ val ignorePreferencesOnExportAndImport =
         DataStoreKey.currentAccountId,
         DataStoreKey.currentAccountType,
         DataStoreKey.isFirstLaunch,
+        DataStoreKey.autoBackupDirectoryUri,
     )
 
 suspend fun Context.fromDataStoreToJSONString(): String {

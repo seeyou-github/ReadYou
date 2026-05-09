@@ -315,6 +315,8 @@
     <string name="one_click_restore_warning">將覆蓋目前設定、訂閱來源與關鍵字，是否繼續？</string>
     <string name="backup_success">備份成功</string>
     <string name="backup_failed">備份失敗：%1$s</string>
+    <string name="auto_backup_directory">自動備份目錄</string>
+    <string name="auto_backup_directory_failed">自動備份目錄無法讀寫：%1$s</string>
     <string name="restore_success">還原成功</string>
     <string name="restore_failed">還原失敗：%1$s</string>
     <string name="unfold_more">全部展開</string>

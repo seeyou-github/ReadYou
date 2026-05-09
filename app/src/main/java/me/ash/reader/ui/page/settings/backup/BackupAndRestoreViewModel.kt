@@ -2,6 +2,8 @@
 
 import android.content.Context
 import android.net.Uri
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
@@ -11,6 +13,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.ash.reader.domain.model.blacklist.BlacklistKeyword
@@ -22,6 +25,8 @@ import me.ash.reader.domain.repository.GroupDao
 import me.ash.reader.domain.service.AccountService
 import me.ash.reader.domain.service.OpmlService
 import me.ash.reader.infrastructure.di.IODispatcher
+import me.ash.reader.ui.ext.DataStoreKey
+import me.ash.reader.ui.ext.dataStore
 import me.ash.reader.infrastructure.preference.AutoMarkAsReadPreference
 import me.ash.reader.infrastructure.preference.KeepArchivedPreference
 import me.ash.reader.infrastructure.preference.SyncBlockListPreference
@@ -45,6 +50,7 @@ constructor(
     private val groupDao: GroupDao,
     private val feedDao: FeedDao,
     private val pluginRuleDao: PluginRuleDao,
+    private val oneClickBackupService: OneClickBackupService,
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -168,43 +174,59 @@ constructor(
         _backupUiState.update { it.copy(oneClickRestoreDialogVisible = false) }
     }
 
+    fun loadAutoBackupDirectory(context: Context) {
+        viewModelScope.launch(ioDispatcher) {
+            val uri = context.dataStore.data.first()[stringPreferencesKey(
+                DataStoreKey.autoBackupDirectoryUri,
+            )] ?: ""
+            _backupUiState.update { it.copy(autoBackupDirectoryUri = uri) }
+        }
+    }
+
+    fun setAutoBackupDirectory(context: Context, uri: Uri) {
+        viewModelScope.launch(ioDispatcher) {
+            _backupUiState.update { it.copy(autoBackupDirectoryError = null) }
+            try {
+                oneClickBackupService.testDirectoryReadWrite(uri)
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+                context.dataStore.edit { preferences ->
+                    preferences[stringPreferencesKey(
+                        DataStoreKey.autoBackupDirectoryUri,
+                    )] = uri.toString()
+                }
+                _backupUiState.update {
+                    it.copy(autoBackupDirectoryUri = uri.toString(), autoBackupDirectoryError = null)
+                }
+            } catch (e: Exception) {
+                _backupUiState.update {
+                    it.copy(autoBackupDirectoryError = e.message ?: "Directory is not writable")
+                }
+            }
+        }
+    }
+
+    fun clearAutoBackupDirectory(context: Context) {
+        viewModelScope.launch(ioDispatcher) {
+            context.dataStore.edit { preferences ->
+                preferences.remove(
+                    stringPreferencesKey(
+                        DataStoreKey.autoBackupDirectoryUri,
+                    )
+                )
+            }
+            _backupUiState.update { it.copy(autoBackupDirectoryUri = "") }
+        }
+    }
+
     fun performOneClickBackup(context: Context, outputUri: Uri) {
         viewModelScope.launch(ioDispatcher) {
             _backupUiState.update { it.copy(isBackingUp = true, backupSuccess = false, backupError = null) }
             try {
-                val accountId = accountService.getCurrentAccountId()
-                val account = accountService.getAccountById(accountId)
-                val payload =
-                    OneClickBackupPayload(
-                        version = 2,
-                        exportedAt = System.currentTimeMillis(),
-                        accountId = accountId,
-                        autoMarkAsReadMs = account?.autoMarkAsRead?.value,
-                        accountSettings =
-                            account?.let {
-                                AccountSettingsBackupPayload(
-                                    syncIntervalMinutes = it.syncInterval.value,
-                                    syncOnStart = it.syncOnStart.value,
-                                    syncOnlyOnWiFi = it.syncOnlyOnWiFi.value,
-                                    syncOnlyWhenCharging = it.syncOnlyWhenCharging.value,
-                                    keepArchivedMs = it.keepArchived.value,
-                                    autoMarkAsReadMs = it.autoMarkAsRead.value,
-                                    syncBlockList = it.syncBlockList.joinToString("\n"),
-                                )
-                            },
-                        preferencesJson = context.fromDataStoreToJSONString(),
-                        groups = groupDao.queryAll(accountId),
-                        feeds = feedDao.queryAll(accountId),
-                        keywords = blacklistKeywordDao.getAllSync(),
-                        pluginRules = pluginRuleDao.queryAll(accountId),
-                    )
-                val json = Gson().toJson(payload)
-                context.contentResolver.openOutputStream(outputUri)?.use {
-                    it.write(json.toByteArray())
-                } ?: run {
-                    _backupUiState.update { it.copy(isBackingUp = false, backupError = "Failed to write backup") }
-                    return@launch
-                }
+                oneClickBackupService.writeBackup(outputUri)
                 _backupUiState.update { it.copy(isBackingUp = false, backupSuccess = true) }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -343,6 +365,8 @@ data class BackupUiState(
     val restoreError: String? = null,
     val oneClickRestoreDialogVisible: Boolean = false,
     val oneClickRestoreByteArray: ByteArray = ByteArray(0),
+    val autoBackupDirectoryUri: String = "",
+    val autoBackupDirectoryError: String? = null,
 )
 
 sealed class ExportOPMLMode {

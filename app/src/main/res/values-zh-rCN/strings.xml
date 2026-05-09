@@ -338,6 +338,8 @@
     <string name="one_click_restore_warning">将覆盖当前设置、订阅源和关键字，是否继续？</string>
     <string name="backup_location">备份位置</string>
     <string name="backup_not_set">未设置</string>
+    <string name="auto_backup_directory">自动备份目录</string>
+    <string name="auto_backup_directory_failed">自动备份目录无法读写：%1$s</string>
     <string name="backup_success">备份成功</string>
     <string name="backup_failed">备份失败：%1$s</string>
     <string name="restore_success">恢复成功</string>
