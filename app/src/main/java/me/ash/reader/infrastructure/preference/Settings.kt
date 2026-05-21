@@ -113,6 +113,7 @@ data class Settings(
     val cerebrasConfig: TranslateProviderConfig? = null,
     val translateProviders: Map<String, TranslateProviderConfig> = emptyMap(),
     val translateProvidersOrder: List<String> = emptyList(),
+    val hiddenBuiltinTranslateProviders: Set<String> = emptySet(),
 
     // Interaction
     val initialPage: InitialPagePreference = InitialPagePreference.default,

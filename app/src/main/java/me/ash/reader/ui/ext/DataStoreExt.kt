@@ -249,6 +249,7 @@ sealed interface PreferencesKey {
         const val cerebrasConfig = "cerebras_config"
         const val dynamicTranslateProviders = "dynamic_translate_providers"
         const val dynamicTranslateProvidersOrder = "dynamic_translate_providers_order"
+        const val hiddenBuiltinTranslateProviders = "hidden_builtin_translate_providers"
         const val autoBackupDirectoryUri = "auto_backup_directory_uri"
 
         private val keyList =
@@ -369,6 +370,7 @@ sealed interface PreferencesKey {
                 StringKey(cerebrasConfig),
                 StringKey(dynamicTranslateProviders),
                 StringKey(dynamicTranslateProvidersOrder),
+                StringKey(hiddenBuiltinTranslateProviders),
                 StringKey(autoBackupDirectoryUri),
             )
 
@@ -503,6 +505,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val cerebrasConfig = "cerebras_config"
         const val dynamicTranslateProviders = "dynamic_translate_providers"
         const val dynamicTranslateProvidersOrder = "dynamic_translate_providers_order"
+        const val hiddenBuiltinTranslateProviders = "hidden_builtin_translate_providers"
         const val autoBackupDirectoryUri = "auto_backup_directory_uri"
 
         val keys: MutableMap<String, DataStoreKey<*>> =
@@ -738,6 +741,8 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(stringPreferencesKey(dynamicTranslateProviders), String::class.java),
                 dynamicTranslateProvidersOrder to
                     DataStoreKey(stringPreferencesKey(dynamicTranslateProvidersOrder), String::class.java),
+                hiddenBuiltinTranslateProviders to
+                    DataStoreKey(stringPreferencesKey(hiddenBuiltinTranslateProviders), String::class.java),
                 autoBackupDirectoryUri to
                     DataStoreKey(stringPreferencesKey(autoBackupDirectoryUri), String::class.java),
             )

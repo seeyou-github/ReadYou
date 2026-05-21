@@ -38,6 +38,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import me.ash.reader.R
 import me.ash.reader.infrastructure.preference.LocalFeedsPageColorThemes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import me.ash.reader.infrastructure.translate.model.ProviderKind
 import me.ash.reader.infrastructure.translate.preference.DynamicProvidersPreference
 import me.ash.reader.infrastructure.translate.preference.LocalDynamicProviders
@@ -117,6 +119,7 @@ fun ProviderListPage(
                         Column {
                             ProviderItem(
                                 name = cfg.name,
+                                isBuiltIn = DynamicProvidersPreference.isBuiltIn(cfg.id),
                                 description = when (cfg.kind) {
                                     ProviderKind.OPENAI -> "OpenAI · ${cfg.baseUrl}"
                                     ProviderKind.GOOGLE -> "Google · ${cfg.baseUrl}"
@@ -161,6 +164,7 @@ fun ProviderListPage(
 @Composable
 private fun ProviderItem(
     name: String,
+    isBuiltIn: Boolean,
     description: String,
     enabled: Boolean,
     onToggleEnabled: (Boolean) -> Unit,
@@ -175,7 +179,23 @@ private fun ProviderItem(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                if (isBuiltIn) {
+                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                    Text(
+                        text = "内置",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier
+                            .background(
+                                MaterialTheme.colorScheme.secondaryContainer,
+                                RoundedCornerShape(6.dp),
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(2.dp))
             Text(text = description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

@@ -35,6 +35,64 @@ object DynamicProvidersPreference {
         MapSerializer(String.serializer(), TranslateProviderConfig.serializer())
     private val listSerializer = ListSerializer(String.serializer())
 
+    /**
+     * 内置供应商（OpenAI 兼容协议）。
+     *
+     * 出现在 AI 提供商页面，用户可直接编辑（apiKey/名称/baseUrl/...）或关闭；
+     * 用户编辑后会以同 id 写入 DataStore 覆盖默认值。
+     * 用户点删除时，id 会被写入 [DataStoreKey.hiddenBuiltinTranslateProviders] 隐藏集。
+     */
+    val BUILT_IN_PROVIDERS: List<TranslateProviderConfig> = listOf(
+        TranslateProviderConfig(
+            id = "Cerebras",
+            kind = ProviderKind.OPENAI,
+            name = "Cerebras",
+            baseUrl = "https://api.cerebras.ai/v1",
+            chatPath = "/chat/completions",
+        ),
+        TranslateProviderConfig(
+            id = "NVIDIA API",
+            kind = ProviderKind.OPENAI,
+            name = "NVIDIA API",
+            baseUrl = "https://integrate.api.nvidia.com/v1",
+            chatPath = "/chat/completions",
+        ),
+        TranslateProviderConfig(
+            id = "OpenRouter",
+            kind = ProviderKind.OPENAI,
+            name = "OpenRouter",
+            baseUrl = "https://openrouter.ai/api/v1",
+            chatPath = "/chat/completions",
+        ),
+        TranslateProviderConfig(
+            id = "智普",
+            kind = ProviderKind.OPENAI,
+            name = "智普",
+            baseUrl = "https://open.bigmodel.cn/api/paas/v4",
+            chatPath = "/chat/completions",
+            enabledModels = listOf(
+                "GLM-4.6V-Flash",
+                "GLM-4.1V-Thinking-Flash",
+                "GLM-4.7-Flash",
+                "GLM-Z1-Flash",
+                "GLM-4-Flash-250414",
+                "GLM-4-Flash",
+            ),
+        ),
+        TranslateProviderConfig(
+            id = "SiliconFlow",
+            kind = ProviderKind.OPENAI,
+            name = "SiliconFlow",
+            baseUrl = "https://api.siliconflow.cn/v1",
+            chatPath = "/chat/completions",
+        ),
+    )
+
+    private val BUILT_IN_BY_ID: Map<String, TranslateProviderConfig> =
+        BUILT_IN_PROVIDERS.associateBy { it.id }
+
+    fun isBuiltIn(id: String): Boolean = BUILT_IN_BY_ID.containsKey(id)
+
     fun decodeMap(text: String?): Map<String, TranslateProviderConfig> {
         if (text.isNullOrBlank()) return emptyMap()
         return try {
@@ -63,6 +121,78 @@ object DynamicProvidersPreference {
         val key = DataStoreKey.keys[DataStoreKey.dynamicTranslateProvidersOrder]?.key
             as? Preferences.Key<String> ?: return emptyList()
         return decodeOrder(preferences[key])
+    }
+
+    fun hiddenBuiltInFromPreferences(preferences: Preferences): Set<String> {
+        val key = DataStoreKey.keys[DataStoreKey.hiddenBuiltinTranslateProviders]?.key
+            as? Preferences.Key<String> ?: return emptySet()
+        return decodeOrder(preferences[key]).toSet()
+    }
+
+    fun readHiddenBuiltIns(context: Context): Set<String> {
+        val raw = context.dataStore.get<String>(DataStoreKey.hiddenBuiltinTranslateProviders)
+        return decodeOrder(raw).toSet()
+    }
+
+    fun hideBuiltIn(context: Context, scope: CoroutineScope, id: String) {
+        if (!isBuiltIn(id)) return
+        scope.launch(Dispatchers.IO) {
+            val current = readHiddenBuiltIns(context).toMutableSet()
+            if (current.add(id)) {
+                context.dataStore.put(
+                    DataStoreKey.hiddenBuiltinTranslateProviders,
+                    json.encodeToString(listSerializer, current.toList()),
+                )
+            }
+        }
+    }
+
+    fun unhideBuiltIn(context: Context, scope: CoroutineScope, id: String) {
+        scope.launch(Dispatchers.IO) {
+            val current = readHiddenBuiltIns(context).toMutableSet()
+            if (current.remove(id)) {
+                context.dataStore.put(
+                    DataStoreKey.hiddenBuiltinTranslateProviders,
+                    json.encodeToString(listSerializer, current.toList()),
+                )
+            }
+        }
+    }
+
+    /**
+     * 给定持久化映射和隐藏集合，合并出最终 UI 视图：内置项 + 旧版迁移 + 用户保存项。
+     * 同 id 时优先级：用户保存 > 旧版迁移 > 内置。
+     */
+    fun mergeBuiltIns(
+        persisted: Map<String, TranslateProviderConfig>,
+        legacy: Map<String, TranslateProviderConfig>,
+        hidden: Set<String>,
+    ): Map<String, TranslateProviderConfig> {
+        val out = linkedMapOf<String, TranslateProviderConfig>()
+        BUILT_IN_PROVIDERS.forEach { cfg ->
+            if (cfg.id !in hidden && cfg.id !in persisted && cfg.id !in legacy) {
+                out[cfg.id] = cfg
+            }
+        }
+        legacy.forEach { (id, cfg) -> if (id !in persisted) out[id] = cfg }
+        persisted.forEach { (id, cfg) -> out[id] = cfg }
+        return out
+    }
+
+    /**
+     * 合并最终顺序：用户已保存顺序 > 旧版迁移顺序 > 内置默认顺序，缺失项追加末尾。
+     */
+    fun mergeOrder(
+        persistedOrder: List<String>,
+        legacyOrder: List<String>,
+        finalMap: Map<String, TranslateProviderConfig>,
+    ): List<String> {
+        val seen = linkedSetOf<String>()
+        persistedOrder.forEach { if (it in finalMap) seen.add(it) }
+        legacyOrder.forEach { if (it in finalMap) seen.add(it) }
+        BUILT_IN_PROVIDERS.forEach { if (it.id in finalMap) seen.add(it.id) }
+        finalMap.keys.forEach { seen.add(it) }
+        return seen.toList()
     }
 
     /** 同步读取（非 Composable 场景使用） */

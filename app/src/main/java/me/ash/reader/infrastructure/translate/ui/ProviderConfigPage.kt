@@ -353,16 +353,32 @@ fun ProviderConfigPage(
     }
 
     if (showDeleteConfirm) {
+        val isBuiltIn = DynamicProvidersPreference.isBuiltIn(providerId)
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("删除供应商？") },
-            text = { Text("删除「${cfg.name}」后将无法恢复其 API Key 与启用模型列表。") },
+            title = { Text(if (isBuiltIn) "隐藏内置供应商？" else "删除供应商？") },
+            text = {
+                Text(
+                    if (isBuiltIn)
+                        "「${cfg.name}」是内置供应商。隐藏后将从列表移除，但不会真正删除——可清除应用数据或在代码里调整恢复。"
+                    else
+                        "删除「${cfg.name}」后将无法恢复其 API Key 与启用模型列表。"
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false
                     DynamicProvidersPreference.remove(context, scope, providerId)
+                    if (isBuiltIn) {
+                        DynamicProvidersPreference.hideBuiltIn(context, scope, providerId)
+                    }
                     onBack()
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) {
+                    Text(
+                        if (isBuiltIn) "隐藏" else "删除",
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("取消") }

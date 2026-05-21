@@ -144,5 +144,6 @@ fun Preferences.toSettings(): Settings {
         cerebrasConfig = CerebrasConfigPreference.fromPreferences(this),
         translateProviders = DynamicProvidersPreference.fromPreferences(this),
         translateProvidersOrder = DynamicProvidersPreference.orderFromPreferences(this),
+        hiddenBuiltinTranslateProviders = DynamicProvidersPreference.hiddenBuiltInFromPreferences(this),
     )
 }
