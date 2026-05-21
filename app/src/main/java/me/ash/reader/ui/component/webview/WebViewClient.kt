@@ -30,6 +30,7 @@ class WebViewClient(
     private val onOpenLink: (url: String) -> Unit,
     private val enableJavaScript: Boolean = true,
     private val articleId: String? = null,
+    private val onPageFinished: ((WebView) -> Unit)? = null,
 ) : WebViewClient() {
 
     private val cacheDao: ArticleImageCacheDao? by lazy {
@@ -104,6 +105,7 @@ class WebViewClient(
         if (enableJavaScript) {
             view!!.evaluateJavascript(OnImgClickScript, null)
         }
+        view?.let { onPageFinished?.invoke(it) }
     }
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {

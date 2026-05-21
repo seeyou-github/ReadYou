@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +47,7 @@ fun RYWebView(
     enableJavaScript: Boolean = true,
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
     onWebViewReady: ((android.webkit.WebView) -> Unit)? = null,
+    onPageFinished: ((android.webkit.WebView) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val maxWidth = LocalConfiguration.current.screenWidthDp.dp.value
@@ -75,6 +77,7 @@ fun RYWebView(
     val codeBgColor: Int =
         MaterialTheme.colorScheme.surfaceColorAtElevation((tonalElevation.value + 6).dp).toArgb()
     val boldCharacters = LocalReadingBoldCharacters.current
+    val currentOnPageFinished by rememberUpdatedState(onPageFinished)
 
     val webView by
         remember(backgroundColor) {
@@ -91,6 +94,7 @@ fun RYWebView(
                             },
                             enableJavaScript = enableJavaScript,
                             articleId = articleId,
+                            onPageFinished = { webView -> currentOnPageFinished?.invoke(webView) },
                         ),
                     enableJavaScript = enableJavaScript,
                     onImageClick = onImageClick,

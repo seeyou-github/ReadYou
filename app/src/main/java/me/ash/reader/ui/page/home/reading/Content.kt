@@ -51,6 +51,7 @@ fun Content(
     contentPadding: PaddingValues = PaddingValues(),
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
     onWebViewReady: ((android.webkit.WebView) -> Unit)? = null,
+    onWebViewPageFinished: ((android.webkit.WebView) -> Unit)? = null,
     disableJavaScript: Boolean = false,
 ) {
     val context = LocalContext.current
@@ -109,6 +110,7 @@ fun Content(
                                 enableJavaScript = !disableJavaScript,
                                 onImageClick = onImageClick,
                                 onWebViewReady = onWebViewReady,
+                                onPageFinished = onWebViewPageFinished,
                             )
                             Spacer(modifier = Modifier.height(128.dp))
                             Spacer(

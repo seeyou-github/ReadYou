@@ -152,6 +152,8 @@ fun ReadingPage(
     
     // 2026-01-31: WebView引用（用于翻译等功能）
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    var webViewLoadedArticleId by remember { mutableStateOf<String?>(null) }
+    var webViewPageLoaded by remember { mutableStateOf(false) }
 
     // 2026-02-02: 标记是否已触发过自动翻译（避免重复触发）
     var hasTriggeredAutoTranslate by remember { mutableStateOf(false) }
@@ -336,6 +338,17 @@ fun ReadingPage(
                                 // 2026-02-02: 自动翻译触发逻辑
                                 // 只在文章ID变化时触发（打开文章、切换文章）
                                 LaunchedEffect(readerState.articleId) {
+                                    webViewLoadedArticleId = null
+                                    webViewPageLoaded = false
+                                    hasTriggeredAutoTranslate = false // Reset only when the article changes.
+                                }
+
+                                LaunchedEffect(
+                                    readerState.articleId,
+                                    readerState.content,
+                                    webViewLoadedArticleId,
+                                    webViewPageLoaded,
+                                ) {
                                     Timber.tag("AutoTranslate").d("=== 自动翻译触发检查 ===")
                                     Timber.tag("AutoTranslate").d("文章ID: ${readerState.articleId}")
                                     
@@ -346,11 +359,28 @@ fun ReadingPage(
                                         return@LaunchedEffect
                                     }
                                     
-                                    // 重置标记
-                                    hasTriggeredAutoTranslate = false
-                                    Timber.tag("AutoTranslate").d("重置自动翻译标记")
-                                    
-                                    // 获取Feed信息
+                                    if (hasTriggeredAutoTranslate) {
+                                        Timber.tag("AutoTranslate").d("Auto translate already triggered, skip")
+                                        return@LaunchedEffect
+                                    }
+
+                                    if (readerState.content is ReaderState.Loading) {
+                                        Timber.tag("AutoTranslate").d("Article content is still loading, skip")
+                                        return@LaunchedEffect
+                                    }
+
+                                    if (readerState.content.text.isNullOrBlank()) {
+                                        Timber.tag("AutoTranslate").d("Article content is blank, skip")
+                                        return@LaunchedEffect
+                                    }
+
+                                    if (!webViewPageLoaded || webViewLoadedArticleId != currentArticleId) {
+                                        Timber.tag("AutoTranslate").d(
+                                            "WebView is not ready for this article, skip loaded=$webViewPageLoaded loadedArticleId=$webViewLoadedArticleId"
+                                        )
+                                        return@LaunchedEffect
+                                    }
+
                                     val currentFeed = readingUiState.articleWithFeed?.feed
                                     val feedId = currentFeed?.id
                                     val feedName = currentFeed?.name
@@ -485,6 +515,14 @@ fun ReadingPage(
                                             onWebViewReady = { webView ->
                                                 webViewRef = webView
                                                 // 2026-01-31: WebView准备就绪，后续缓存恢复由TranslateButton处理
+                                            },
+                                            onWebViewPageFinished = { webView ->
+                                                webViewRef = webView
+                                                webViewLoadedArticleId = readerState.articleId
+                                                webViewPageLoaded = true
+                                                Timber.tag("AutoTranslate").d(
+                                                    "WebView page finished articleId=${readerState.articleId}"
+                                                )
                                             },
                                         )
                                         PullToLoadIndicator(
