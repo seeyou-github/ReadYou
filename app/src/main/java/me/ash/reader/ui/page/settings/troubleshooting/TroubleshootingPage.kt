@@ -54,12 +54,14 @@ import me.ash.reader.R
 import me.ash.reader.domain.data.Log
 import me.ash.reader.domain.service.SyncWorker.Companion.ONETIME_WORK_TAG
 import me.ash.reader.domain.service.SyncWorker.Companion.PERIODIC_WORK_TAG
+import me.ash.reader.infrastructure.preference.LocalSettings
 import me.ash.reader.infrastructure.preference.OpenLinkPreference
 import me.ash.reader.ui.component.base.Banner
 import me.ash.reader.ui.component.base.DisplayText
 import me.ash.reader.ui.component.base.FeedbackIconButton
 import me.ash.reader.ui.component.base.RYDialog
 import me.ash.reader.ui.component.base.RYScaffold
+import me.ash.reader.ui.component.base.RYSwitch
 import me.ash.reader.ui.component.base.Subtitle
 import me.ash.reader.ui.ext.DateFormat
 import me.ash.reader.ui.ext.MimeType
@@ -77,6 +79,7 @@ fun TroubleshootingPage(onBack: () -> Unit, viewModel: TroubleshootingViewModel 
     val hapticFeedback = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val uiState = viewModel.troubleshootingUiState.collectAsStateValue()
+    val imageDownloadDebugLog = LocalSettings.current.imageDownloadDebugLog
     var byteArray by remember { mutableStateOf(ByteArray(0)) }
 
     val syncLogList = remember { mutableStateListOf<Log>() }
@@ -145,6 +148,20 @@ fun TroubleshootingPage(onBack: () -> Unit, viewModel: TroubleshootingViewModel 
                             context.getString(R.string.issue_tracer_url),
                             OpenLinkPreference.AutoPreferCustomTabs,
                         )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                item {
+                    SettingItem(
+                        title = stringResource(R.string.image_download_debug_log),
+                        desc = stringResource(R.string.image_download_debug_log_desc),
+                        onClick = {
+                            imageDownloadDebugLog.toggle(context, scope)
+                        },
+                    ) {
+                        RYSwitch(activated = imageDownloadDebugLog.value) {
+                            imageDownloadDebugLog.toggle(context, scope)
+                        }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }

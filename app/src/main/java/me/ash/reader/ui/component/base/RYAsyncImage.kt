@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -20,9 +21,10 @@ import coil.request.ImageResult
 import coil.size.Precision
 import coil.size.Scale
 import coil.size.Size
-import android.util.Log
-import me.ash.reader.ui.ext.extractOrigin
+import java.io.File
+import me.ash.reader.infrastructure.log.ImageDownloadDebugLogger
 import me.ash.reader.infrastructure.net.UserAgentHolder
+import me.ash.reader.ui.ext.extractOrigin
 
 val SIZE_1000 = Size(1000, 1000)
 
@@ -44,10 +46,12 @@ fun RYAsyncImage(
     colorFilter: ColorFilter? = null,
     backgroundColor: Color? = null,
 ) {
+    val context = LocalContext.current
+    val debugLogger = remember(context) { ImageDownloadDebugLogger.from(context) }
     val painter =
         rememberAsyncImagePainter(
             model =
-                ImageRequest.Builder(LocalContext.current)
+                ImageRequest.Builder(context)
                     .apply {
                         if (!disableReferer) {
                             val referer =
@@ -56,15 +60,21 @@ fun RYAsyncImage(
                             if (!referer.isNullOrBlank()) {
                                 addHeader("Referer", referer)
                             }
-                            Log.d("RLog", "RYAsyncImage request: url=$data, referer=$referer")
+                            debugLogger.log {
+                                "RYAsyncImage request data=${describeImageData(data)} key=$key referer=${referer.orEmpty()}"
+                            }
                         } else {
-                            Log.d("RLog", "RYAsyncImage request: url=$data, referer=disabled")
+                            debugLogger.log {
+                                "RYAsyncImage request data=${describeImageData(data)} key=$key referer=disabled"
+                            }
                         }
                         val resolvedUserAgent =
                             userAgent?.takeIf { it.isNotBlank() } ?: UserAgentHolder.get()
                         if (!resolvedUserAgent.isNullOrBlank()) {
                             addHeader("User-Agent", resolvedUserAgent)
-                            Log.d("RLog", "RYAsyncImage request: url=$data, ua=$resolvedUserAgent")
+                            debugLogger.log {
+                                "RYAsyncImage request data=${describeImageData(data)} key=$key userAgent=$resolvedUserAgent"
+                            }
                         }
                         // 2026-01-23: 浣跨敤 key 寮哄埗 Coil 鍦ㄦ暟鎹彉鍖栨椂閲嶆柊鍔犺浇
                         if (key != null) {
@@ -81,10 +91,14 @@ fun RYAsyncImage(
                         size(size)
                         listener(
                             onSuccess = { _, result: ImageResult ->
-                                Log.d("RLog", "RYAsyncImage success: url=$data")
+                                debugLogger.log {
+                                    "RYAsyncImage success data=${describeImageData(data)} key=$key requestData=${describeImageData(result.request.data)}"
+                                }
                             },
                             onError = { _, result ->
-                                Log.e("RLog", "RYAsyncImage error: url=$data, throwable=${result.throwable?.message}")
+                                debugLogger.log {
+                                    "RYAsyncImage error data=${describeImageData(data)} key=$key throwable=${result.throwable::class.java.simpleName}:${result.throwable.message}"
+                                }
                             }
                         )
                     }
@@ -98,6 +112,13 @@ fun RYAsyncImage(
         modifier = modifier.background(backgroundColor ?: MaterialTheme.colorScheme.surfaceContainer),
     )
 }
+
+private fun describeImageData(data: Any?): String =
+    when (data) {
+        null -> "null"
+        is File -> "file(path=${data.absolutePath}, exists=${data.exists()}, length=${if (data.exists()) data.length() else 0})"
+        else -> data.toString()
+    }
 
 // From: https://gist.github.com/colinrtwhite/c2966e0b8584b4cdf0a5b05786b20ae1
 

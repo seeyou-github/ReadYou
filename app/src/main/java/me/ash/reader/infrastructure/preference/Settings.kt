@@ -136,6 +136,9 @@ data class Settings(
     // Network
     val userAgent: String = UserAgentPreference.default,
 
+    // Troubleshooting
+    val imageDownloadDebugLog: ImageDownloadDebugLogPreference = ImageDownloadDebugLogPreference.default,
+
     // Languages
     val languages: LanguagesPreference = LanguagesPreference.default,
 )

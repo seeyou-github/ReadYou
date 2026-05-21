@@ -135,6 +135,9 @@ fun Preferences.toSettings(): Settings {
         // Network
         userAgent = UserAgentPreference.fromPreferences(this),
 
+        // Troubleshooting
+        imageDownloadDebugLog = ImageDownloadDebugLogPreference.fromPreferences(this),
+
         // Languages
         languages = LanguagesPreference.fromPreferences(this),
 

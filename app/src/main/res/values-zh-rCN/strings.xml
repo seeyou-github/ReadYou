@@ -320,6 +320,8 @@
     <string name="keep_archived_tips">已归档的项目是指标记为已读、未加星标和未加标签的文章。\"保留已归档的文章\"设置仅在此设备上有效，较旧的已归档文章将从此设备中删除，文章的删除是无法撤销的。</string>
     <string name="troubleshooting">故障排除</string>
     <string name="troubleshooting_desc">错误报告、应用选项</string>
+    <string name="image_download_debug_log">图片下载日志</string>
+    <string name="image_download_debug_log_desc">将文章图片下载详细日志写入应用私有目录</string>
     <string name="bug_report">错误报告</string>
     <string name="app_preferences">应用程序偏好设置</string>
     <string name="import_from_protobuf_file">导入 protobuf 文件</string>

@@ -5,6 +5,7 @@ import android.webkit.URLUtil
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.IOException
+import java.io.OutputStream
 import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
@@ -25,18 +26,19 @@ import me.ash.reader.domain.model.article.ArticleWithFeed
 import me.ash.reader.domain.repository.ArticleImageCacheDao
 import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.IODispatcher
+import me.ash.reader.infrastructure.log.ImageDownloadDebugLogger
 import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
 import org.jsoup.helper.StringUtil
-import timber.log.Timber
 
 @Singleton
 class ArticleImagePreloadQueue @Inject constructor(
     @ApplicationContext context: Context,
     private val articleImageCacheDao: ArticleImageCacheDao,
     private val okHttpClient: OkHttpClient,
+    private val debugLogger: ImageDownloadDebugLogger,
     @ApplicationScope applicationScope: CoroutineScope,
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -53,6 +55,9 @@ class ArticleImagePreloadQueue @Inject constructor(
     private val _cachedImagePaths = MutableStateFlow<Map<String, String>>(emptyMap())
     val cachedImagePaths: StateFlow<Map<String, String>> = _cachedImagePaths.asStateFlow()
 
+    private inline fun log(crossinline message: () -> String) =
+        debugLogger.log { "ArticleImagePreloadQueue ${message()}" }
+
     init {
         workers = List(MAX_CONCURRENT_DOWNLOADS) {
             applicationScope.launch(ioDispatcher) { workerLoop() }
@@ -63,15 +68,20 @@ class ArticleImagePreloadQueue @Inject constructor(
         if (articles.isEmpty()) return
         var changed = false
         synchronized(lock) {
+            log { "enqueueTitleImages size=${articles.size} pending=${pendingTasks.size} active=${activeTasks.size}" }
             articles
                 .asSequence()
                 .sortedByDescending { it.article.date.time }
                 .forEach { articleWithFeed ->
                     val article = articleWithFeed.article
                     val url = article.img?.trim().orEmpty()
-                    if (url.isBlank()) return@forEach
+                    if (url.isBlank()) {
+                        log { "skip title image articleId=${article.id} reason=blank_url" }
+                        return@forEach
+                    }
                     val key = TaskKey(article.id, url, ArticleImageCacheType.TITLE)
                     if (pendingTasks.containsKey(key) || activeTasks.containsKey(key)) {
+                        log { "skip title image articleId=${article.id} reason=duplicate url=$url" }
                         return@forEach
                     }
                     pendingTasks[key] =
@@ -83,37 +93,50 @@ class ArticleImagePreloadQueue @Inject constructor(
                             sequence = sequence.incrementAndGet(),
                             source = TaskSource.LIST,
                         )
+                    log { "enqueue title image articleId=${article.id} priority=${article.date.time} url=$url" }
                     changed = true
                 }
         }
-        if (changed) signal.trySend(Unit)
+        if (changed) {
+            log { "signal worker for title images" }
+            signal.trySend(Unit)
+        }
     }
 
     fun enqueueReadingImages(articleWithFeed: ArticleWithFeed, html: String) {
         val article = articleWithFeed.article
         val urls = extractImageUrls(baseUrl = article.link, html = html)
-        if (urls.isEmpty()) return
+        if (urls.isEmpty()) {
+            log { "enqueueReadingImages articleId=${article.id} urls=0" }
+            return
+        }
         var changed = false
         val shouldPreempt =
             synchronized(lock) {
-            urls.asReversed().forEach { url ->
-                val key = TaskKey(article.id, url, ArticleImageCacheType.CONTENT)
-                pendingTasks.remove(key)
-                if (activeTasks.containsKey(key)) return@forEach
-                pendingTasks[key] =
-                    Task(
-                        key = key,
-                        accountId = article.accountId,
-                        refererUrl = article.link.takeIf { it.isNotBlank() },
-                        priority = READING_PRIORITY,
-                        sequence = sequence.incrementAndGet(),
-                        source = TaskSource.READING,
-                    )
-                changed = true
+                log { "enqueueReadingImages articleId=${article.id} urls=${urls.size} pending=${pendingTasks.size} active=${activeTasks.size}" }
+                urls.asReversed().forEach { url ->
+                    val key = TaskKey(article.id, url, ArticleImageCacheType.CONTENT)
+                    pendingTasks.remove(key)
+                    if (activeTasks.containsKey(key)) {
+                        log { "skip reading image articleId=${article.id} reason=already_active url=$url" }
+                        return@forEach
+                    }
+                    pendingTasks[key] =
+                        Task(
+                            key = key,
+                            accountId = article.accountId,
+                            refererUrl = article.link.takeIf { it.isNotBlank() },
+                            priority = READING_PRIORITY,
+                            sequence = sequence.incrementAndGet(),
+                            source = TaskSource.READING,
+                        )
+                    log { "enqueue reading image articleId=${article.id} url=$url" }
+                    changed = true
+                }
+                changed
             }
-            changed
-        }
         if (shouldPreempt) {
+            log { "preempt active downloads for reading articleId=${article.id}" }
             preemptActiveDownloads()
             signal.trySend(Unit)
         }
@@ -122,6 +145,7 @@ class ArticleImagePreloadQueue @Inject constructor(
     fun clear() {
         val callsToCancel: List<Call>
         synchronized(lock) {
+            log { "clear queue pending=${pendingTasks.size} active=${activeTasks.size}" }
             pendingTasks.clear()
             interruptedTasks.addAll(activeTasks.keys)
             callsToCancel = activeCalls.values.toList()
@@ -132,6 +156,7 @@ class ArticleImagePreloadQueue @Inject constructor(
     fun removeReadingImagesForArticle(articleId: String) {
         val callsToCancel: List<Call>
         synchronized(lock) {
+            log { "removeReadingImagesForArticle articleId=$articleId pending=${pendingTasks.size} active=${activeTasks.size}" }
             pendingTasks.entries.removeAll {
                 it.key.articleId == articleId && it.key.type == ArticleImageCacheType.CONTENT
             }
@@ -171,6 +196,9 @@ class ArticleImagePreloadQueue @Inject constructor(
                 ) ?: return@synchronized null
             pendingTasks.remove(next.key)
             activeTasks[next.key] = next
+            log {
+                "takeNextTask articleId=${next.key.articleId} type=${next.key.type} source=${next.source} priority=${next.priority} remaining=${pendingTasks.size}"
+            }
             next
         }
 
@@ -183,6 +211,7 @@ class ArticleImagePreloadQueue @Inject constructor(
             }
             callsToCancel = activeCalls.values.toList()
         }
+        log { "preemptActiveDownloads cancel=${callsToCancel.size}" }
         callsToCancel.forEach { it.cancel() }
     }
 
@@ -194,11 +223,15 @@ class ArticleImagePreloadQueue @Inject constructor(
                 type = task.key.type,
             )
         if (existing != null && File(existing.localPath).exists()) {
+            log { "cache hit articleId=${task.key.articleId} type=${task.key.type} path=${existing.localPath}" }
             publishCache(task.key, existing.localPath)
             return
         }
 
         val file = fileFor(task.key.url, task.accountId)
+        log {
+            "runTask articleId=${task.key.articleId} type=${task.key.type} source=${task.source} url=${task.key.url} target=${file.absolutePath} exists=${file.exists()}"
+        }
         if (!file.exists()) {
             downloadWithSingleRetry(task, file)
         }
@@ -214,22 +247,28 @@ class ArticleImagePreloadQueue @Inject constructor(
                 localPath = path,
             )
         )
+        log { "db insert articleId=${task.key.articleId} type=${task.key.type} path=$path" }
         publishCache(task.key, path)
     }
 
     private suspend fun downloadWithSingleRetry(task: Task, file: File) {
         repeat(MAX_ATTEMPTS) { attempt ->
             try {
+                log { "download attempt=${attempt + 1} articleId=${task.key.articleId} url=${task.key.url}" }
                 downloadToFile(task, file)
+                log { "download success attempt=${attempt + 1} articleId=${task.key.articleId} url=${task.key.url} size=${file.length()}" }
                 return
             } catch (throwable: Throwable) {
                 if (file.exists()) file.delete()
                 tempFileFor(file).delete()
                 if (consumeInterruption(task.key)) {
+                    log { "download interrupted articleId=${task.key.articleId} url=${task.key.url} throwable=${throwable::class.java.simpleName}" }
                     return
                 }
                 if (attempt == MAX_ATTEMPTS - 1) {
-                    Timber.w(throwable, "Article image preload failed: %s", task.key.url)
+                    log {
+                        "download failed articleId=${task.key.articleId} url=${task.key.url} throwable=${throwable::class.java.simpleName}:${throwable.message}"
+                    }
                 }
             }
         }
@@ -241,19 +280,30 @@ class ArticleImagePreloadQueue @Inject constructor(
             task.refererUrl?.let { requestBuilder.header("Referer", it) }
             val call = okHttpClient.newCall(requestBuilder.build())
             synchronized(lock) { activeCalls[task.key] = call }
+            log {
+                "request start articleId=${task.key.articleId} url=${task.key.url} referer=${task.refererUrl.orEmpty()}"
+            }
 
             call.execute().use { response ->
+                log {
+                    "response articleId=${task.key.articleId} url=${task.key.url} code=${response.code} success=${response.isSuccessful} contentType=${response.body?.contentType()} contentLength=${response.body?.contentLength()}"
+                }
                 if (!response.isSuccessful) {
                     throw IOException("HTTP ${response.code}")
                 }
                 val body = response.body ?: throw IOException("Empty image body")
                 file.parentFile?.mkdirs()
                 val tempFile = tempFileFor(file)
+                var bytesWritten = 0L
                 body.byteStream().use { input ->
-                    tempFile.outputStream().use { output -> input.copyTo(output) }
+                    tempFile.outputStream().use { output ->
+                        bytesWritten = copyWithCount(input, output)
+                    }
                 }
+                log { "write temp file articleId=${task.key.articleId} url=${task.key.url} temp=${tempFile.absolutePath} bytes=$bytesWritten" }
                 if (file.exists()) file.delete()
                 if (!tempFile.renameTo(file)) {
+                    log { "rename failed fallback copy articleId=${task.key.articleId} url=${task.key.url}" }
                     tempFile.copyTo(file, overwrite = true)
                     tempFile.delete()
                 }
@@ -276,6 +326,20 @@ class ArticleImagePreloadQueue @Inject constructor(
     private fun publishCache(key: TaskKey, path: String) {
         val cacheKey = cacheKey(key.articleId, key.url, key.type)
         _cachedImagePaths.update { it + (cacheKey to path) }
+        log { "publish cache articleId=${key.articleId} type=${key.type} path=$path cacheKey=$cacheKey" }
+    }
+
+    private fun copyWithCount(input: java.io.InputStream, output: OutputStream): Long {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var total = 0L
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            output.write(buffer, 0, read)
+            total += read
+        }
+        output.flush()
+        return total
     }
 
     private fun extractImageUrls(baseUrl: String, html: String): List<String> =

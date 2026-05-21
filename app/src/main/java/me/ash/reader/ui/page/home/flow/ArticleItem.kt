@@ -65,6 +65,7 @@ import java.io.File
 import me.ash.reader.R
 import me.ash.reader.domain.model.article.ArticleWithFeed
 import me.ash.reader.domain.model.theme.ColorTheme
+import me.ash.reader.infrastructure.log.ImageDownloadDebugLogger
 import me.ash.reader.infrastructure.preference.FlowArticleListDescPreference
 import me.ash.reader.infrastructure.preference.FlowArticleReadIndicatorPreference
 import me.ash.reader.infrastructure.preference.LocalArticleListSwipeEndAction
@@ -94,7 +95,6 @@ import me.ash.reader.ui.component.base.SIZE_1000
 import me.ash.reader.ui.component.menu.AnimatedDropdownMenu
 import me.ash.reader.ui.component.swipe.SwipeAction
 import me.ash.reader.ui.component.swipe.SwipeableActionsBox
-import android.util.Log
 import me.ash.reader.ui.ext.atElevation
 import me.ash.reader.ui.ext.requiresBidi
 import me.ash.reader.ui.ext.surfaceColorAtElevation
@@ -164,6 +164,8 @@ fun ArticleItem(
 ) {
     val articleListFeedIcon = LocalFlowArticleListFeedIcon.current
     val titleImageUserAgent = LocalSettings.current.userAgent
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val imageDebugLogger = remember(context) { ImageDownloadDebugLogger.from(context) }
     val articleListFeedName = LocalFlowArticleListFeedName.current
     // 2026-01-29: 计算是否显示订阅源名称（考虑强制显示标志）
     val shouldShowFeedName = articleListFeedName.value || forceShowFeedName
@@ -285,8 +287,8 @@ fun ArticleItem(
                 } else {
                     null
                 }
-                if (imgData is String) {
-                    Log.d("RLog", "list image: $imgData")
+                imageDebugLogger.log {
+                    "ArticleItem image data=${describeArticleItemImageData(imageData)} original=${imgData ?: "null"} localPath=${localTitleImagePath.orEmpty()} referer=${refererUrl.orEmpty()}"
                 }
                 RYAsyncImage(
                     modifier = Modifier
@@ -370,6 +372,13 @@ fun ArticleItem(
 
     }
 }
+
+private fun describeArticleItemImageData(data: Any?): String =
+    when (data) {
+        null -> "null"
+        is File -> "file(path=${data.absolutePath}, exists=${data.exists()}, length=${if (data.exists()) data.length() else 0})"
+        else -> data.toString()
+    }
 
 @Composable
 fun StarredIcon(modifier: Modifier = Modifier) {
