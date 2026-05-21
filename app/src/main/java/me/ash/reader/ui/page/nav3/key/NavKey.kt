@@ -15,9 +15,21 @@ sealed interface Route : NavKey {
     //    @Serializable data object Flow : Route
 
     @Serializable
-    data class Reading(val articleId: String?) : Route {
+    data class Reading(
+        val articleId: String?,
+        val autoRefreshOnOpenToken: Long? = null,
+    ) : Route {
         companion object {
-            val Saver = Saver<Reading, String>(save = { it.articleId }, restore = { Reading(it) })
+            val Saver =
+                Saver<Reading, List<String?>>(
+                    save = { listOf(it.articleId, it.autoRefreshOnOpenToken?.toString()) },
+                    restore = {
+                        Reading(
+                            articleId = it.getOrNull(0),
+                            autoRefreshOnOpenToken = it.getOrNull(1)?.toLongOrNull(),
+                        )
+                    },
+                )
         }
     }
 

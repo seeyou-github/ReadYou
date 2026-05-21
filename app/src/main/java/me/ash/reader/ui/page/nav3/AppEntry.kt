@@ -128,7 +128,14 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                                 sharedTransitionScope = this@SharedTransitionLayout,
                                 animatedVisibilityScope = LocalNavAnimatedContentScope.current,
                                 navigateToSettings = { backStack.add(Route.Settings) },
-                                navigationToFlow = { backStack.add(Route.Reading(null)) },
+                                navigationToFlow = {
+                                    backStack.add(
+                                        Route.Reading(
+                                            articleId = null,
+                                            autoRefreshOnOpenToken = System.currentTimeMillis(),
+                                        )
+                                    )
+                                },
                                 navigateToAccountList = { backStack.add(Route.Accounts) },
                                 navigateToAccountDetail = {
                                     backStack.add(Route.AccountDetails(it))
@@ -159,6 +166,7 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                                 sharedTransitionScope = this@SharedTransitionLayout,
                                 animatedVisibilityScope = LocalNavAnimatedContentScope.current,
                                 viewModel = viewModel,
+                                autoRefreshOnOpenToken = key.autoRefreshOnOpenToken,
 
                                 streamTranslateServiceFactory = viewModel.streamTranslateServiceFactory,
                                 onBack = onBack,

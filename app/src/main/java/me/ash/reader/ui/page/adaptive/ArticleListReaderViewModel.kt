@@ -68,6 +68,8 @@ import org.jsoup.Jsoup
 import timber.log.Timber
 
 private const val TAG = "ArticleListReaderViewModel"
+private const val AUTO_REFRESH_ON_OPEN_INTERVAL_MILLIS = 5 * 60 * 1000L
+private val lastAutoRefreshOnOpenAt = mutableMapOf<String, Long>()
 
 @OptIn(FlowPreview::class)
 @HiltViewModel()
@@ -98,6 +100,7 @@ class ArticleListReaderViewModel
 ) : ViewModel() {
 
     val cachedImagePaths = articleImagePreloadQueue.cachedImagePaths
+    private var consumedAutoRefreshOnOpenToken: Long? = null
 
     val flowUiState: StateFlow<FlowUiState?> =
         articleListUseCase.pagerFlow.combine(groupWithFeedsListUseCase.groupWithFeedListFlow) { pagerData, groupWithFeedsList ->
@@ -290,6 +293,27 @@ class ArticleListReaderViewModel
                 else -> service.doSyncOneTime()
             }
         }
+    }
+
+    fun autoRefreshArticleListOnOpen(token: Long?, enabled: Boolean) {
+        if (token == null || !enabled) return
+        if (token == consumedAutoRefreshOnOpenToken) return
+        consumedAutoRefreshOnOpenToken = token
+        if (isSyncingFlow.value) return
+
+        val filterState = filterStateUseCase.filterStateFlow.value
+        val key =
+            when {
+                filterState.feed != null -> "feed:${filterState.feed.id}"
+                filterState.group != null -> "group:${filterState.group.id}"
+                else -> "filter:${filterState.filter}"
+            }
+        val now = System.currentTimeMillis()
+        val lastRefreshAt = lastAutoRefreshOnOpenAt[key] ?: 0L
+        if (now - lastRefreshAt < AUTO_REFRESH_ON_OPEN_INTERVAL_MILLIS) return
+
+        lastAutoRefreshOnOpenAt[key] = now
+        sync()
     }
 
     fun cancelSync() {

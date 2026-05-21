@@ -176,6 +176,7 @@ fun FlowPage(
     animatedVisibilityScope: AnimatedVisibilityScope,
     isTwoPane: Boolean,
     viewModel: ArticleListReaderViewModel,
+    autoRefreshOnOpenToken: Long? = null,
     onNavigateUp: () -> Unit,
     navigateToArticle: (String, Int) -> Unit,
 ) {
@@ -442,13 +443,15 @@ fun FlowPage(
             ?: settings.autoRefreshArticleListOnOpen.value
 
     LaunchedEffect(
+        autoRefreshOnOpenToken,
         filterUiState.feed?.id,
         filterUiState.group?.id,
         shouldAutoRefreshArticleList,
     ) {
-        if (shouldAutoRefreshArticleList && !isSyncing) {
-            viewModel.sync()
-        }
+        viewModel.autoRefreshArticleListOnOpen(
+            token = autoRefreshOnOpenToken,
+            enabled = shouldAutoRefreshArticleList,
+        )
     }
 
     // 2026-02-03: 收集标题翻译状态

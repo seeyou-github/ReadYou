@@ -67,6 +67,7 @@ fun ArticleListReaderPage(
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
     viewModel: ArticleListReaderViewModel,
+    autoRefreshOnOpenToken: Long? = null,
 
     streamTranslateServiceFactory: StreamTranslateServiceFactory,
     onBack: () -> Unit,
@@ -169,6 +170,7 @@ fun ArticleListReaderPage(
                             sharedTransitionScope = sharedTransitionScope,
                             animatedVisibilityScope = animatedVisibilityScope,
                             viewModel = viewModel,
+                            autoRefreshOnOpenToken = autoRefreshOnOpenToken,
                             onNavigateUp = onBack,
                             isTwoPane = isTwoPane,
 
