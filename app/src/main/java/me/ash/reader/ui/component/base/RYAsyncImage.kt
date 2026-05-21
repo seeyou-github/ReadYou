@@ -61,7 +61,7 @@ fun RYAsyncImage(
                             Log.d("RLog", "RYAsyncImage request: url=$data, referer=disabled")
                         }
                         val resolvedUserAgent =
-                            userAgent?.takeIf { it.isNotBlank() }?.let { UserAgentHolder.get() }
+                            userAgent?.takeIf { it.isNotBlank() } ?: UserAgentHolder.get()
                         if (!resolvedUserAgent.isNullOrBlank()) {
                             addHeader("User-Agent", resolvedUserAgent)
                             Log.d("RLog", "RYAsyncImage request: url=$data, ua=$resolvedUserAgent")

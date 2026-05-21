@@ -426,6 +426,20 @@ fun ReadingPage(
                                                 translationState.translatedContent != null -> translationState.translatedContent
                                             else -> readerState.content
                                         }
+                                        LaunchedEffect(
+                                            readerState.articleId,
+                                            displayContent.text,
+                                            readingUiState.articleWithFeed,
+                                        ) {
+                                            val articleWithFeed = readingUiState.articleWithFeed
+                                            val html = displayContent.text
+                                            if (articleWithFeed != null && !html.isNullOrBlank()) {
+                                                viewModel.enqueueReadingImagePreloads(
+                                                    articleWithFeed = articleWithFeed,
+                                                    html = html,
+                                                )
+                                            }
+                                        }
 
                                         Content(
                                             modifier =

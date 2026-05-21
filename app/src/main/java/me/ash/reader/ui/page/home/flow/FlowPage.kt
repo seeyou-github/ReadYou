@@ -259,6 +259,7 @@ fun FlowPage(
 
     val flowUiState = viewModel.flowUiState.collectAsStateValue()
     if (flowUiState == null) return
+    val cachedImagePaths = viewModel.cachedImagePaths.collectAsStateValue()
 
     val pagerData: PagerData = flowUiState.pagerData
 
@@ -361,6 +362,7 @@ fun FlowPage(
             Timber.tag("AutoTranslateTitle").d("FlowPage: 页面销毁，取消所有翻译任务")
             viewModel.titleTranslateQueue.cancelAllPendingTasks()
             viewModel.titleTranslateEntry.cancelAllTranslations()
+            viewModel.clearImagePreloads()
         }
     }
 
@@ -705,6 +707,18 @@ fun FlowPage(
                     val filterState = flowUiState.pagerData.filterState
                     val pagingItems = pager.collectAsLazyPagingItems().also { pagingItems = it }
 
+                    LaunchedEffect(pagingItems, filterState.feed?.id, filterState.group?.id, filterState.filter) {
+                        snapshotFlow {
+                            pagingItems.itemSnapshotList.items
+                                .filterIsInstance<ArticleFlowItem.Article>()
+                                .map { it.articleWithFeed }
+                        }
+                            .distinctUntilChanged()
+                            .collect { articles ->
+                                viewModel.enqueueTitleImagePreloads(articles)
+                            }
+                    }
+
                     if (markAsReadOnScroll && filterState.filter.isUnread()) {
                         LaunchedEffect(listState.isScrollInProgress) {
                             if (!listState.isScrollInProgress) {
@@ -997,6 +1011,7 @@ fun FlowPage(
                                                     isFirstItemLargeImageEnabled = firstItemLargeImage.value,
                                                     // 2026-01-29: 传递强制显示订阅源名称参数
                                                     forceShowFeedName = forceShowFeedName,
+                                                    cachedImagePaths = cachedImagePaths,
                                                 )
                             item {
                                 Spacer(modifier = Modifier.height(128.dp))

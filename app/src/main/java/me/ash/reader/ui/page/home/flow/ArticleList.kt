@@ -11,8 +11,10 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import me.ash.reader.domain.data.Diff
+import me.ash.reader.domain.model.article.ArticleImageCacheType
 import me.ash.reader.domain.model.article.ArticleFlowItem
 import me.ash.reader.domain.model.article.ArticleWithFeed
+import me.ash.reader.infrastructure.rss.ArticleImagePreloadQueue
 import timber.log.Timber
 
 @Suppress("FunctionName")
@@ -37,6 +39,7 @@ fun LazyListScope.ArticleList(
     onSaveToLocal: ((ArticleWithFeed) -> Unit)? = null,
     isFirstItemLargeImageEnabled: Boolean = false, // 2026-01-27: 新增首行大图模式参数
     forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
+    cachedImagePaths: Map<String, String> = emptyMap(),
 ) {
     val firstArticleIndex =
         pagingItems.itemSnapshotList.items.indexOfFirst { it is ArticleFlowItem.Article }
@@ -100,6 +103,7 @@ fun LazyListScope.ArticleList(
                             onShare = onShare,
                             onSaveToLocal = onSaveToLocal,
                             forceShowFeedName = forceShowFeedName,
+                            localTitleImagePath = cachedImagePaths.titlePathFor(item.articleWithFeed),
                         )
                     }
                     // 添加项间距
@@ -167,6 +171,7 @@ fun LazyListScope.ArticleList(
                                 onShare = onShare,
                                 onSaveToLocal = onSaveToLocal,
                                 forceShowFeedName = forceShowFeedName,
+                                localTitleImagePath = cachedImagePaths.titlePathFor(item.articleWithFeed),
                             )
                         }
                         // 添加项间距
@@ -210,3 +215,15 @@ private fun contentType(item: ArticleFlowItem): Int {
 
 const val CONTENT_TYPE_ARTICLE = 1
 const val CONTENT_TYPE_DATE_HEADER = 2
+
+private fun Map<String, String>.titlePathFor(articleWithFeed: ArticleWithFeed): String? {
+    val article = articleWithFeed.article
+    val url = article.img ?: return null
+    return this[
+        ArticleImagePreloadQueue.cacheKey(
+            articleId = article.id,
+            url = url,
+            type = ArticleImageCacheType.TITLE,
+        )
+    ]
+}

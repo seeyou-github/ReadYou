@@ -73,7 +73,7 @@ fun cachingHttpClient(
     cacheSize: Long = 10L * 1024L * 1024L,
     trustAllCerts: Boolean = true,
     connectTimeoutSecs: Long = 10L,
-    readTimeoutSecs: Long = 10L,
+    readTimeoutSecs: Long = 30L,
     clientCertificateAlias: String? = null,
 ): OkHttpClient {
     val builder: OkHttpClient.Builder = OkHttpClient.Builder()
@@ -85,8 +85,8 @@ fun cachingHttpClient(
     builder
         .connectTimeout(connectTimeoutSecs, TimeUnit.SECONDS)
         .readTimeout(readTimeoutSecs, TimeUnit.SECONDS)
-        .callTimeout(connectTimeoutSecs, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(false)
+        .callTimeout(readTimeoutSecs, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .followRedirects(true)
 
     if (!clientCertificateAlias.isNullOrBlank() || trustAllCerts) {
@@ -169,6 +169,9 @@ object UserAgentInterceptor : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val userAgent = UserAgentHolder.get()
+        if (chain.request().header("User-Agent") != null) {
+            return chain.proceed(chain.request())
+        }
         return chain.proceed(
             chain.request()
                 .newBuilder()

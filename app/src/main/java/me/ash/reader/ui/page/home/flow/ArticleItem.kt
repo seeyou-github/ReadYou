@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.size.Precision
 import coil.size.Scale
+import java.io.File
 import me.ash.reader.R
 import me.ash.reader.domain.model.article.ArticleWithFeed
 import me.ash.reader.domain.model.theme.ColorTheme
@@ -114,6 +115,7 @@ fun ArticleItem(
     onClick: (ArticleWithFeed) -> Unit = {},
     onLongClick: (() -> Unit)? = null,
     forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
+    localTitleImagePath: String? = null,
 ) {
     val feed = articleWithFeed.feed
     val article = articleWithFeed.article
@@ -127,6 +129,7 @@ fun ArticleItem(
         shortDescription = article.shortDescription,
         timeString = article.dateString,
         imgData = article.img,
+        localTitleImagePath = localTitleImagePath,
         disableReferer = feed.isDisableReferer,
         refererUrl = article.link.takeIf { it.isNotBlank() },
         isStarred = article.isStarred,
@@ -157,6 +160,7 @@ fun ArticleItem(
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
     forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
+    localTitleImagePath: String? = null,
 ) {
     val articleListFeedIcon = LocalFlowArticleListFeedIcon.current
     val titleImageUserAgent = LocalSettings.current.userAgent
@@ -271,6 +275,7 @@ fun ArticleItem(
 
             // Image
             if (imgData != null && articleListImage.value) {
+                val imageData = localTitleImagePath?.let { File(it) } ?: imgData
                 val brightnessFilter = if (imageBrightness < 100) {
                     val brightnessValue = imageBrightness / 100f
                     androidx.compose.ui.graphics.ColorFilter.lighting(
@@ -288,7 +293,7 @@ fun ArticleItem(
                         .padding(start = 8.dp)
                         .size(imageSize.dp)
                         .clip(RoundedCornerShape(imageRoundedCorners.dp)),
-                    data = imgData,
+                    data = imageData,
                     disableReferer = disableReferer,
                     refererUrl = refererUrl,
                     userAgent = titleImageUserAgent,
@@ -401,6 +406,7 @@ fun SwipeableArticleItem(
     onShare: ((ArticleWithFeed) -> Unit)? = null,
     onSaveToLocal: ((ArticleWithFeed) -> Unit)? = null,
     forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
+    localTitleImagePath: String? = null,
 ) {
 
     var isMenuExpanded by remember { mutableStateOf(false) }
@@ -445,6 +451,7 @@ fun SwipeableArticleItem(
                 onClick = onClick,
                 onLongClick = onLongClick,
                 forceShowFeedName = forceShowFeedName,
+                localTitleImagePath = localTitleImagePath,
             )
             with(articleWithFeed.article) {
                 if (isMenuEnabled) {

@@ -50,6 +50,7 @@ import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.IODispatcher
 import me.ash.reader.infrastructure.preference.PullToLoadNextFeedPreference
 import me.ash.reader.infrastructure.preference.SettingsProvider
+import me.ash.reader.infrastructure.rss.ArticleImagePreloadQueue
 import me.ash.reader.infrastructure.rss.ReaderCacheHelper
 
 import me.ash.reader.infrastructure.translate.cache.ArticleTranslationCacheService
@@ -82,6 +83,7 @@ class ArticleListReaderViewModel
     private val readerCacheHelper: ReaderCacheHelper,
     val textToSpeechManager: TextToSpeechManager,
     private val imageDownloader: AndroidImageDownloader,
+    private val articleImagePreloadQueue: ArticleImagePreloadQueue,
     private val articleListUseCase: ArticlePagingListUseCase,
     workManager: WorkManager,
 
@@ -94,6 +96,8 @@ class ArticleListReaderViewModel
     private val pluginRuleDao: PluginRuleDao,
     private val pluginSyncService: PluginSyncService,
 ) : ViewModel() {
+
+    val cachedImagePaths = articleImagePreloadQueue.cachedImagePaths
 
     val flowUiState: StateFlow<FlowUiState?> =
         articleListUseCase.pagerFlow.combine(groupWithFeedsListUseCase.groupWithFeedListFlow) { pagerData, groupWithFeedsList ->
@@ -616,6 +620,18 @@ class ArticleListReaderViewModel
         if (isCurrentReadingArticle(articleId)) {
             _readingUiState.update { it.copy(articleWithFeed = articleWithFeed) }
         }
+    }
+
+    fun enqueueTitleImagePreloads(articles: List<ArticleWithFeed>) {
+        articleImagePreloadQueue.enqueueTitleImages(articles)
+    }
+
+    fun enqueueReadingImagePreloads(articleWithFeed: ArticleWithFeed, html: String) {
+        articleImagePreloadQueue.enqueueReadingImages(articleWithFeed, html)
+    }
+
+    fun clearImagePreloads() {
+        articleImagePreloadQueue.clear()
     }
 
     fun renderDescriptionContent() {
