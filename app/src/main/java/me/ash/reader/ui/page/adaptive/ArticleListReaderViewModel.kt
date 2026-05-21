@@ -630,6 +630,10 @@ class ArticleListReaderViewModel
         articleImagePreloadQueue.enqueueReadingImages(articleWithFeed, html)
     }
 
+    fun removeReadingImagePreloads(articleId: String) {
+        articleImagePreloadQueue.removeReadingImagesForArticle(articleId)
+    }
+
     fun clearImagePreloads() {
         articleImagePreloadQueue.clear()
     }

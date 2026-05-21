@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -141,6 +142,13 @@ fun ReadingPage(
     // 或者我们修改 TopBar，让它传递一个设置对话框状态的回调
 
     var currentImageData by remember { mutableStateOf(ImageData()) }
+    var currentPreloadArticleId by remember { mutableStateOf<String?>(null) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            currentPreloadArticleId?.let { viewModel.removeReadingImagePreloads(it) }
+        }
+    }
     
     // 2026-01-31: WebView引用（用于翻译等功能）
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
@@ -434,6 +442,13 @@ fun ReadingPage(
                                             val articleWithFeed = readingUiState.articleWithFeed
                                             val html = displayContent.text
                                             if (articleWithFeed != null && !html.isNullOrBlank()) {
+                                                val articleId = articleWithFeed.article.id
+                                                if (currentPreloadArticleId != articleId) {
+                                                    currentPreloadArticleId?.let {
+                                                        viewModel.removeReadingImagePreloads(it)
+                                                    }
+                                                    currentPreloadArticleId = articleId
+                                                }
                                                 viewModel.enqueueReadingImagePreloads(
                                                     articleWithFeed = articleWithFeed,
                                                     html = html,

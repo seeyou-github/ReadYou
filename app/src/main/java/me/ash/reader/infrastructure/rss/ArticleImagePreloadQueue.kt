@@ -129,6 +129,22 @@ class ArticleImagePreloadQueue @Inject constructor(
         callsToCancel.forEach { it.cancel() }
     }
 
+    fun removeReadingImagesForArticle(articleId: String) {
+        val callsToCancel: List<Call>
+        synchronized(lock) {
+            pendingTasks.entries.removeAll {
+                it.key.articleId == articleId && it.key.type == ArticleImageCacheType.CONTENT
+            }
+            val activeKeys =
+                activeTasks.keys.filter {
+                    it.articleId == articleId && it.type == ArticleImageCacheType.CONTENT
+                }
+            interruptedTasks.addAll(activeKeys)
+            callsToCancel = activeKeys.mapNotNull { activeCalls[it] }
+        }
+        callsToCancel.forEach { it.cancel() }
+    }
+
     private suspend fun workerLoop() {
         while (true) {
             val task = takeNextTask()
