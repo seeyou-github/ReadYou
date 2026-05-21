@@ -57,7 +57,7 @@ fun ModelSelectionListPage(
         (ordered + missing).forEach { id ->
             val cfg = providersMap[id] ?: return@forEach
             if (!cfg.enabled) return@forEach
-            cfg.enabledModels.forEach { modelId ->
+            cfg.enabledModels.distinct().forEach { modelId ->
                 add(EnabledModelInfo(
                     providerId = cfg.id,
                     providerName = cfg.name,
@@ -97,7 +97,10 @@ fun ModelSelectionListPage(
                         )
                     }
                 } else {
-                    items(enabledModels) { model ->
+                    items(
+                        items = enabledModels,
+                        key = { "${it.providerId}:${it.modelId}" },
+                    ) { model ->
                         val isSelected = selectedConfig?.provider == model.providerId &&
                             selectedConfig.model == model.modelId
                         Column {

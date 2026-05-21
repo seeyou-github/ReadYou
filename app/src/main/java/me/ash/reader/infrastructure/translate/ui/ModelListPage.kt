@@ -90,7 +90,7 @@ fun ModelListPage(
             errorMessage = null
             val result = modelFetchService.fetchModels(cfg)
             result.onSuccess {
-                models = it
+                models = it.distinctBy { model -> model.id }
             }.onFailure {
                 errorMessage = it.message ?: "获取模型列表失败"
             }
@@ -139,7 +139,7 @@ fun ModelListPage(
             } else {
                 enabledModels - modelId
             }
-        saveEnabledModels(newEnabledModels)
+        saveEnabledModels(newEnabledModels.distinct())
     }
 
     RYScaffold(
@@ -285,10 +285,11 @@ private fun buildModelGroups(
 ): List<ModelGroup> {
     if (models.isEmpty()) return emptyList()
 
+    val uniqueModels = models.distinctBy { it.id }
     val groupedByPrefix = linkedMapOf<String, MutableList<ModelInfo>>()
     val otherModels = mutableListOf<ModelInfo>()
 
-    models.forEach { model ->
+    uniqueModels.forEach { model ->
         val prefix = model.id.substringBefore("/", missingDelimiterValue = "")
         if (prefix.isBlank()) {
             otherModels += model

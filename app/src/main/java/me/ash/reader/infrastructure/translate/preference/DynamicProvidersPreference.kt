@@ -93,6 +93,8 @@ object DynamicProvidersPreference {
 
     fun isBuiltIn(id: String): Boolean = BUILT_IN_BY_ID.containsKey(id)
 
+    fun builtInConfig(id: String): TranslateProviderConfig? = BUILT_IN_BY_ID[id]
+
     fun decodeMap(text: String?): Map<String, TranslateProviderConfig> {
         if (text.isNullOrBlank()) return emptyMap()
         return try {
@@ -114,7 +116,9 @@ object DynamicProvidersPreference {
     fun fromPreferences(preferences: Preferences): Map<String, TranslateProviderConfig> {
         val key = DataStoreKey.keys[DataStoreKey.dynamicTranslateProviders]?.key
             as? Preferences.Key<String> ?: return emptyMap()
-        return decodeMap(preferences[key])
+        val siliconFlow = preferences.legacyProvider(DataStoreKey.siliconFlowConfig)
+        val cerebras = preferences.legacyProvider(DataStoreKey.cerebrasConfig)
+        return filterLegacySeededProviders(decodeMap(preferences[key]), siliconFlow, cerebras)
     }
 
     fun orderFromPreferences(preferences: Preferences): List<String> {
@@ -170,11 +174,10 @@ object DynamicProvidersPreference {
     ): Map<String, TranslateProviderConfig> {
         val out = linkedMapOf<String, TranslateProviderConfig>()
         BUILT_IN_PROVIDERS.forEach { cfg ->
-            if (cfg.id !in hidden && cfg.id !in persisted && cfg.id !in legacy) {
+            if (cfg.id !in hidden && cfg.id !in persisted) {
                 out[cfg.id] = cfg
             }
         }
-        legacy.forEach { (id, cfg) -> if (id !in persisted) out[id] = cfg }
         persisted.forEach { (id, cfg) -> out[id] = cfg }
         return out
     }
@@ -189,7 +192,6 @@ object DynamicProvidersPreference {
     ): List<String> {
         val seen = linkedSetOf<String>()
         persistedOrder.forEach { if (it in finalMap) seen.add(it) }
-        legacyOrder.forEach { if (it in finalMap) seen.add(it) }
         BUILT_IN_PROVIDERS.forEach { if (it.id in finalMap) seen.add(it.id) }
         finalMap.keys.forEach { seen.add(it) }
         return seen.toList()
@@ -198,7 +200,9 @@ object DynamicProvidersPreference {
     /** 同步读取（非 Composable 场景使用） */
     fun read(context: Context): Map<String, TranslateProviderConfig> {
         val raw = context.dataStore.get<String>(DataStoreKey.dynamicTranslateProviders)
-        return decodeMap(raw)
+        val siliconFlow = context.legacyProvider(DataStoreKey.siliconFlowConfig)
+        val cerebras = context.legacyProvider(DataStoreKey.cerebrasConfig)
+        return filterLegacySeededProviders(decodeMap(raw), siliconFlow, cerebras)
     }
 
     fun readOrder(context: Context): List<String> {
@@ -215,38 +219,44 @@ object DynamicProvidersPreference {
         siliconFlow: TranslateProviderConfig?,
         cerebras: TranslateProviderConfig?,
     ): Pair<Map<String, TranslateProviderConfig>, List<String>> {
-        val out = linkedMapOf<String, TranslateProviderConfig>()
-        if (siliconFlow != null &&
-            (siliconFlow.apiKey.isNotBlank() || siliconFlow.enabledModels.isNotEmpty())
-        ) {
-            val cfg = TranslateProviderConfig(
-                id = "SiliconFlow",
-                kind = ProviderKind.OPENAI,
-                name = "SiliconFlow",
-                apiKey = siliconFlow.apiKey,
-                rpm = siliconFlow.rpm,
-                enabledModels = siliconFlow.enabledModels,
-                baseUrl = "https://api.siliconflow.cn/v1",
-                chatPath = "/chat/completions",
-            )
-            out[cfg.id] = cfg
+        return emptyMap<String, TranslateProviderConfig>() to emptyList()
+    }
+
+    private fun Preferences.legacyProvider(keyName: String): TranslateProviderConfig? {
+        val key = DataStoreKey.keys[keyName]?.key as? Preferences.Key<String> ?: return null
+        val raw = this[key].takeUnless { it.isNullOrBlank() } ?: return null
+        return TranslateProviderConfig.fromJson(raw)
+    }
+
+    private fun Context.legacyProvider(keyName: String): TranslateProviderConfig? {
+        val raw = dataStore.get<String>(keyName).takeUnless { it.isNullOrBlank() } ?: return null
+        return TranslateProviderConfig.fromJson(raw)
+    }
+
+    private fun filterLegacySeededProviders(
+        map: Map<String, TranslateProviderConfig>,
+        siliconFlow: TranslateProviderConfig?,
+        cerebras: TranslateProviderConfig?,
+    ): Map<String, TranslateProviderConfig> {
+        if (map.isEmpty()) return map
+        val filtered = map.toMutableMap()
+        removeLegacySeededProvider(filtered, "SiliconFlow", siliconFlow)
+        removeLegacySeededProvider(filtered, "Cerebras", cerebras)
+        return filtered
+    }
+
+    private fun removeLegacySeededProvider(
+        map: MutableMap<String, TranslateProviderConfig>,
+        id: String,
+        legacy: TranslateProviderConfig?,
+    ) {
+        if (legacy == null) return
+        val cfg = map[id] ?: return
+        val hasLegacyData = legacy.apiKey.isNotBlank() || legacy.enabledModels.isNotEmpty()
+        if (!hasLegacyData) return
+        if (cfg.apiKey == legacy.apiKey && cfg.enabledModels == legacy.enabledModels) {
+            map.remove(id)
         }
-        if (cerebras != null &&
-            (cerebras.apiKey.isNotBlank() || cerebras.enabledModels.isNotEmpty())
-        ) {
-            val cfg = TranslateProviderConfig(
-                id = "Cerebras",
-                kind = ProviderKind.OPENAI,
-                name = "Cerebras",
-                apiKey = cerebras.apiKey,
-                rpm = cerebras.rpm,
-                enabledModels = cerebras.enabledModels,
-                baseUrl = "https://api.cerebras.ai/v1",
-                chatPath = "/chat/completions",
-            )
-            out[cfg.id] = cfg
-        }
-        return out to out.keys.toList()
     }
 
     fun putMap(
@@ -278,18 +288,10 @@ object DynamicProvidersPreference {
     /** 写入单个供应商配置（会同步更新 order：新增项放头部） */
     fun put(context: Context, scope: CoroutineScope, cfg: TranslateProviderConfig) {
         scope.launch(Dispatchers.IO) {
-            var map = read(context).toMutableMap()
-            var order = readOrder(context).toMutableList()
+            val map = read(context).toMutableMap()
+            val order = readOrder(context).toMutableList()
 
             // 首次写入时：把旧版 SiliconFlow / Cerebras 偏好种子到动态存储里
-            if (map.isEmpty()) {
-                val legacy = readLegacyMigrationFromDataStore(context)
-                if (legacy.first.isNotEmpty()) {
-                    map.putAll(legacy.first)
-                    legacy.second.forEach { if (it !in order) order.add(it) }
-                }
-            }
-
             val isNew = !map.containsKey(cfg.id)
             map[cfg.id] = cfg
             context.dataStore.put(
@@ -308,16 +310,6 @@ object DynamicProvidersPreference {
     }
 
     /** 从 DataStore 直接读取旧版 SiliconFlow / Cerebras 偏好并迁移 */
-    private fun readLegacyMigrationFromDataStore(
-        context: Context,
-    ): Pair<Map<String, TranslateProviderConfig>, List<String>> {
-        val sfRaw = context.dataStore.get<String>(DataStoreKey.siliconFlowConfig)
-        val cbRaw = context.dataStore.get<String>(DataStoreKey.cerebrasConfig)
-        val sf = if (sfRaw.isNullOrBlank()) null else TranslateProviderConfig.fromJson(sfRaw)
-        val cb = if (cbRaw.isNullOrBlank()) null else TranslateProviderConfig.fromJson(cbRaw)
-        return buildLegacyMigration(sf, cb)
-    }
-
     fun remove(context: Context, scope: CoroutineScope, id: String) {
         scope.launch(Dispatchers.IO) {
             val map = read(context).toMutableMap()

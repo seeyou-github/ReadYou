@@ -760,6 +760,8 @@ val ignorePreferencesOnExportAndImport =
         DataStoreKey.currentAccountType,
         DataStoreKey.isFirstLaunch,
         DataStoreKey.autoBackupDirectoryUri,
+        DataStoreKey.siliconFlowConfig,
+        DataStoreKey.cerebrasConfig,
     )
 
 suspend fun Context.fromDataStoreToJSONString(): String {

@@ -215,25 +215,17 @@ class SettingsProvider @Inject constructor(
  * 写回新版 DataStore 在用户首次保存或调用 [DynamicProvidersPreference.put] 时执行。
  */
 private fun resolveDynamicProviders(settings: Settings): Map<String, TranslateProviderConfig> {
-    val (legacy, _) = DynamicProvidersPreference.buildLegacyMigration(
-        settings.siliconFlowConfig,
-        settings.cerebrasConfig,
-    )
     return DynamicProvidersPreference.mergeBuiltIns(
         persisted = settings.translateProviders,
-        legacy = legacy,
+        legacy = emptyMap(),
         hidden = settings.hiddenBuiltinTranslateProviders,
     )
 }
 
 private fun resolveDynamicProvidersOrder(settings: Settings): List<String> {
-    val (_, legacyOrder) = DynamicProvidersPreference.buildLegacyMigration(
-        settings.siliconFlowConfig,
-        settings.cerebrasConfig,
-    )
     return DynamicProvidersPreference.mergeOrder(
         persistedOrder = settings.translateProvidersOrder,
-        legacyOrder = legacyOrder,
+        legacyOrder = emptyList(),
         finalMap = resolveDynamicProviders(settings),
     )
 }

@@ -19,9 +19,16 @@ class StreamTranslateServiceFactory @Inject constructor(
     private val streamClaudeTranslate: StreamClaudeTranslate,
 ) {
     fun getService(serviceId: String): StreamTranslateService {
-        val cfg = DynamicProvidersPreference.read(context)[serviceId]
-        val kind = cfg?.kind ?: ProviderKind.OPENAI
-        return when (kind) {
+        val persisted = DynamicProvidersPreference.read(context)[serviceId]
+        val builtIn =
+            if (serviceId !in DynamicProvidersPreference.readHiddenBuiltIns(context)) {
+                DynamicProvidersPreference.builtInConfig(serviceId)
+            } else {
+                null
+            }
+        val cfg = persisted ?: builtIn
+            ?: throw IllegalArgumentException("AI provider is disabled or removed: $serviceId")
+        return when (cfg.kind) {
             ProviderKind.OPENAI -> streamOpenAITranslate
             ProviderKind.GOOGLE -> streamGoogleTranslate
             ProviderKind.CLAUDE -> streamClaudeTranslate

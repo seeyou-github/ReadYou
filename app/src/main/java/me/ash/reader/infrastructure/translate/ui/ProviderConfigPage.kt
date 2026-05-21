@@ -119,7 +119,7 @@ fun ProviderConfigPage(
             chatPath = nextChatPath,
             useResponsesApi = nextUseResponses,
             rpm = nextRpm,
-            enabledModels = nextEnabledModels,
+            enabledModels = nextEnabledModels.distinct(),
             keys = nextKeys,
             loadBalance = nextLoadBalance,
         )
@@ -292,7 +292,7 @@ fun ProviderConfigPage(
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            cfg.enabledModels.forEach { modelId ->
+                            cfg.enabledModels.distinct().forEach { modelId ->
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically,

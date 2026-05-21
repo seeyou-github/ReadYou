@@ -97,7 +97,7 @@ class ModelFetchService @Inject constructor() {
                     ProviderKind.CLAUDE -> parseClaudeModels(body)
                 }
 
-                Result.success(models.sortedBy { it.id })
+                Result.success(models.distinctBy { it.id }.sortedBy { it.id })
             } catch (e: Exception) {
                 Timber.e(e, "[$TAG] fetchModels 异常")
                 Result.failure(e)
