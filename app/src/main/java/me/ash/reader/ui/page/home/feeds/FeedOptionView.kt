@@ -38,6 +38,7 @@ fun FeedOptionView(
     selectedOpenInBrowserPreset: Boolean = false,
     selectedAutoTranslatePreset: Boolean = false,
     selectedAutoTranslateTitlePreset: Boolean = false,
+    articleListAutoRefreshEnabled: Boolean = false,
     disableRefererEnabled: Boolean = false,
     disableJavaScriptEnabled: Boolean = false,
     showImageFilterOption: Boolean = false,
@@ -52,6 +53,7 @@ fun FeedOptionView(
     openInBrowserPresetOnClick: () -> Unit = {},
     autoTranslatePresetOnClick: () -> Unit = {},
     autoTranslateTitlePresetOnClick: () -> Unit = {},
+    articleListAutoRefreshOnCheckedChange: (Boolean) -> Unit = {},
     disableRefererOnCheckedChange: (Boolean) -> Unit = {},
     disableJavaScriptOnCheckedChange: (Boolean) -> Unit = {},
     onImageFilterClick: () -> Unit = {},
@@ -87,6 +89,27 @@ fun FeedOptionView(
             autoTranslatePresetOnClick = autoTranslatePresetOnClick,
             autoTranslateTitlePresetOnClick = autoTranslateTitlePresetOnClick,
         )
+
+        Spacer(modifier = Modifier.height(26.dp))
+        Subtitle(text = stringResource(R.string.article_list))
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.auto_refresh_article_list_on_open),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Switch(
+                checked = articleListAutoRefreshEnabled,
+                onCheckedChange = articleListAutoRefreshOnCheckedChange,
+            )
+        }
 
         if (showImageFilterOption) {
             Spacer(modifier = Modifier.height(26.dp))

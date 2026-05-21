@@ -24,7 +24,7 @@ import java.util.*
 
 @Database(
     entities = [Account::class, Feed::class, Article::class, ArticleImageCache::class, Group::class, ArchivedArticle::class, BlacklistKeyword::class, ArticleTranslationCache::class, PluginRule::class],
-    version = 30,
+    version = 31,
     autoMigrations = [
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 5, to = 7),
@@ -405,6 +405,18 @@ abstract class AndroidDatabase : RoomDatabase() {
                         )
                     }
                 }
+                /**
+                 * 数据库迁移：从版本 30 到版本 31
+                 *
+                 * 1. feed 新增文章列表打开时自动刷新覆盖字段，NULL 表示继承全局设置
+                 */
+                private val MIGRATION_30_31 = object : Migration(30, 31) {
+                    override fun migrate(database: SupportSQLiteDatabase) {
+                        database.execSQL(
+                            "ALTER TABLE feed ADD COLUMN articleListAutoRefreshOverride INTEGER DEFAULT NULL"
+                        )
+                    }
+                }
 
         fun getInstance(context: Context): AndroidDatabase {
             return instance ?: synchronized(this) {
@@ -430,7 +442,8 @@ abstract class AndroidDatabase : RoomDatabase() {
                     MIGRATION_26_27,
                     MIGRATION_27_28,
                     MIGRATION_28_29,
-                    MIGRATION_29_30
+                    MIGRATION_29_30,
+                    MIGRATION_30_31
                 )
                  .build().also {
                     instance = it

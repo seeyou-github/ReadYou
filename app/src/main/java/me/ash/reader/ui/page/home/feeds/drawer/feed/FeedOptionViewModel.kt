@@ -182,6 +182,15 @@ constructor(
         }
     }
 
+    fun setArticleListAutoRefreshOverride(enabled: Boolean) {
+        viewModelScope.launch(ioDispatcher) {
+            _feedOptionUiState.value.feed?.let {
+                rssService.get().updateFeed(it.copy(articleListAutoRefreshOverride = enabled))
+                fetchFeed(it.id)
+            }
+        }
+    }
+
     fun changeAutoTranslatePreset() {
         viewModelScope.launch(ioDispatcher) {
             _feedOptionUiState.value.feed?.let { feed ->

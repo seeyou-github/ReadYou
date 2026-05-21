@@ -260,7 +260,6 @@ fun FlowPage(
     val flowUiState = viewModel.flowUiState.collectAsStateValue()
     if (flowUiState == null) return
     val cachedImagePaths = viewModel.cachedImagePaths.collectAsStateValue()
-
     val pagerData: PagerData = flowUiState.pagerData
 
     val filterUiState = pagerData.filterState
@@ -437,6 +436,20 @@ fun FlowPage(
     }
 
     val isSyncing = viewModel.isSyncingFlow.collectAsStateValue()
+
+    val shouldAutoRefreshArticleList =
+        filterUiState.feed?.articleListAutoRefreshOverride
+            ?: settings.autoRefreshArticleListOnOpen.value
+
+    LaunchedEffect(
+        filterUiState.feed?.id,
+        filterUiState.group?.id,
+        shouldAutoRefreshArticleList,
+    ) {
+        if (shouldAutoRefreshArticleList && !isSyncing) {
+            viewModel.sync()
+        }
+    }
 
     // 2026-02-03: 收集标题翻译状态
     val isTranslatingTitle = viewModel.titleTranslateEntry.isTranslating

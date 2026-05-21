@@ -223,6 +223,7 @@ sealed interface PreferencesKey {
         const val swipeStartAction = "swipeStartAction"
         const val swipeEndAction = "swipeEndAction"
         const val markAsReadOnScroll = "markAsReadOnScroll"
+        const val autoRefreshArticleListOnOpen = "autoRefreshArticleListOnOpen"
         const val hideEmptyGroups = "hideEmptyGroups"
         const val pullToLoadNextFeed = "pullToLoadNextFeed"
         const val pullToSwitchArticle = "pullToSwitchArticle"
@@ -352,6 +353,7 @@ sealed interface PreferencesKey {
                 IntKey(swipeStartAction),
                 IntKey(swipeEndAction),
                 BooleanKey(markAsReadOnScroll),
+                BooleanKey(autoRefreshArticleListOnOpen),
                 BooleanKey(hideEmptyGroups),
                 BooleanKey(pullToLoadNextFeed),
                 BooleanKey(pullToSwitchArticle),
@@ -487,6 +489,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val swipeStartAction = "swipeStartAction"
         const val swipeEndAction = "swipeEndAction"
         const val markAsReadOnScroll = "markAsReadOnScroll"
+        const val autoRefreshArticleListOnOpen = "autoRefreshArticleListOnOpen"
         const val hideEmptyGroups = "hideEmptyGroups"
         const val pullToLoadNextFeed = "pullToLoadNextFeed"
         const val pullToSwitchArticle = "pullToSwitchArticle"
@@ -707,6 +710,8 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                 swipeEndAction to DataStoreKey(intPreferencesKey(swipeEndAction), Int::class.java),
                 markAsReadOnScroll to
                     DataStoreKey(booleanPreferencesKey(markAsReadOnScroll), Boolean::class.java),
+                autoRefreshArticleListOnOpen to
+                    DataStoreKey(booleanPreferencesKey(autoRefreshArticleListOnOpen), Boolean::class.java),
                 hideEmptyGroups to
                     DataStoreKey(booleanPreferencesKey(hideEmptyGroups), Boolean::class.java),
                 pullToLoadNextFeed to

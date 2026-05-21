@@ -78,6 +78,7 @@ class PluginRuleTransferService @Inject constructor(
                     imageFilterResolution = feed.imageFilterResolution,
                     imageFilterFileName = feed.imageFilterFileName,
                     imageFilterDomain = feed.imageFilterDomain,
+                    articleListAutoRefreshOverride = feed.articleListAutoRefreshOverride,
                 ),
         )
     }
@@ -161,6 +162,7 @@ class PluginRuleTransferService @Inject constructor(
                         imageFilterResolution = settings.imageFilterResolution,
                         imageFilterFileName = settings.imageFilterFileName,
                         imageFilterDomain = settings.imageFilterDomain,
+                        articleListAutoRefreshOverride = settings.articleListAutoRefreshOverride,
                     )
                 feedDao.update(updated)
                 pluginRuleDao.insert(
@@ -222,4 +224,5 @@ data class FeedSettingsExport(
     val imageFilterResolution: String = "",
     val imageFilterFileName: String = "",
     val imageFilterDomain: String = "",
+    val articleListAutoRefreshOverride: Boolean? = null,
 )

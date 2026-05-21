@@ -70,6 +70,7 @@ class OPMLDataSource @Inject constructor(
                             imageFilterResolution = outline.extractPresetImageFilterResolution(),
                             imageFilterFileName = outline.extractPresetImageFilterFileName(),
                             imageFilterDomain = outline.extractPresetImageFilterDomain(),
+                            articleListAutoRefreshOverride = outline.extractArticleListAutoRefreshOverride(),
                         )
                     )
                 }
@@ -106,6 +107,7 @@ class OPMLDataSource @Inject constructor(
                                 imageFilterResolution = subOutline.extractPresetImageFilterResolution(),
                                 imageFilterFileName = subOutline.extractPresetImageFilterFileName(),
                                 imageFilterDomain = subOutline.extractPresetImageFilterDomain(),
+                                articleListAutoRefreshOverride = subOutline.extractArticleListAutoRefreshOverride(),
                             )
                         )
                     }
@@ -201,6 +203,13 @@ class OPMLDataSource @Inject constructor(
 
     private fun Outline?.extractPresetImageFilterDomain(): String =
         this?.attributes?.getOrDefault("imageFilterDomain", null) ?: ""
+
+    private fun Outline?.extractArticleListAutoRefreshOverride(): Boolean? =
+        when (this?.attributes?.getOrDefault("articleListAutoRefreshOverride", null)?.lowercase()) {
+            "true" -> true
+            "false" -> false
+            else -> null
+        }
 
     private fun Outline?.isDefaultGroup(): Boolean =
         this?.attributes?.getOrDefault("isDefault", null).toBoolean()

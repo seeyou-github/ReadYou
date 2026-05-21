@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import me.ash.reader.R
 import me.ash.reader.infrastructure.preference.InitialFilterPreference
 import me.ash.reader.infrastructure.preference.InitialPagePreference
+import me.ash.reader.infrastructure.preference.LocalAutoRefreshArticleListOnOpen
 import me.ash.reader.infrastructure.preference.LocalArticleListSwipeEndAction
 import me.ash.reader.infrastructure.preference.LocalArticleListSwipeStartAction
 import me.ash.reader.infrastructure.preference.LocalHideEmptyGroups
@@ -63,6 +64,7 @@ fun InteractionPage(
     val swipeToStartAction = LocalArticleListSwipeStartAction.current
     val swipeToEndAction = LocalArticleListSwipeEndAction.current
     val markAsReadOnScroll = LocalMarkAsReadOnScroll.current
+    val autoRefreshArticleListOnOpen = LocalAutoRefreshArticleListOnOpen.current
     val hideEmptyGroups = LocalHideEmptyGroups.current
     val sortUnreadArticles = LocalSortUnreadArticles.current
     val pullToSwitchArticle = LocalPullToSwitchArticle.current
@@ -126,6 +128,16 @@ fun InteractionPage(
                             initialFilterDialogVisible = true
                         },
                     ) {}
+                    SettingItem(
+                        title = stringResource(R.string.auto_refresh_article_list_on_open),
+                        onClick = {
+                            autoRefreshArticleListOnOpen.toggle(context, scope)
+                        },
+                    ) {
+                        RYSwitch(activated = autoRefreshArticleListOnOpen.value) {
+                            autoRefreshArticleListOnOpen.toggle(context, scope)
+                        }
+                    }
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // 2026-01-21: 隐藏订阅源界面设置

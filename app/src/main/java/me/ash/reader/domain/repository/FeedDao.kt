@@ -196,6 +196,7 @@ interface FeedDao {
                         isFullContent = existing.isFullContent,
                         isBrowser = existing.isBrowser,
                         isAutoTranslate = existing.isAutoTranslate,
+                        articleListAutoRefreshOverride = existing.articleListAutoRefreshOverride,
                     )
                 if (updated == existing) {
                     null

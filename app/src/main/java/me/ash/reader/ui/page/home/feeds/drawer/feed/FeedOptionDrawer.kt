@@ -51,6 +51,7 @@ import kotlinx.coroutines.launch
 import me.ash.reader.R
 import me.ash.reader.infrastructure.preference.LocalOpenLink
 import me.ash.reader.infrastructure.preference.LocalOpenLinkSpecificBrowser
+import me.ash.reader.infrastructure.preference.LocalSettings
 import me.ash.reader.ui.component.ChangeIconDialog
 import me.ash.reader.ui.component.ChangeUrlDialog
 import me.ash.reader.ui.component.FeedIcon
@@ -76,6 +77,7 @@ fun FeedOptionDrawer(
     val view = LocalView.current
     val openLink = LocalOpenLink.current
     val openLinkSpecificBrowser = LocalOpenLinkSpecificBrowser.current
+    val settings = LocalSettings.current
     val scope = rememberCoroutineScope()
     val feedOptionUiState = feedOptionViewModel.feedOptionUiState.collectAsStateValue()
     val iconSearchResult = feedOptionUiState.iconSearchResult
@@ -212,6 +214,9 @@ fun FeedOptionDrawer(
                     selectedOpenInBrowserPreset = feedOptionUiState.feed?.isBrowser ?: false,
                     selectedAutoTranslatePreset = feedOptionUiState.feed?.isAutoTranslate ?: false,
                     selectedAutoTranslateTitlePreset = feedOptionUiState.feed?.isAutoTranslateTitle ?: false,
+                    articleListAutoRefreshEnabled =
+                        feedOptionUiState.feed?.articleListAutoRefreshOverride
+                            ?: settings.autoRefreshArticleListOnOpen.value,
                     disableRefererEnabled = feedOptionUiState.feed?.isDisableReferer ?: false,
                     disableJavaScriptEnabled = feedOptionUiState.feed?.isDisableJavaScript ?: false,
                     showImageFilterOption = true,
@@ -240,6 +245,9 @@ fun FeedOptionDrawer(
                     autoTranslateTitlePresetOnClick = {
                         Timber.tag("AutoTranslateTitle").d("onClick: Auto translate title button clicked")
                         feedOptionViewModel.changeAutoTranslateTitlePreset()
+                    },
+                    articleListAutoRefreshOnCheckedChange = {
+                        feedOptionViewModel.setArticleListAutoRefreshOverride(it)
                     },
                     disableRefererOnCheckedChange = {
                         feedOptionViewModel.setDisableReferer(it)

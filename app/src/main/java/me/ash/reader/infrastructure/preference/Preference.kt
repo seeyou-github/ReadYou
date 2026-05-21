@@ -120,6 +120,7 @@ fun Preferences.toSettings(): Settings {
         swipeStartAction = SwipeStartActionPreference.fromPreferences(this),
         swipeEndAction = SwipeEndActionPreference.fromPreferences(this),
         markAsReadOnScroll = MarkAsReadOnScrollPreference.fromPreferences(this),
+        autoRefreshArticleListOnOpen = AutoRefreshArticleListOnOpenPreference.fromPreferences(this),
         hideEmptyGroups = HideEmptyGroupsPreference.fromPreferences(this),
         pullToSwitchFeed = PullToLoadNextFeedPreference.fromPreference(this),
         pullToSwitchArticle = PullToSwitchArticlePreference.fromPreference(this),

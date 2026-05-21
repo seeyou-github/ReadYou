@@ -274,6 +274,9 @@ class OpmlService @Inject constructor(
                     put("imageFilterResolution", feed.imageFilterResolution)
                     put("imageFilterFileName", feed.imageFilterFileName)
                     put("imageFilterDomain", feed.imageFilterDomain)
+                    feed.articleListAutoRefreshOverride?.let {
+                        put("articleListAutoRefreshOverride", it.toString())
+                    }
                 }
             },
             listOf()

@@ -295,6 +295,7 @@
     <string name="all_read">所有已读项</string>
     <string name="read_excluding_starred">已读项，但已加星标的除外</string>
     <string name="external_links">外部链接</string>
+    <string name="auto_refresh_article_list_on_open">打开文章列表界面自动刷新</string>
     <string name="submit_bug_report">在 GitHub 上提交故障报告</string>
     <string name="unexpected_error_title">哎呀！出问题了…</string>
     <string name="copy_error_report">复制错误报告</string>

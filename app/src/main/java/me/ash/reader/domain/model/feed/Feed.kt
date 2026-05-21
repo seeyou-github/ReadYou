@@ -53,6 +53,8 @@ data class Feed(
     val imageFilterDomain: String = "",
     @ColumnInfo(defaultValue = "0")
     val sortOrder: Int = 0,
+    @ColumnInfo
+    val articleListAutoRefreshOverride: Boolean? = null,
     @Ignore val important: Int = 0
 ) {
     constructor(
@@ -73,7 +75,8 @@ data class Feed(
         imageFilterResolution: String = "",
         imageFilterFileName: String = "",
         imageFilterDomain: String = "",
-        sortOrder: Int = 0
+        sortOrder: Int = 0,
+        articleListAutoRefreshOverride: Boolean? = null,
     ) : this(
         id = id,
         name = name,
@@ -93,6 +96,7 @@ data class Feed(
         imageFilterFileName = imageFilterFileName,
         imageFilterDomain = imageFilterDomain,
         sortOrder = sortOrder,
+        articleListAutoRefreshOverride = articleListAutoRefreshOverride,
         important = 0
     )
 }
