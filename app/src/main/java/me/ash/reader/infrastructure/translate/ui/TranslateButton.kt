@@ -17,7 +17,6 @@ import kotlinx.coroutines.launch
 import me.ash.reader.infrastructure.translate.apistream.StreamTranslateManager
 import me.ash.reader.infrastructure.preference.LocalSettings
 import me.ash.reader.infrastructure.preference.Settings
-import me.ash.reader.infrastructure.translate.TranslateProvider
 import me.ash.reader.infrastructure.translate.apistream.StreamTranslateServiceFactory
 import me.ash.reader.infrastructure.translate.model.TranslateModelConfig
 
@@ -90,7 +89,7 @@ fun TranslateButton(
     val coroutineScope = rememberCoroutineScope()
 
 val currentConfig = settings.quickTranslateModel ?: TranslateModelConfig(
-    provider = TranslateProvider.SILICONFLOW.serviceId,
+    provider = "",
     model = "",
     apiKey = ""
 )

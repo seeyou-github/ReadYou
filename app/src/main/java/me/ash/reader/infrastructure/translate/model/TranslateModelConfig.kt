@@ -6,61 +6,49 @@ import kotlinx.serialization.json.Json
 /**
  * 翻译模型配置
  *
- * @property provider 提供商ID (siliconflow, cerebras)
- * @property model 模型ID (如 "qwen-3-32b")
- * @property apiKey API密钥
- * @property rpm 每分钟请求限制，默认10
+ * 一旦用户在「翻译模型」里选定了某个供应商下的某个模型，本对象就承载
+ * 接下来发请求所需的全部上下文（含 baseUrl/kind 等），避免每次再去查询动态供应商存储。
  */
 @Serializable
 data class TranslateModelConfig(
-    val provider: String,
+    val provider: String,            // 供应商 id（动态存储的 key）
     val model: String,
     val apiKey: String,
-    val rpm: Int = 10
+    val rpm: Int = 10,
+    val kind: ProviderKind = ProviderKind.OPENAI,
+    val baseUrl: String = "",        // 例如 https://api.siliconflow.cn/v1
+    val chatPath: String = "/chat/completions",
+    val useResponsesApi: Boolean = false,
 ) {
     companion object {
-        fun fromJson(json: String): TranslateModelConfig? {
-            return try {
-                Json.decodeFromString(serializer(), json)
-            } catch (e: Exception) {
-                null
-            }
+        private val json = Json { ignoreUnknownKeys = true }
+        fun fromJson(text: String): TranslateModelConfig? = try {
+            json.decodeFromString(serializer(), text)
+        } catch (_: Exception) {
+            null
         }
-
-        fun toJson(config: TranslateModelConfig): String {
-            return Json.encodeToString(serializer(), config)
-        }
+        fun toJson(config: TranslateModelConfig): String =
+            json.encodeToString(serializer(), config)
     }
 }
 
 /**
- * 翻译提供商信息
- *
- * @property id 提供商ID
- * @property name 显示名称
- * @property apiUrl API调用地址
- * @property modelsUrl 获取模型列表地址
- * @property description 描述
+ * 翻译提供商展示信息（运行期 UI 辅助类型）
  */
 data class TranslateProviderInfo(
     val id: String,
     val name: String,
     val apiUrl: String,
     val modelsUrl: String,
-    val description: String
+    val description: String,
 )
 
 /**
  * 模型信息
- *
- * @property id 模型ID
- * @property name 模型名称（带描述）
- * @property description 模型描述
- * @property isEnabled 是否已启用
  */
 data class ModelInfo(
     val id: String,
     val name: String,
     val description: String? = null,
-    val isEnabled: Boolean = false
+    val isEnabled: Boolean = false,
 )

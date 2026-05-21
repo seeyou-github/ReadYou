@@ -151,13 +151,13 @@ sealed interface PreferencesKey {
         const val feedsBottomBarVisible = "feedsBottomBarVisible"
         const val feedsLayoutStyle = "feedsLayoutStyle"
         const val feedsPageColorThemes = "feedsPageColorThemes"
-        // 2026-01-21: 新增订阅源图标样式设�?
+        // 2026-01-21: 新增订阅源图标样式设�?
         const val feedsIconBrightness = "feedsIconBrightness"
         const val feedsGridColumnCount = "feedsGridColumnCount"
         const val feedsGridRowSpacing = "feedsGridRowSpacing"
         const val feedsGridIconSize = "feedsGridIconSize"
         const val feedsListItemHeight = "feedsListItemHeight"
-        // 2026-01-23: 新增列表视图列表边距�?DataStoreKey 常量
+        // 2026-01-23: 新增列表视图列表边距�?DataStoreKey 常量
         // 修改原因：定义列表视图列表边距的存储键名
         const val feedsListItemPadding = "feedsListItemPadding"
 
@@ -166,7 +166,7 @@ sealed interface PreferencesKey {
         const val flowFilterBarPadding = "flowFilterBarPadding"
         const val flowFilterBarTonalElevation = "flowFilterBarTonalElevation"
         const val flowTopBarTonalElevation = "flowTopBarTonalElevation"
-        // 2026-01-21: 新增过滤栏自动隐藏功�?
+        // 2026-01-21: 新增过滤栏自动隐藏功�?
         const val flowFilterBarAutoHide = "flowFilterBarAutoHide"
         const val flowArticleListFeedIcon = "flowArticleListFeedIcon"
         const val flowArticleListFeedName = "flowArticleListFeedName"
@@ -230,7 +230,7 @@ sealed interface PreferencesKey {
         const val openLinkAppSpecificBrowser = "openLinkAppSpecificBrowser"
         const val sharedContent = "sharedContent"
         // 2026-01-24: 新增阅读页面标题样式设置相关 DataStoreKey 常量
-        // 修改原因：支持标题字体大小、颜色、左右边距的持久化存�?
+        // 修改原因：支持标题字体大小、颜色、左右边距的持久化存�?
         const val readingTitleFontSize = "readingTitleFontSize"
         const val readingTitleColor = "readingTitleColor"
         const val readingTitleHorizontalPadding = "readingTitleHorizontalPadding"
@@ -247,6 +247,8 @@ sealed interface PreferencesKey {
         const val longPressTranslateModel = "long_press_translate_model"
         const val siliconFlowConfig = "siliconflow_config"
         const val cerebrasConfig = "cerebras_config"
+        const val dynamicTranslateProviders = "dynamic_translate_providers"
+        const val dynamicTranslateProvidersOrder = "dynamic_translate_providers_order"
         const val autoBackupDirectoryUri = "auto_backup_directory_uri"
 
         private val keyList =
@@ -276,14 +278,14 @@ sealed interface PreferencesKey {
                 BooleanKey(feedsGroupListExpand),
                 IntKey(feedsGroupListTonalElevation),
                 StringKey(feedsPageColorThemes),
-                // 2026-01-21: 新增订阅源图标样式设�?
+                // 2026-01-21: 新增订阅源图标样式设�?
                 IntKey(feedsIconBrightness),
                 IntKey(feedsGridColumnCount),
                 IntKey(feedsGridRowSpacing),
                 IntKey(feedsGridIconSize),
                 IntKey(feedsListItemHeight),
-                // 2026-01-23: 新增列表视图列表边距�?Key
-                // 修改原因：支持列表视图列表边距的持久化存�?
+                // 2026-01-23: 新增列表视图列表边距�?Key
+                // 修改原因：支持列表视图列表边距的持久化存�?
                 IntKey(feedsListItemPadding),
                 IntKey(feedsLayoutStyle),
                 // Flow page
@@ -291,7 +293,7 @@ sealed interface PreferencesKey {
                 IntKey(flowFilterBarPadding),
                 IntKey(flowFilterBarTonalElevation),
                 IntKey(flowTopBarTonalElevation),
-                // 2026-01-21: 新增过滤栏自动隐藏功�?
+                // 2026-01-21: 新增过滤栏自动隐藏功�?
                 BooleanKey(flowFilterBarAutoHide),
                 BooleanKey(flowArticleListFeedIcon),
                 BooleanKey(flowArticleListFeedName),
@@ -338,8 +340,8 @@ sealed interface PreferencesKey {
                 IntKey(readingImageRoundedCorners),
                 IntKey(readingImageBrightness),
                 StringKey(customReaderThemes),
-                // 2026-01-24: 新增阅读页面标题样式设置相关�?Key
-                // 修改原因：支持标题字体大小、颜色、左右边距的持久化存�?
+                // 2026-01-24: 新增阅读页面标题样式设置相关�?Key
+                // 修改原因：支持标题字体大小、颜色、左右边距的持久化存�?
                 IntKey(readingTitleFontSize),
                 StringKey(readingTitleColor),
                 IntKey(readingTitleHorizontalPadding),
@@ -365,6 +367,8 @@ sealed interface PreferencesKey {
                 StringKey(longPressTranslateModel),
                 StringKey(siliconFlowConfig),
                 StringKey(cerebrasConfig),
+                StringKey(dynamicTranslateProviders),
+                StringKey(dynamicTranslateProvidersOrder),
                 StringKey(autoBackupDirectoryUri),
             )
 
@@ -403,13 +407,13 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val feedsGroupListTonalElevation = "feedsGroupListTonalElevation"
         const val feedsLayoutStyle = "feedsLayoutStyle"
         const val feedsPageColorThemes = "feedsPageColorThemes"
-        // 2026-01-21: 新增订阅源图标样式设�?
+        // 2026-01-21: 新增订阅源图标样式设�?
         const val feedsIconBrightness = "feedsIconBrightness"
         const val feedsGridColumnCount = "feedsGridColumnCount"
         const val feedsGridRowSpacing = "feedsGridRowSpacing"
         const val feedsGridIconSize = "feedsGridIconSize"
         const val feedsListItemHeight = "feedsListItemHeight"
-        // 2026-01-23: 新增列表视图列表边距�?DataStoreKey 常量
+        // 2026-01-23: 新增列表视图列表边距�?DataStoreKey 常量
         // 修改原因：定义列表视图列表边距的存储键名
         const val feedsListItemPadding = "feedsListItemPadding"
         
@@ -418,7 +422,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val flowFilterBarPadding = "flowFilterBarPadding"
         const val flowFilterBarTonalElevation = "flowFilterBarTonalElevation"
         const val flowTopBarTonalElevation = "flowTopBarTonalElevation"
-        // 2026-01-21: 新增过滤栏自动隐藏功�?
+        // 2026-01-21: 新增过滤栏自动隐藏功�?
         const val flowFilterBarAutoHide = "flowFilterBarAutoHide"
         const val flowArticleListFeedIcon = "flowArticleListFeedIcon"
         const val flowArticleListFeedName = "flowArticleListFeedName"
@@ -468,7 +472,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val selectedReaderThemeId = "selected_reader_theme_id"
         const val customReaderThemes = "custom_reader_themes"
         // 2026-01-24: 新增阅读页面标题样式设置相关 DataStoreKey 常量
-        // 修改原因：支持标题字体大小、颜色、左右边距的持久化存�?
+        // 修改原因：支持标题字体大小、颜色、左右边距的持久化存�?
         const val readingTitleFontSize = "readingTitleFontSize"
         const val readingTitleColor = "readingTitleColor"
         const val readingTitleHorizontalPadding = "readingTitleHorizontalPadding"
@@ -497,6 +501,8 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val longPressTranslateModel = "long_press_translate_model"
         const val siliconFlowConfig = "siliconflow_config"
         const val cerebrasConfig = "cerebras_config"
+        const val dynamicTranslateProviders = "dynamic_translate_providers"
+        const val dynamicTranslateProvidersOrder = "dynamic_translate_providers_order"
         const val autoBackupDirectoryUri = "auto_backup_directory_uri"
 
         val keys: MutableMap<String, DataStoreKey<*>> =
@@ -548,7 +554,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(intPreferencesKey(feedsLayoutStyle), Int::class.java),
                 feedsPageColorThemes to
                     DataStoreKey(stringPreferencesKey(feedsPageColorThemes), String::class.java),
-                // 2026-01-21: 新增订阅源图标样式设�?
+                // 2026-01-21: 新增订阅源图标样式设�?
                 feedsIconBrightness to
                     DataStoreKey(intPreferencesKey(feedsIconBrightness), Int::class.java),
                 feedsGridColumnCount to
@@ -559,8 +565,8 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(intPreferencesKey(feedsGridIconSize), Int::class.java),
                 feedsListItemHeight to
                     DataStoreKey(intPreferencesKey(feedsListItemHeight), Int::class.java),
-                // 2026-01-23: 新增列表视图列表边距�?Key
-                // 修改原因：支持列表视图列表边距的持久化存�?
+                // 2026-01-23: 新增列表视图列表边距�?Key
+                // 修改原因：支持列表视图列表边距的持久化存�?
                 feedsListItemPadding to
                     DataStoreKey(intPreferencesKey(feedsListItemPadding), Int::class.java),
                 // Flow page
@@ -572,7 +578,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(intPreferencesKey(flowFilterBarTonalElevation), Int::class.java),
                 flowTopBarTonalElevation to
                     DataStoreKey(intPreferencesKey(flowTopBarTonalElevation), Int::class.java),
-                // 2026-01-21: 新增过滤栏自动隐藏功�?
+                // 2026-01-21: 新增过滤栏自动隐藏功�?
                 flowFilterBarAutoHide to
                     DataStoreKey(booleanPreferencesKey(flowFilterBarAutoHide), Boolean::class.java),
                 flowArticleListFeedIcon to
@@ -682,8 +688,8 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(stringPreferencesKey(selectedReaderThemeId), String::class.java),
                 customReaderThemes to
                     DataStoreKey(stringPreferencesKey(customReaderThemes), String::class.java),
-                // 2026-01-24: 新增阅读页面标题样式设置相关�?DataStoreKey 映射
-                // 修改原因：支持标题字体大小、颜色、左右边距的持久化存�?
+                // 2026-01-24: 新增阅读页面标题样式设置相关�?DataStoreKey 映射
+                // 修改原因：支持标题字体大小、颜色、左右边距的持久化存�?
                 readingTitleFontSize to
                     DataStoreKey(intPreferencesKey(readingTitleFontSize), Int::class.java),
                 readingTitleColor to
@@ -728,6 +734,10 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(stringPreferencesKey(siliconFlowConfig), String::class.java),
                 cerebrasConfig to
                     DataStoreKey(stringPreferencesKey(cerebrasConfig), String::class.java),
+                dynamicTranslateProviders to
+                    DataStoreKey(stringPreferencesKey(dynamicTranslateProviders), String::class.java),
+                dynamicTranslateProvidersOrder to
+                    DataStoreKey(stringPreferencesKey(dynamicTranslateProvidersOrder), String::class.java),
                 autoBackupDirectoryUri to
                     DataStoreKey(stringPreferencesKey(autoBackupDirectoryUri), String::class.java),
             )

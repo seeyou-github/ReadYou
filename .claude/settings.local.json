@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew.bat :app:compileGoogleReleaseKotlin)",
+      "Bash(./gradlew.bat :app:tasks --all)",
+      "Bash(./gradlew.bat :app:compileDebugKotlin)"
+    ]
+  }
+}

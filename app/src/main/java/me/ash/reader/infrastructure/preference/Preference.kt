@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import kotlinx.coroutines.CoroutineScope
 import me.ash.reader.infrastructure.translate.preference.CerebrasConfigPreference
+import me.ash.reader.infrastructure.translate.preference.DynamicProvidersPreference
 
 import me.ash.reader.infrastructure.translate.preference.QuickTranslateModelPreference
 import me.ash.reader.infrastructure.translate.preference.SiliconFlowConfigPreference
@@ -141,5 +142,7 @@ fun Preferences.toSettings(): Settings {
 
         siliconFlowConfig = SiliconFlowConfigPreference.fromPreferences(this),
         cerebrasConfig = CerebrasConfigPreference.fromPreferences(this),
+        translateProviders = DynamicProvidersPreference.fromPreferences(this),
+        translateProvidersOrder = DynamicProvidersPreference.orderFromPreferences(this),
     )
 }

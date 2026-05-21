@@ -111,6 +111,8 @@ data class Settings(
     val longPressTranslateModel: TranslateModelConfig? = null,
     val siliconFlowConfig: TranslateProviderConfig? = null,
     val cerebrasConfig: TranslateProviderConfig? = null,
+    val translateProviders: Map<String, TranslateProviderConfig> = emptyMap(),
+    val translateProvidersOrder: List<String> = emptyList(),
 
     // Interaction
     val initialPage: InitialPagePreference = InitialPagePreference.default,

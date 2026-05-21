@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import me.ash.reader.R
 import me.ash.reader.infrastructure.preference.LocalFeedsPageColorThemes
-import me.ash.reader.infrastructure.translate.TranslateProviders
+import me.ash.reader.infrastructure.translate.preference.LocalDynamicProviders
 import me.ash.reader.ui.component.base.DisplayText
 import me.ash.reader.ui.component.base.FeedbackIconButton
 import me.ash.reader.ui.component.base.RYScaffold
@@ -76,13 +76,14 @@ fun AITranslationPage(
                 // 翻译模型（唯一的翻译模型设置）
                 item {
                     val quickConfig = quickModelConfig
+                    val providersMap = LocalDynamicProviders.current
                     val quickDesc = if (quickConfig != null) {
-                        val provider = TranslateProviders.ALL.find { it.id == quickConfig.provider }
-                        "${provider?.name ?: quickConfig.provider}: ${quickConfig.model}"
+                        val providerName = providersMap[quickConfig.provider]?.name ?: quickConfig.provider
+                        "$providerName: ${quickConfig.model}"
                     } else {
                         stringResource(R.string.model_not_configured)
                     }
-                    
+
                     SelectableSettingGroupItem(
                         title = "翻译模型",  // 2026-01-31: 修改文字
                         desc = quickDesc,
@@ -90,16 +91,19 @@ fun AITranslationPage(
                         onClick = { showModelSelection = true }
                     )
                 }
-                
+
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
                 }
-                
+
                 // AI提供商（移到下面）
                 item {
+                    val providersMap = LocalDynamicProviders.current
+                    val descText = if (providersMap.isEmpty()) "尚未添加"
+                        else providersMap.values.joinToString(", ") { it.name }
                     SelectableSettingGroupItem(
                         title = "AI提供商",
-                        desc = "SiliconFlow, Cerebras",
+                        desc = descText,
                         icon = Icons.Outlined.Business,
                         onClick = onNavigateToProviderList
                     )

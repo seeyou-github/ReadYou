@@ -18,7 +18,11 @@ import me.ash.reader.infrastructure.datastore.getOrDefault
 import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.IODispatcher
 import me.ash.reader.infrastructure.net.UserAgentHolder
+import me.ash.reader.infrastructure.translate.model.TranslateProviderConfig
+import me.ash.reader.infrastructure.translate.preference.DynamicProvidersPreference
 import me.ash.reader.infrastructure.translate.preference.LocalCerebrasConfig
+import me.ash.reader.infrastructure.translate.preference.LocalDynamicProviders
+import me.ash.reader.infrastructure.translate.preference.LocalDynamicProvidersOrder
 
 import me.ash.reader.infrastructure.translate.preference.LocalQuickTranslateModel
 import me.ash.reader.infrastructure.translate.preference.LocalSiliconFlowConfig
@@ -176,6 +180,8 @@ class SettingsProvider @Inject constructor(
 
             LocalSiliconFlowConfig provides settings.siliconFlowConfig,
             LocalCerebrasConfig provides settings.cerebrasConfig,
+            LocalDynamicProviders provides resolveDynamicProviders(settings),
+            LocalDynamicProvidersOrder provides resolveDynamicProvidersOrder(settings),
 
             // Interaction
             LocalInitialPage provides settings.initialPage,
@@ -199,4 +205,32 @@ class SettingsProvider @Inject constructor(
             content()
         }
     }
+}
+
+/**
+ * 解析当前动态供应商映射：
+ * 若 DataStore 中尚未写入新版动态映射但旧版 SiliconFlow / Cerebras 偏好非空，
+ * 则在内存中按旧版数据生成迁移视图，UI 立即可见。
+ * 写回新版 DataStore 在用户首次保存或调用 [DynamicProvidersPreference.put] 时执行。
+ */
+private fun resolveDynamicProviders(settings: Settings): Map<String, TranslateProviderConfig> {
+    if (settings.translateProviders.isNotEmpty()) return settings.translateProviders
+    val (migrated, _) = DynamicProvidersPreference.buildLegacyMigration(
+        settings.siliconFlowConfig,
+        settings.cerebrasConfig,
+    )
+    return migrated
+}
+
+private fun resolveDynamicProvidersOrder(settings: Settings): List<String> {
+    if (settings.translateProviders.isNotEmpty()) {
+        val order = settings.translateProvidersOrder.filter { it in settings.translateProviders }
+        val missing = settings.translateProviders.keys - order.toSet()
+        return order + missing
+    }
+    val (_, migratedOrder) = DynamicProvidersPreference.buildLegacyMigration(
+        settings.siliconFlowConfig,
+        settings.cerebrasConfig,
+    )
+    return migratedOrder
 }

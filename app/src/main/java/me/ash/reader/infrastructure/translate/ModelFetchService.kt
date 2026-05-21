@@ -6,6 +6,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.ash.reader.infrastructure.di.UserAgentInterceptor
 import me.ash.reader.infrastructure.translate.model.ModelInfo
+import me.ash.reader.infrastructure.translate.model.ProviderKind
+import me.ash.reader.infrastructure.translate.model.TranslateProviderConfig
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import timber.log.Timber
@@ -16,7 +18,7 @@ import javax.inject.Singleton
 /**
  * 模型获取服务
  *
- * 用于从翻译提供商 API 获取可用模型列表
+ * 根据 [TranslateProviderConfig.kind] 选择对应供应商的 models 接口。
  */
 @Singleton
 class ModelFetchService @Inject constructor() {
@@ -37,130 +39,139 @@ class ModelFetchService @Inject constructor() {
     }
 
     /**
-     * 获取指定提供商的模型列表
+     * 拉取指定供应商配置下可用的模型列表。
      *
-     * @param providerId 提供商ID (siliconflow 或 cerebras)
-     * @param apiKey API密钥
-     * @return Result<List<ModelInfo>> 成功返回模型列表，失败返回错误信息
+     * 多 Key 模式下使用 [KeyPicker] 挑选当前可用 Key。
      */
-    suspend fun fetchModels(providerId: String, apiKey: String): Result<List<ModelInfo>> {
+    suspend fun fetchModels(cfg: TranslateProviderConfig): Result<List<ModelInfo>> {
         return withContext(Dispatchers.IO) {
             try {
-                val provider = TranslateProviders.getById(providerId)
-                    ?: return@withContext Result.failure(Exception("未知的提供商: $providerId"))
+                val apiKey = KeyPicker.pick(cfg)
+                if (apiKey.isBlank()) {
+                    return@withContext Result.failure(Exception("API Key 未配置"))
+                }
 
-                Timber.d("[$TAG] 开始获取模型列表: ${provider.name}")
-                Timber.d("[$TAG] API URL: ${provider.modelsUrl}")
+                val request = when (cfg.kind) {
+                    ProviderKind.OPENAI -> {
+                        val base = cfg.baseUrl.trimEnd('/')
+                            .ifBlank { "https://api.openai.com/v1" }
+                        Request.Builder()
+                            .url("$base/models")
+                            .addHeader("Authorization", "Bearer $apiKey")
+                            .get().build()
+                    }
+                    ProviderKind.GOOGLE -> {
+                        val base = cfg.baseUrl.trimEnd('/')
+                            .ifBlank { "https://generativelanguage.googleapis.com/v1beta" }
+                        Request.Builder()
+                            .url("$base/models?key=$apiKey")
+                            .get().build()
+                    }
+                    ProviderKind.CLAUDE -> {
+                        val base = cfg.baseUrl.trimEnd('/')
+                            .ifBlank { "https://api.anthropic.com/v1" }
+                        Request.Builder()
+                            .url("$base/models")
+                            .addHeader("x-api-key", apiKey)
+                            .addHeader("anthropic-version", "2023-06-01")
+                            .get().build()
+                    }
+                }
 
-                val request = Request.Builder()
-                    .url(provider.modelsUrl)
-                    .addHeader("Authorization", "Bearer $apiKey")
-                    .get()
-                    .build()
+                Timber.d("[$TAG] GET ${request.url.host}${request.url.encodedPath}")
 
                 val response = client.newCall(request).execute()
-
                 if (!response.isSuccessful) {
                     val errorBody = response.body?.string()
-                    Timber.e("[$TAG] API请求失败: ${response.code} ${response.message}, 响应: $errorBody")
+                    Timber.e("[$TAG] HTTP ${response.code}: $errorBody")
                     return@withContext Result.failure(
                         Exception("获取模型列表失败: ${response.code} ${response.message}")
                     )
                 }
-
-                val responseBody = response.body?.string()
+                val body = response.body?.string()
                     ?: return@withContext Result.failure(Exception("API响应为空"))
 
-                Timber.d("[$TAG] API响应成功，响应长度: ${responseBody.length}")
+                val models = when (cfg.kind) {
+                    ProviderKind.OPENAI -> parseOpenAIModels(body)
+                    ProviderKind.GOOGLE -> parseGoogleModels(body)
+                    ProviderKind.CLAUDE -> parseClaudeModels(body)
+                }
 
-                // 解析模型列表
-                val models = parseModels(responseBody)
-
-                Timber.d("[$TAG] 解析完成，共获取 ${models.size} 个模型")
-
-                Result.success(models)
+                Result.success(models.sortedBy { it.id })
             } catch (e: Exception) {
-                Timber.e(e, "[$TAG] 获取模型列表异常")
+                Timber.e(e, "[$TAG] fetchModels 异常")
                 Result.failure(e)
             }
         }
     }
 
-    /**
-     * 解析 OpenAI 格式的模型列表响应
-     *
-     * @param responseBody JSON响应字符串
-     * @return 模型信息列表
-     */
-    private fun parseModels(responseBody: String): List<ModelInfo> {
-        val models = mutableListOf<ModelInfo>()
-
+    private fun parseOpenAIModels(body: String): List<ModelInfo> {
+        val out = mutableListOf<ModelInfo>()
         try {
-            val jsonObject = gson.fromJson(responseBody, JsonObject::class.java)
-            val dataArray = jsonObject.getAsJsonArray("data")
-
-            if (dataArray != null) {
-                dataArray.forEach { element ->
-                    val modelObject = element.asJsonObject
-                    val id = modelObject.get("id")?.asString ?: return@forEach
-
-                    // 过滤掉嵌入模型和图像模型，只保留聊天模型
-                    if (isChatModel(id)) {
-                        val model = ModelInfo(
-                            id = id,
-                            name = formatModelName(id),
-                            description = null
-                        )
-                        models.add(model)
-                    }
-                }
+            val json = gson.fromJson(body, JsonObject::class.java)
+            val data = json.getAsJsonArray("data") ?: return out
+            data.forEach { el ->
+                val id = el.asJsonObject.get("id")?.asString ?: return@forEach
+                if (isChatModel(id)) out.add(ModelInfo(id = id, name = formatModelName(id)))
             }
         } catch (e: Exception) {
-            Timber.e(e, "[$TAG] 解析模型列表失败")
+            Timber.e(e, "[$TAG] OpenAI 模型列表解析失败")
         }
-
-        return models.sortedBy { it.id }
+        return out
     }
 
-    /**
-     * 判断是否为聊天模型
-     *
-     * 过滤掉嵌入模型(embedding)和图像模型(vision/dall-e)
-     *
-     * @param modelId 模型ID
-     * @return 是否为聊天模型
-     */
+    private fun parseGoogleModels(body: String): List<ModelInfo> {
+        val out = mutableListOf<ModelInfo>()
+        try {
+            val json = gson.fromJson(body, JsonObject::class.java)
+            val data = json.getAsJsonArray("models") ?: return out
+            data.forEach { el ->
+                val obj = el.asJsonObject
+                val nameRaw = obj.get("name")?.asString ?: return@forEach
+                val id = nameRaw.removePrefix("models/")
+                val supportedMethods = obj.getAsJsonArray("supportedGenerationMethods")
+                val supportsGen = supportedMethods?.any {
+                    it.asString == "generateContent" || it.asString == "streamGenerateContent"
+                } ?: true
+                if (!supportsGen) return@forEach
+                out.add(ModelInfo(id = id, name = formatModelName(id)))
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "[$TAG] Google 模型列表解析失败")
+        }
+        return out
+    }
+
+    private fun parseClaudeModels(body: String): List<ModelInfo> {
+        val out = mutableListOf<ModelInfo>()
+        try {
+            val json = gson.fromJson(body, JsonObject::class.java)
+            val data = json.getAsJsonArray("data") ?: return out
+            data.forEach { el ->
+                val obj = el.asJsonObject
+                val id = obj.get("id")?.asString ?: return@forEach
+                val display = obj.get("display_name")?.asString ?: formatModelName(id)
+                out.add(ModelInfo(id = id, name = display))
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "[$TAG] Claude 模型列表解析失败")
+        }
+        return out
+    }
+
     private fun isChatModel(modelId: String): Boolean {
-        val lowerId = modelId.lowercase()
-        return !lowerId.contains("embedding") &&
-                !lowerId.contains("dall-e") &&
-                !lowerId.contains("tts") &&
-                !lowerId.contains("whisper") &&
-                !lowerId.contains("moderation")
+        val lower = modelId.lowercase()
+        return !lower.contains("embedding") &&
+            !lower.contains("dall-e") &&
+            !lower.contains("tts") &&
+            !lower.contains("whisper") &&
+            !lower.contains("moderation")
     }
 
-    /**
-     * 格式化模型名称
-     *
-     * 将模型ID转换为更易读的名称
-     *
-     * @param modelId 模型ID
-     * @return 格式化后的名称
-     */
-    private fun formatModelName(modelId: String): String {
-        return when {
-            modelId.contains("qwen") -> {
-                val version = modelId.replace("qwen-", "")
-                "通义千问 $version"
-            }
-            modelId.contains("glm") -> {
-                val version = modelId.replace("glm-", "").uppercase()
-                "智谱 GLM-$version"
-            }
-            modelId.contains("gpt") -> {
-                modelId.uppercase()
-            }
-            else -> modelId
-        }
+    private fun formatModelName(modelId: String): String = when {
+        modelId.contains("qwen") -> "通义千问 ${modelId.removePrefix("qwen-")}"
+        modelId.contains("glm") -> "智谱 GLM-${modelId.removePrefix("glm-").uppercase()}"
+        modelId.contains("gpt") -> modelId.uppercase()
+        else -> modelId
     }
 }

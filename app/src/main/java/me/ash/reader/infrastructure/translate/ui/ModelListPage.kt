@@ -43,14 +43,11 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.ash.reader.R
 import me.ash.reader.infrastructure.preference.LocalFeedsPageColorThemes
+import me.ash.reader.infrastructure.translate.KeyPicker
 import me.ash.reader.infrastructure.translate.ModelFetchService
-import me.ash.reader.infrastructure.translate.TranslateProviders
 import me.ash.reader.infrastructure.translate.model.ModelInfo
-import me.ash.reader.infrastructure.translate.model.TranslateProviderConfig
-import me.ash.reader.infrastructure.translate.preference.CerebrasConfigPreference
-import me.ash.reader.infrastructure.translate.preference.LocalCerebrasConfig
-import me.ash.reader.infrastructure.translate.preference.LocalSiliconFlowConfig
-import me.ash.reader.infrastructure.translate.preference.SiliconFlowConfigPreference
+import me.ash.reader.infrastructure.translate.preference.DynamicProvidersPreference
+import me.ash.reader.infrastructure.translate.preference.LocalDynamicProviders
 import me.ash.reader.ui.component.base.DisplayText
 import me.ash.reader.ui.component.base.FeedbackIconButton
 import me.ash.reader.ui.component.base.RYScaffold
@@ -76,13 +73,8 @@ fun ModelListPage(
     val selectedColorTheme = colorThemes.firstOrNull { it.isDefault } ?: colorThemes.firstOrNull()
     val scope = rememberCoroutineScope()
 
-    val provider = TranslateProviders.getById(providerId)
-    val config =
-        when (providerId) {
-            "siliconflow" -> LocalSiliconFlowConfig.current
-            "cerebras" -> LocalCerebrasConfig.current
-            else -> null
-        }
+    val provider = LocalDynamicProviders.current[providerId]
+    val config = provider
 
     var searchQuery by remember { mutableStateOf("") }
     var models by remember { mutableStateOf<List<ModelInfo>>(emptyList()) }
@@ -90,11 +82,13 @@ fun ModelListPage(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var enabledModels by remember { mutableStateOf(config?.enabledModels ?: emptyList()) }
 
-    LaunchedEffect(providerId, config?.apiKey) {
-        if (config?.apiKey?.isNotBlank() == true) {
+    LaunchedEffect(providerId, config?.apiKey, config?.keys?.size) {
+        val cfg = config ?: return@LaunchedEffect
+        val key = KeyPicker.pick(cfg)
+        if (key.isNotBlank()) {
             isLoading = true
             errorMessage = null
-            val result = modelFetchService.fetchModels(providerId, config.apiKey)
+            val result = modelFetchService.fetchModels(cfg)
             result.onSuccess {
                 models = it
             }.onFailure {
@@ -133,19 +127,9 @@ fun ModelListPage(
 
     fun saveEnabledModels(newEnabledModels: List<String>) {
         enabledModels = newEnabledModels
-        val newConfig =
-            TranslateProviderConfig(
-                providerId = providerId,
-                apiKey = config?.apiKey ?: "",
-                rpm = config?.rpm ?: 10,
-                enabledModels = newEnabledModels,
-            )
-        scope.launch {
-            when (providerId) {
-                "siliconflow" -> SiliconFlowConfigPreference.put(context, scope, newConfig)
-                "cerebras" -> CerebrasConfigPreference.put(context, scope, newConfig)
-            }
-        }
+        val current = config ?: return
+        val updated = current.copy(enabledModels = newEnabledModels)
+        DynamicProvidersPreference.put(context, scope, updated)
     }
 
     fun toggleModel(modelId: String, enabled: Boolean) {
