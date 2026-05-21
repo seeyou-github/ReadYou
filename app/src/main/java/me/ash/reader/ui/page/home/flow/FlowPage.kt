@@ -84,6 +84,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -722,16 +723,48 @@ fun FlowPage(
                     val pager = flowUiState.pagerData.pager
                     val filterState = flowUiState.pagerData.filterState
                     val pagingItems = pager.collectAsLazyPagingItems().also { pagingItems = it }
+                    val visibleArticleIds by
+                        remember(listState, pagingItems) {
+                            derivedStateOf {
+                                listState.layoutInfo.visibleItemsInfo
+                                    .asSequence()
+                                    .mapNotNull { visibleItem ->
+                                        if (visibleItem.contentType != CONTENT_TYPE_ARTICLE) {
+                                            return@mapNotNull null
+                                        }
+                                        visibleItem.key as? String
+                                    }
+                                    .toSet()
+                            }
+                        }
 
                     LaunchedEffect(pagingItems, filterState.feed?.id, filterState.group?.id, filterState.filter) {
                         snapshotFlow {
                             pagingItems.itemSnapshotList.items
                                 .filterIsInstance<ArticleFlowItem.Article>()
                                 .map { it.articleWithFeed }
-                        }
+                            }
                             .distinctUntilChanged()
                             .collect { articles ->
-                                viewModel.enqueueTitleImagePreloads(articles)
+                                viewModel.enqueueTitleImagePreloads(
+                                    articles = articles,
+                                    priorityArticleIds = visibleArticleIds,
+                                )
+                            }
+                    }
+
+                    LaunchedEffect(pagingItems, filterState.feed?.id, filterState.group?.id, filterState.filter) {
+                        snapshotFlow { visibleArticleIds }
+                            .distinctUntilChanged()
+                            .collect { priorityArticleIds ->
+                                val articles =
+                                    pagingItems.itemSnapshotList.items
+                                        .filterIsInstance<ArticleFlowItem.Article>()
+                                        .map { it.articleWithFeed }
+                                viewModel.enqueueTitleImagePreloads(
+                                    articles = articles,
+                                    priorityArticleIds = priorityArticleIds,
+                                )
                             }
                     }
 
@@ -1025,9 +1058,8 @@ fun FlowPage(
                                                     },
                                                     // 2026-01-27: 传递首行大图模式参数
                                                     isFirstItemLargeImageEnabled = firstItemLargeImage.value,
-                                                    // 2026-01-29: 传递强制显示订阅源名称参数
-                                                    forceShowFeedName = forceShowFeedName,
-                                                    cachedImagePaths = cachedImagePaths,
+                                                  forceShowFeedName = forceShowFeedName,
+                                                  cachedImagePaths = cachedImagePaths,
                                                 )
                             item {
                                 Spacer(modifier = Modifier.height(128.dp))

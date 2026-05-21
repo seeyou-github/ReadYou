@@ -1,12 +1,15 @@
 package me.ash.reader.infrastructure.rss
 
+import android.graphics.BitmapFactory
 import android.content.Context
 import android.webkit.URLUtil
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.io.OutputStream
 import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,6 +33,7 @@ import me.ash.reader.infrastructure.log.ImageDownloadDebugLogger
 import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import org.jsoup.Jsoup
 import org.jsoup.helper.StringUtil
 
@@ -43,7 +47,13 @@ class ArticleImagePreloadQueue @Inject constructor(
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val cacheDir = context.cacheDir.resolve("article_images")
-    private val signal = Channel<Unit>(capacity = Channel.CONFLATED)
+    private val signal = Channel<Unit>(capacity = Channel.UNLIMITED)
+    private val imageOkHttpClient =
+        okHttpClient
+            .newBuilder()
+            .readTimeout(IMAGE_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .callTimeout(0, TimeUnit.SECONDS)
+            .build()
     private val sequence = AtomicLong(0L)
     private val lock = Any()
     private val pendingTasks = LinkedHashMap<TaskKey, Task>()
@@ -64,14 +74,23 @@ class ArticleImagePreloadQueue @Inject constructor(
         }
     }
 
-    fun enqueueTitleImages(articles: List<ArticleWithFeed>) {
+    fun enqueueTitleImages(
+        articles: List<ArticleWithFeed>,
+        priorityArticleIds: Set<String> = emptySet(),
+    ) {
         if (articles.isEmpty()) return
         var changed = false
         synchronized(lock) {
-            log { "enqueueTitleImages size=${articles.size} pending=${pendingTasks.size} active=${activeTasks.size}" }
+            log {
+                "enqueueTitleImages size=${articles.size} priority=${priorityArticleIds.size} pending=${pendingTasks.size} active=${activeTasks.size}"
+            }
             articles
                 .asSequence()
-                .sortedByDescending { it.article.date.time }
+                .sortedWith(
+                    compareByDescending<ArticleWithFeed> {
+                        it.article.id in priorityArticleIds
+                    }.thenByDescending { it.article.date.time }
+                )
                 .forEach { articleWithFeed ->
                     val article = articleWithFeed.article
                     val url = article.img?.trim().orEmpty()
@@ -89,17 +108,24 @@ class ArticleImagePreloadQueue @Inject constructor(
                             key = key,
                             accountId = article.accountId,
                             refererUrl = article.link.takeIf { it.isNotBlank() },
-                            priority = article.date.time,
+                            priority =
+                                if (article.id in priorityArticleIds) {
+                                    VISIBLE_TITLE_PRIORITY + article.date.time
+                                } else {
+                                    article.date.time
+                                },
                             sequence = sequence.incrementAndGet(),
                             source = TaskSource.LIST,
                         )
-                    log { "enqueue title image articleId=${article.id} priority=${article.date.time} url=$url" }
+                    log {
+                        "enqueue title image articleId=${article.id} priority=${pendingTasks[key]?.priority} visible=${article.id in priorityArticleIds} url=$url"
+                    }
                     changed = true
                 }
         }
         if (changed) {
-            log { "signal worker for title images" }
-            signal.trySend(Unit)
+            log { "signal workers for title images" }
+            signalWorkers()
         }
     }
 
@@ -138,7 +164,7 @@ class ArticleImagePreloadQueue @Inject constructor(
         if (shouldPreempt) {
             log { "preempt active downloads for reading articleId=${article.id}" }
             preemptActiveDownloads()
-            signal.trySend(Unit)
+            signalWorkers()
         }
     }
 
@@ -151,6 +177,10 @@ class ArticleImagePreloadQueue @Inject constructor(
             callsToCancel = activeCalls.values.toList()
         }
         callsToCancel.forEach { it.cancel() }
+    }
+
+    private fun signalWorkers() {
+        repeat(MAX_CONCURRENT_DOWNLOADS) { signal.trySend(Unit) }
     }
 
     fun removeReadingImagesForArticle(articleId: String) {
@@ -260,7 +290,6 @@ class ArticleImagePreloadQueue @Inject constructor(
                 return
             } catch (throwable: Throwable) {
                 if (file.exists()) file.delete()
-                tempFileFor(file).delete()
                 if (consumeInterruption(task.key)) {
                     log { "download interrupted articleId=${task.key.articleId} url=${task.key.url} throwable=${throwable::class.java.simpleName}" }
                     return
@@ -276,28 +305,48 @@ class ArticleImagePreloadQueue @Inject constructor(
 
     private suspend fun downloadToFile(task: Task, file: File) {
         withContext(ioDispatcher) {
+            val tempFile = tempFileFor(file)
+            val existingBytes = tempFile.takeIf { it.exists() }?.length() ?: 0L
             val requestBuilder = Request.Builder().url(task.key.url)
+            if (existingBytes > 0L) {
+                requestBuilder.header("Range", "bytes=$existingBytes-")
+            }
             task.refererUrl?.let { requestBuilder.header("Referer", it) }
-            val call = okHttpClient.newCall(requestBuilder.build())
+            val call = imageOkHttpClient.newCall(requestBuilder.build())
             synchronized(lock) { activeCalls[task.key] = call }
             log {
-                "request start articleId=${task.key.articleId} url=${task.key.url} referer=${task.refererUrl.orEmpty()}"
+                "request start articleId=${task.key.articleId} url=${task.key.url} referer=${task.refererUrl.orEmpty()} rangeStart=$existingBytes tempExists=${tempFile.exists()} tempBytes=$existingBytes"
             }
 
             call.execute().use { response ->
-                log {
-                    "response articleId=${task.key.articleId} url=${task.key.url} code=${response.code} success=${response.isSuccessful} contentType=${response.body?.contentType()} contentLength=${response.body?.contentLength()}"
+                val body = response.body ?: throw IOException("Empty image body")
+                val append = shouldAppendResponse(response, existingBytes)
+                if (existingBytes > 0L && !append) {
+                    tempFile.delete()
+                    log {
+                        "range unsupported restart articleId=${task.key.articleId} url=${task.key.url} code=${response.code}"
+                    }
                 }
-                if (!response.isSuccessful) {
+                val startBytes = if (append) existingBytes else 0L
+                val expectedBytes = responseExpectedBytes(response, startBytes)
+                log {
+                    "response articleId=${task.key.articleId} url=${task.key.url} code=${response.code} success=${response.isSuccessful} contentType=${body.contentType()} contentLength=${body.contentLength()} expectedBytes=$expectedBytes append=$append contentRange=${response.header("Content-Range").orEmpty()} ext=${file.extension}"
+                }
+                if (!response.isSuccessful && response.code != HTTP_PARTIAL) {
                     throw IOException("HTTP ${response.code}")
                 }
-                val body = response.body ?: throw IOException("Empty image body")
                 file.parentFile?.mkdirs()
-                val tempFile = tempFileFor(file)
-                var bytesWritten = 0L
+                var bytesWritten: Long
                 body.byteStream().use { input ->
-                    tempFile.outputStream().use { output ->
-                        bytesWritten = copyWithCount(input, output)
+                    FileOutputStream(tempFile, append).use { output ->
+                        bytesWritten =
+                            copyWithProgress(
+                                task = task,
+                                input = input,
+                                output = output,
+                                startBytes = startBytes,
+                                expectedBytes = expectedBytes,
+                            )
                     }
                 }
                 log { "write temp file articleId=${task.key.articleId} url=${task.key.url} temp=${tempFile.absolutePath} bytes=$bytesWritten" }
@@ -307,6 +356,7 @@ class ArticleImagePreloadQueue @Inject constructor(
                     tempFile.copyTo(file, overwrite = true)
                     tempFile.delete()
                 }
+                logImageInfo(task, file)
             }
         }
     }
@@ -329,17 +379,78 @@ class ArticleImagePreloadQueue @Inject constructor(
         log { "publish cache articleId=${key.articleId} type=${key.type} path=$path cacheKey=$cacheKey" }
     }
 
-    private fun copyWithCount(input: java.io.InputStream, output: OutputStream): Long {
+    private fun shouldAppendResponse(response: Response, existingBytes: Long): Boolean =
+        existingBytes > 0L && response.code == HTTP_PARTIAL
+
+    private fun responseExpectedBytes(response: Response, startBytes: Long): Long {
+        val contentRange = response.header("Content-Range").orEmpty()
+        val totalFromRange = contentRange.substringAfterLast("/", "").toLongOrNull()
+        if (totalFromRange != null) return totalFromRange
+        val contentLength = response.body?.contentLength() ?: -1L
+        return if (contentLength >= 0L) startBytes + contentLength else -1L
+    }
+
+    private fun copyWithProgress(
+        task: Task,
+        input: java.io.InputStream,
+        output: OutputStream,
+        startBytes: Long,
+        expectedBytes: Long,
+    ): Long {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        var total = 0L
+        val startedAt = System.nanoTime()
+        var total = startBytes
+        var lastLogAt = startedAt
+        var lastLogBytes = startBytes
         while (true) {
             val read = input.read(buffer)
             if (read < 0) break
             output.write(buffer, 0, read)
             total += read
+            val now = System.nanoTime()
+            if (
+                now - lastLogAt >= PROGRESS_LOG_INTERVAL_NANOS ||
+                    total - lastLogBytes >= PROGRESS_LOG_BYTES
+            ) {
+                logProgress(task, total, expectedBytes, startedAt, now)
+                lastLogAt = now
+                lastLogBytes = total
+            }
         }
         output.flush()
-        return total
+        logProgress(task, total, expectedBytes, startedAt, System.nanoTime())
+        return total - startBytes
+    }
+
+    private fun logProgress(
+        task: Task,
+        bytes: Long,
+        expectedBytes: Long,
+        startedAt: Long,
+        now: Long,
+    ) {
+        val elapsedSeconds = ((now - startedAt).coerceAtLeast(1L)) / 1_000_000_000.0
+        val speedKbps = bytes / 1024.0 / elapsedSeconds
+        val percent =
+            if (expectedBytes > 0L) {
+                "%.1f".format((bytes * 100.0) / expectedBytes)
+            } else {
+                "unknown"
+            }
+        log {
+            "progress articleId=${task.key.articleId} type=${task.key.type} bytes=$bytes expected=$expectedBytes percent=$percent speedKBps=${"%.1f".format(speedKbps)} url=${task.key.url}"
+        }
+    }
+
+    private fun logImageInfo(task: Task, file: File) {
+        val options =
+            BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+        BitmapFactory.decodeFile(file.absolutePath, options)
+        log {
+            "image info articleId=${task.key.articleId} type=${task.key.type} path=${file.absolutePath} bytes=${file.length()} width=${options.outWidth} height=${options.outHeight} mime=${options.outMimeType.orEmpty()} ext=${file.extension}"
+        }
     }
 
     private fun extractImageUrls(baseUrl: String, html: String): List<String> =
@@ -386,6 +497,11 @@ class ArticleImagePreloadQueue @Inject constructor(
         private const val MAX_CONCURRENT_DOWNLOADS = 2
         private const val MAX_ATTEMPTS = 2
         private const val READING_PRIORITY = Long.MAX_VALUE / 2
+        private const val VISIBLE_TITLE_PRIORITY = Long.MAX_VALUE / 4
+        private const val HTTP_PARTIAL = 206
+        private const val IMAGE_READ_TIMEOUT_SECONDS = 180L
+        private const val PROGRESS_LOG_BYTES = 512L * 1024L
+        private const val PROGRESS_LOG_INTERVAL_NANOS = 1_000_000_000L
 
         fun cacheKey(articleId: String, url: String, type: String): String =
             "$articleId|$type|$url"

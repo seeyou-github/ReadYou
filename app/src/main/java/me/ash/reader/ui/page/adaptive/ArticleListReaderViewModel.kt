@@ -646,8 +646,11 @@ class ArticleListReaderViewModel
         }
     }
 
-    fun enqueueTitleImagePreloads(articles: List<ArticleWithFeed>) {
-        articleImagePreloadQueue.enqueueTitleImages(articles)
+    fun enqueueTitleImagePreloads(
+        articles: List<ArticleWithFeed>,
+        priorityArticleIds: Set<String> = emptySet(),
+    ) {
+        articleImagePreloadQueue.enqueueTitleImages(articles, priorityArticleIds)
     }
 
     fun enqueueReadingImagePreloads(articleWithFeed: ArticleWithFeed, html: String) {

@@ -29,7 +29,7 @@ fun LazyListScope.ArticleList(
     isSwipeEnabled: () -> Boolean = { false },
     isMenuEnabled: Boolean = true,
     colorTheme: me.ash.reader.domain.model.theme.ColorTheme? = null,
-    translatedTitleProvider: (ArticleWithFeed) -> String? = { it.article.translatedTitle }, // 2026-02-03: ??????
+    translatedTitleProvider: (ArticleWithFeed) -> String? = { it.article.translatedTitle },
     onClick: (ArticleWithFeed, Int) -> Unit = { _, _ -> },
     onToggleStarred: (ArticleWithFeed) -> Unit = {},
     onToggleRead: (ArticleWithFeed) -> Unit = {},
@@ -37,15 +37,12 @@ fun LazyListScope.ArticleList(
     onMarkBelowAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onShare: ((ArticleWithFeed) -> Unit)? = null,
     onSaveToLocal: ((ArticleWithFeed) -> Unit)? = null,
-    isFirstItemLargeImageEnabled: Boolean = false, // 2026-01-27: 新增首行大图模式参数
-    forceShowFeedName: Boolean = false, // 2026-01-29: 新增强制显示订阅源名称参数
+    isFirstItemLargeImageEnabled: Boolean = false,
+    forceShowFeedName: Boolean = false,
     cachedImagePaths: Map<String, String> = emptyMap(),
 ) {
     val firstArticleIndex =
         pagingItems.itemSnapshotList.items.indexOfFirst { it is ArticleFlowItem.Article }
-    // https://issuetracker.google.com/issues/193785330
-    // FIXME: Using sticky header with paging-compose need to iterate through the entire list
-    //  to figure out where to add sticky headers, which significantly impacts the performance
     if (!isShowStickyHeader) {
         items(
             count = pagingItems.itemCount,
@@ -66,8 +63,6 @@ fun LazyListScope.ArticleList(
                         )
                     }
 
-                    // 2026-01-27: 判断是否应该显示大图模式
-                    // 第一篇有图片的文章（index == 1，因为 index == 0 是 ArticleFlowItem.Date）
                     val shouldShowLargeImage =
                         isFirstItemLargeImageEnabled &&
                             firstArticleIndex >= 0 &&
@@ -75,7 +70,6 @@ fun LazyListScope.ArticleList(
                             hasImage
 
                     if (shouldShowLargeImage) {
-                        // 大图模式
                         LargeImageArticleItem(
                             modifier = Modifier.padding(horizontal = 1.dp, vertical = 1.dp),
                             articleWithFeed = item.articleWithFeed,
@@ -83,7 +77,6 @@ fun LazyListScope.ArticleList(
                             onClick = { onClick(it, index) }
                         )
                     } else {
-                        // 普通模式
                         SwipeableArticleItem(
                             articleWithFeed = item.articleWithFeed,
                             isUnread = diffMap[article.id]?.isUnread ?: article.isUnread,
@@ -96,8 +89,7 @@ fun LazyListScope.ArticleList(
                             onToggleStarred = onToggleStarred,
                             onToggleRead = onToggleRead,
                             onMarkAboveAsRead =
-                                if (index == 1) null
-                                else onMarkAboveAsRead, // index == 0 -> ArticleFlowItem.Date
+                                if (index == 1) null else onMarkAboveAsRead,
                             onMarkBelowAsRead =
                                 if (index == pagingItems.itemCount - 1) null else onMarkBelowAsRead,
                             onShare = onShare,
@@ -106,7 +98,6 @@ fun LazyListScope.ArticleList(
                             localTitleImagePath = cachedImagePaths.titlePathFor(item.articleWithFeed),
                         )
                     }
-                    // 添加项间距
                     if (itemSpacing > 0 && index < pagingItems.itemCount - 1) {
                         val nextItem = pagingItems[index + 1]
                         if (nextItem !is ArticleFlowItem.Date) {
@@ -134,8 +125,6 @@ fun LazyListScope.ArticleList(
                         val hasImage = article.img != null
                         val translatedTitle = translatedTitleProvider(item.articleWithFeed)
 
-                        // 2026-01-27: 判断是否应该显示大图模式
-                        // 第一篇有图片的文章（index == 1，因为 index == 0 是 ArticleFlowItem.Date）
                         val shouldShowLargeImage =
                             isFirstItemLargeImageEnabled &&
                                 firstArticleIndex >= 0 &&
@@ -143,7 +132,6 @@ fun LazyListScope.ArticleList(
                                 hasImage
 
                         if (shouldShowLargeImage) {
-                            // 大图模式
                             LargeImageArticleItem(
                                 modifier = Modifier.padding(horizontal = 1.dp, vertical = 1.dp),
                                 articleWithFeed = item.articleWithFeed,
@@ -151,7 +139,6 @@ fun LazyListScope.ArticleList(
                                 onClick = { onClick(it, index) }
                             )
                         } else {
-                            // 普通模式
                             SwipeableArticleItem(
                                 articleWithFeed = item.articleWithFeed,
                                 isUnread = diffMap[article.id]?.isUnread ?: article.isUnread,
@@ -164,8 +151,7 @@ fun LazyListScope.ArticleList(
                                 onToggleStarred = onToggleStarred,
                                 onToggleRead = onToggleRead,
                                 onMarkAboveAsRead =
-                                    if (index == 1) null
-                                    else onMarkAboveAsRead, // index == 0 -> ArticleFlowItem.Date
+                                    if (index == 1) null else onMarkAboveAsRead,
                                 onMarkBelowAsRead =
                                     if (index == pagingItems.itemCount - 1) null else onMarkBelowAsRead,
                                 onShare = onShare,
@@ -174,7 +160,6 @@ fun LazyListScope.ArticleList(
                                 localTitleImagePath = cachedImagePaths.titlePathFor(item.articleWithFeed),
                             )
                         }
-                        // 添加项间距
                         if (itemSpacing > 0 && index < pagingItems.itemCount - 1) {
                             val nextItem = pagingItems.peek(index + 1)
                             if (nextItem !is ArticleFlowItem.Date) {

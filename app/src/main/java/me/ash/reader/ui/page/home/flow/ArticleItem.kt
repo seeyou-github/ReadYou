@@ -277,7 +277,7 @@ fun ArticleItem(
 
             // Image
             if (imgData != null && articleListImage.value) {
-                val imageData = localTitleImagePath?.let { File(it) } ?: imgData
+                val imageData = localTitleImagePath?.takeIf { it.isNotBlank() }?.let { File(it) }
                 val brightnessFilter = if (imageBrightness < 100) {
                     val brightnessValue = imageBrightness / 100f
                     androidx.compose.ui.graphics.ColorFilter.lighting(
@@ -290,21 +290,23 @@ fun ArticleItem(
                 imageDebugLogger.log {
                     "ArticleItem image data=${describeArticleItemImageData(imageData)} original=${imgData ?: "null"} localPath=${localTitleImagePath.orEmpty()} referer=${refererUrl.orEmpty()}"
                 }
-                RYAsyncImage(
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .size(imageSize.dp)
-                        .clip(RoundedCornerShape(imageRoundedCorners.dp)),
-                    data = imageData,
-                    disableReferer = disableReferer,
-                    refererUrl = refererUrl,
-                    userAgent = titleImageUserAgent,
-                    scale = Scale.FILL,
-                    precision = Precision.INEXACT,
-                    size = SIZE_1000,
-                    contentScale = ContentScale.Crop,
-                    colorFilter = brightnessFilter,
-                )
+                if (imageData != null) {
+                    RYAsyncImage(
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .size(imageSize.dp)
+                            .clip(RoundedCornerShape(imageRoundedCorners.dp)),
+                        data = imageData,
+                        disableReferer = disableReferer,
+                        refererUrl = refererUrl,
+                        userAgent = titleImageUserAgent,
+                        scale = Scale.FILL,
+                        precision = Precision.INEXACT,
+                        size = SIZE_1000,
+                        contentScale = ContentScale.Crop,
+                        colorFilter = brightnessFilter,
+                    )
+                }
             }
         }
 
