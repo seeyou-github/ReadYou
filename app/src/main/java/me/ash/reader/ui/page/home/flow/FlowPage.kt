@@ -359,12 +359,21 @@ fun FlowPage(
 
     // 2026-02-03: 页面销毁时取消所有翻译任务
     // 注意：图片预下载队列是全局的，不在这里清，否则每次进文章详情都会被 nuke，
-    // 导致大图永远下不完。
+    // 导致大图永远下不完。退到主界面时单独通过 handleNavigateUp 取消。
     DisposableEffect(Unit) {
         onDispose {
             Timber.tag("AutoTranslateTitle").d("FlowPage: 页面销毁，取消所有翻译任务")
             viewModel.titleTranslateQueue.cancelAllPendingTasks()
             viewModel.titleTranslateEntry.cancelAllTranslations()
+        }
+    }
+
+    // 退回主界面（FeedsPage）时取消所有图片预下载，不要让流量继续跑。
+    // 与 onDispose 区分：onDispose 在打开文章详情时也会触发，那种情况不能清。
+    val handleNavigateUp: () -> Unit = remember(viewModel, onNavigateUp) {
+        {
+            viewModel.clearImagePreloads()
+            onNavigateUp()
         }
     }
 
@@ -509,7 +518,7 @@ fun FlowPage(
                                 tint = MaterialTheme.colorScheme.onSurface,
                             ) {
                                 onSearch = false
-                                onNavigateUp()
+                                handleNavigateUp()
                             }
                         },
                         actions = {
@@ -614,6 +623,9 @@ fun FlowPage(
                 // 原因：用户反馈需要能取消正在进行的同步操作
                 // 时间：2026-01-25
                 BackHandler(isSyncing) { viewModel.cancelSync() }
+
+                // 系统返回键退回主界面时，主动取消图片预下载队列，避免后台继续下载。
+                BackHandler(enabled = !isSyncing && !onSearch) { handleNavigateUp() }
 
                 // 2026-02-03: 显示标题翻译进度条
                 if (isTranslatingTitle.value) {

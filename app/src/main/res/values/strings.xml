@@ -401,6 +401,8 @@
     <string name="troubleshooting_desc">Bug report, app preferences</string>
     <string name="image_download_debug_log">Image download log</string>
     <string name="image_download_debug_log_desc">Write detailed article image download logs to private app storage</string>
+    <string name="translate_debug_log">Translate log</string>
+    <string name="translate_debug_log_desc">Write detailed article translation logs (trans.log) to private app storage</string>
     <string name="bug_report">Bug report</string>
     <string name="issue_tracer_url" translatable="false">https://github.com/ReadYouApp/ReadYou/issues</string>
     <string name="app_preferences">App preferences</string>

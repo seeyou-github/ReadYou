@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import me.ash.reader.infrastructure.log.TranslateDebugLogger
 import timber.log.Timber
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -27,6 +28,8 @@ class TranslateJsInjector(
         private const val TAG = "TranslateJsInjector"
     }
 
+    private val tlog by lazy { TranslateDebugLogger.from(webView.context) }
+
     /**
      * 标记所有文本节点
      *
@@ -35,11 +38,41 @@ class TranslateJsInjector(
     suspend fun markTextNodes(): Int = suspendCancellableCoroutine { continuation ->
         Timber.d("[$TAG] ========== 开始标记 DOM 文本节点 ==========")
         Timber.d("[$TAG] 执行 JavaScript 脚本: MARK_TEXT_NODES")
-        
+        tlog.log("Injector") { "markTextNodes BEGIN webView=${System.identityHashCode(webView)}" }
+
+        // 先嗅探一下当前 DOM 的状态，方便定位"为什么 markTextNodes 返回 0"。
+        val probeScript = """
+            (function() {
+              try {
+                var body = document.body;
+                var html = document.documentElement;
+                var ready = document.readyState;
+                var bodyTextLen = body ? (body.innerText || '').length : -1;
+                var bodyHtmlLen = body ? body.innerHTML.length : -1;
+                var bodyChildCount = body ? body.children.length : -1;
+                var hasTid = document.querySelectorAll('[data-tid]').length;
+                return JSON.stringify({
+                  readyState: ready,
+                  url: location.href,
+                  bodyTextLen: bodyTextLen,
+                  bodyHtmlLen: bodyHtmlLen,
+                  bodyChildCount: bodyChildCount,
+                  hasTid: hasTid
+                });
+              } catch (e) {
+                return JSON.stringify({error: String(e)});
+              }
+            })();
+        """.trimIndent()
+        webView.evaluateJavascript(probeScript) { probeResult ->
+            tlog.log("Injector") { "markTextNodes DOM probe: $probeResult" }
+        }
+
         webView.evaluateJavascript(TranslateScripts.MARK_TEXT_NODES) { result ->
             val count = result?.toIntOrNull() ?: 0
             Timber.d("[$TAG] DOM 标记完成: $count 个节点")
             Timber.d("[$TAG] JavaScript 返回值: $result")
+            tlog.log("Injector") { "markTextNodes END count=$count raw=$result" }
             continuation.resume(count)
         }
     }
@@ -77,16 +110,20 @@ class TranslateJsInjector(
                 )
                 
                 Timber.d("[$TAG] 提取文本节点: ${nodes.size} 个")
-                
+                tlog.log("Injector") {
+                    "extractTextNodes count=${nodes.size} firstPreview=\"${nodes.firstOrNull()?.text?.take(80) ?: ""}\""
+                }
+
                 // 打印每个节点的详细信息
                 nodes.forEach { node ->
                     Timber.d("[$TAG]   - 节点 #${node.id}: 文本长度=${node.text.length}, 优先级=${node.priority}, 文本预览=\"${node.text.take(100)}...\"")
                 }
-                
+
                 continuation.resume(nodes)
             } catch (e: Exception) {
                 Timber.e(e, "[$TAG] 解析文本节点失败")
                 Timber.e(e, "[$TAG] 返回值: $result")
+                tlog.error("Injector", e) { "extractTextNodes parse FAILED raw=${result?.take(500)}" }
                 continuation.resume(emptyList())
             }
         }

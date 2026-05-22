@@ -138,6 +138,7 @@ data class Settings(
 
     // Troubleshooting
     val imageDownloadDebugLog: ImageDownloadDebugLogPreference = ImageDownloadDebugLogPreference.default,
+    val translateDebugLog: TranslateDebugLogPreference = TranslateDebugLogPreference.default,
 
     // Languages
     val languages: LanguagesPreference = LanguagesPreference.default,

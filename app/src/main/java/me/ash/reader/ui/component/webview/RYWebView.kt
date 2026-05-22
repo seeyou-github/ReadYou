@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import me.ash.reader.infrastructure.log.TranslateDebugLogger
 import me.ash.reader.infrastructure.preference.LocalOpenLink
 import me.ash.reader.infrastructure.preference.LocalOpenLinkSpecificBrowser
 import me.ash.reader.infrastructure.preference.LocalReadingBoldCharacters
@@ -151,6 +152,11 @@ fun RYWebView(
                     )
                 if (loadedHtml != html) {
                     loadedHtml = html
+                    runCatching {
+                        TranslateDebugLogger.from(context).log("RYWebView") {
+                            "loadDataWithBaseURL articleId=$articleId contentLen=${content.length} htmlLen=${html.length} webView=${System.identityHashCode(it)}"
+                        }
+                    }
                     currentOnPageStarted?.invoke(it)
                     loadDataWithBaseURL(
                         null,

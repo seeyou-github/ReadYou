@@ -47,6 +47,7 @@ import kotlinx.coroutines.launch
 import android.net.Uri
 import me.ash.reader.R
 import me.ash.reader.infrastructure.android.TextToSpeechManager
+import me.ash.reader.infrastructure.log.TranslateDebugLogger
 import me.ash.reader.infrastructure.preference.LocalPullToSwitchArticle
 import me.ash.reader.infrastructure.preference.LocalReadingAutoHideToolbar
 import me.ash.reader.infrastructure.preference.LocalReadingBoldCharacters
@@ -101,6 +102,7 @@ fun ReadingPage(
     val readingUiState = viewModel.readingUiState.collectAsStateValue()
     val readerState = viewModel.readerStateStateFlow.collectAsStateValue()
     val translationState = viewModel.translationStateStateFlow.collectAsStateValue()
+    val tlog = remember(context) { TranslateDebugLogger.from(context) }
     val boldCharacters = LocalReadingBoldCharacters.current
 //    val topBarHeight = LocalFeedsTopBarHeight.current
     val coroutineScope = rememberCoroutineScope()
@@ -351,6 +353,9 @@ fun ReadingPage(
                                     webViewLoadedArticleId = null
                                     webViewPageLoaded = false
                                     hasTriggeredAutoTranslate = false // Reset only when the article changes.
+                                    tlog.log("ReadingPage") {
+                                        "RESET state on articleId change articleId=${readerState.articleId}"
+                                    }
                                 }
 
                                 LaunchedEffect(
@@ -361,26 +366,41 @@ fun ReadingPage(
                                 ) {
                                     Timber.tag("AutoTranslate").d("=== 自动翻译触发检查 ===")
                                     Timber.tag("AutoTranslate").d("文章ID: ${readerState.articleId}")
-                                    
+                                    tlog.log("ReadingPage") {
+                                        "AutoTranslate GATE eval articleId=${readerState.articleId} " +
+                                            "contentClass=${readerState.content::class.java.simpleName} " +
+                                            "textLen=${readerState.content.text?.length ?: -1} " +
+                                            "webViewPageLoaded=$webViewPageLoaded " +
+                                            "webViewLoadedArticleId=$webViewLoadedArticleId " +
+                                            "hasTriggered=$hasTriggeredAutoTranslate " +
+                                            "webViewRef=${webViewRef?.let { System.identityHashCode(it) } ?: "null"}"
+                                    }
+
                                     // 检查文章ID
                                     val currentArticleId = readerState.articleId
                                     if (currentArticleId == null) {
                                         Timber.tag("AutoTranslate").d("文章ID为空，跳过")
+                                        tlog.log("ReadingPage") { "AutoTranslate SKIP reason=null_articleId" }
                                         return@LaunchedEffect
                                     }
-                                    
+
                                     if (hasTriggeredAutoTranslate) {
                                         Timber.tag("AutoTranslate").d("Auto translate already triggered, skip")
+                                        tlog.log("ReadingPage") { "AutoTranslate SKIP reason=already_triggered" }
                                         return@LaunchedEffect
                                     }
 
                                     if (readerState.content is ReaderState.Loading) {
                                         Timber.tag("AutoTranslate").d("Article content is still loading, skip")
+                                        tlog.log("ReadingPage") { "AutoTranslate SKIP reason=content_loading" }
                                         return@LaunchedEffect
                                     }
 
                                     if (readerState.content.text.isNullOrBlank()) {
                                         Timber.tag("AutoTranslate").d("Article content is blank, skip")
+                                        tlog.log("ReadingPage") {
+                                            "AutoTranslate SKIP reason=blank_text textLen=${readerState.content.text?.length ?: -1}"
+                                        }
                                         return@LaunchedEffect
                                     }
 
@@ -388,6 +408,11 @@ fun ReadingPage(
                                         Timber.tag("AutoTranslate").d(
                                             "WebView is not ready for this article, skip loaded=$webViewPageLoaded loadedArticleId=$webViewLoadedArticleId"
                                         )
+                                        tlog.log("ReadingPage") {
+                                            "AutoTranslate SKIP reason=webview_not_ready " +
+                                                "loaded=$webViewPageLoaded loadedArticleId=$webViewLoadedArticleId " +
+                                                "currentArticleId=$currentArticleId"
+                                        }
                                         return@LaunchedEffect
                                     }
 
@@ -396,18 +421,23 @@ fun ReadingPage(
                                     val feedName = currentFeed?.name
                                     val isAutoTranslate = currentFeed?.isAutoTranslate ?: false
                                     Timber.tag("AutoTranslate").d("isAutoTranslate = $isAutoTranslate")
-                                    
+                                    tlog.log("ReadingPage") {
+                                        "AutoTranslate feed feedId=$feedId feedName=${feedName?.take(40)} isAutoTranslate=$isAutoTranslate"
+                                    }
+
                                     // 检查isAutoTranslate
                                     if (!isAutoTranslate) {
                                         Timber.tag("AutoTranslate").d("isAutoTranslate为false，跳过")
+                                        tlog.log("ReadingPage") { "AutoTranslate SKIP reason=feed_flag_off" }
                                         return@LaunchedEffect
                                     }
-                                    
+
                                     // 检查WebView
                                     val webView = webViewRef
                                     Timber.tag("AutoTranslate").d("webView != null = ${webView != null}")
                                     if (webView == null) {
                                         Timber.tag("AutoTranslate").d("WebView未就绪，跳过")
+                                        tlog.log("ReadingPage") { "AutoTranslate SKIP reason=webview_ref_null" }
                                         return@LaunchedEffect
                                     }
                                     
@@ -438,9 +468,13 @@ fun ReadingPage(
                                         hasTriggeredAutoTranslate = true
                                         Timber.tag("AutoTranslate").d("调用 viewModel.startTranslation() 成功")
                                         Timber.tag("AutoTranslate").d("=== 自动翻译触发完成 ===")
+                                        tlog.log("ReadingPage") {
+                                            "AutoTranslate FIRED articleId=$currentArticleId feedId=$feedId provider=${currentConfig.provider} model=${currentConfig.model}"
+                                        }
                                     } catch (e: Exception) {
                                         Timber.tag("AutoTranslate").e(e, "自动翻译触发失败")
                                         Timber.tag("AutoTranslate").d("=== 自动翻译触发失败 ===")
+                                        tlog.error("ReadingPage", e) { "AutoTranslate FIRE FAILED articleId=$currentArticleId" }
                                     }
                                 }
 
@@ -534,6 +568,9 @@ fun ReadingPage(
                                                 Timber.tag("AutoTranslate").d(
                                                     "WebView page started, invalidate loaded flag"
                                                 )
+                                                tlog.log("ReadingPage") {
+                                                    "WebView onPageStarted articleId=${readerState.articleId} webView=${System.identityHashCode(webView)}"
+                                                }
                                             },
                                             onWebViewPageFinished = { webView ->
                                                 webViewRef = webView
@@ -542,6 +579,9 @@ fun ReadingPage(
                                                 Timber.tag("AutoTranslate").d(
                                                     "WebView page finished articleId=${readerState.articleId}"
                                                 )
+                                                tlog.log("ReadingPage") {
+                                                    "WebView onPageFinished articleId=${readerState.articleId} webView=${System.identityHashCode(webView)}"
+                                                }
                                             },
                                         )
                                         PullToLoadIndicator(

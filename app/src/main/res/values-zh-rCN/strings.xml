@@ -322,6 +322,8 @@
     <string name="troubleshooting_desc">错误报告、应用选项</string>
     <string name="image_download_debug_log">图片下载日志</string>
     <string name="image_download_debug_log_desc">将文章图片下载详细日志写入应用私有目录</string>
+    <string name="translate_debug_log">翻译日志</string>
+    <string name="translate_debug_log_desc">将文章翻译详细日志（trans.log）写入应用私有目录</string>
     <string name="bug_report">错误报告</string>
     <string name="app_preferences">应用程序偏好设置</string>
     <string name="import_from_protobuf_file">导入 protobuf 文件</string>

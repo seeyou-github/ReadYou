@@ -239,6 +239,7 @@ sealed interface PreferencesKey {
         const val cacheTitleImageOnUpdate = "cacheTitleImageOnUpdate"
         const val cacheContentImageOnUpdate = "cacheContentImageOnUpdate"
         const val imageDownloadDebugLog = "imageDownloadDebugLog"
+        const val translateDebugLog = "translateDebugLog"
         // Cache
 
         // Languages
@@ -364,6 +365,7 @@ sealed interface PreferencesKey {
                 BooleanKey(cacheTitleImageOnUpdate),
                 BooleanKey(cacheContentImageOnUpdate),
                 BooleanKey(imageDownloadDebugLog),
+                BooleanKey(translateDebugLog),
                 // Languages
                 IntKey(languages),
 // Translate
@@ -485,6 +487,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val cacheTitleImageOnUpdate = "cacheTitleImageOnUpdate"
         const val cacheContentImageOnUpdate = "cacheContentImageOnUpdate"
         const val imageDownloadDebugLog = "imageDownloadDebugLog"
+        const val translateDebugLog = "translateDebugLog"
 
         // Interaction
         const val initialPage = "initialPage"
@@ -734,6 +737,8 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(booleanPreferencesKey(cacheContentImageOnUpdate), Boolean::class.java),
                 imageDownloadDebugLog to
                     DataStoreKey(booleanPreferencesKey(imageDownloadDebugLog), Boolean::class.java),
+                translateDebugLog to
+                    DataStoreKey(booleanPreferencesKey(translateDebugLog), Boolean::class.java),
                 // Languages
                 languages to DataStoreKey(intPreferencesKey(languages), Int::class.java),
                 // Translate

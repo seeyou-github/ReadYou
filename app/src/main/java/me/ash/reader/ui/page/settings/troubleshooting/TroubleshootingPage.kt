@@ -80,6 +80,7 @@ fun TroubleshootingPage(onBack: () -> Unit, viewModel: TroubleshootingViewModel 
     val scope = rememberCoroutineScope()
     val uiState = viewModel.troubleshootingUiState.collectAsStateValue()
     val imageDownloadDebugLog = LocalSettings.current.imageDownloadDebugLog
+    val translateDebugLog = LocalSettings.current.translateDebugLog
     var byteArray by remember { mutableStateOf(ByteArray(0)) }
 
     val syncLogList = remember { mutableStateListOf<Log>() }
@@ -161,6 +162,17 @@ fun TroubleshootingPage(onBack: () -> Unit, viewModel: TroubleshootingViewModel 
                     ) {
                         RYSwitch(activated = imageDownloadDebugLog.value) {
                             imageDownloadDebugLog.toggle(context, scope)
+                        }
+                    }
+                    SettingItem(
+                        title = stringResource(R.string.translate_debug_log),
+                        desc = stringResource(R.string.translate_debug_log_desc),
+                        onClick = {
+                            translateDebugLog.toggle(context, scope)
+                        },
+                    ) {
+                        RYSwitch(activated = translateDebugLog.value) {
+                            translateDebugLog.toggle(context, scope)
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))

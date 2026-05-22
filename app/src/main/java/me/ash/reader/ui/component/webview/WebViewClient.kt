@@ -13,6 +13,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import me.ash.reader.infrastructure.log.TranslateDebugLogger
 import me.ash.reader.ui.ext.isUrl
 import me.ash.reader.domain.model.article.ArticleImageCacheType
 import me.ash.reader.domain.repository.ArticleImageCacheDao
@@ -102,6 +103,13 @@ class WebViewClient(
 
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
+        runCatching {
+            TranslateDebugLogger.from(context).log("WebViewClient") {
+                "onPageFinished url=$url articleId=$articleId enableJS=$enableJavaScript " +
+                    "webView=${view?.let { System.identityHashCode(it) } ?: "null"} " +
+                    "contentHeight=${view?.contentHeight}"
+            }
+        }
         if (enableJavaScript) {
             view!!.evaluateJavascript(OnImgClickScript, null)
         }

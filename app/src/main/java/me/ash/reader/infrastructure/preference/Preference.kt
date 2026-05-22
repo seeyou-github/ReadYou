@@ -137,6 +137,7 @@ fun Preferences.toSettings(): Settings {
 
         // Troubleshooting
         imageDownloadDebugLog = ImageDownloadDebugLogPreference.fromPreferences(this),
+        translateDebugLog = TranslateDebugLogPreference.fromPreferences(this),
 
         // Languages
         languages = LanguagesPreference.fromPreferences(this),

@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import me.ash.reader.infrastructure.log.TranslateDebugLogger
 import me.ash.reader.infrastructure.translate.TranslateTask
 import me.ash.reader.infrastructure.translate.TranslatePriority
 import me.ash.reader.infrastructure.translate.cache.TranslateCache
@@ -39,6 +40,7 @@ class StreamTranslateManager(
     private val gson = Gson()
 
     private val injector = StreamTranslateJsInjector(webView, gson)
+    private val tlog by lazy { TranslateDebugLogger.from(webView.context) }
 
     private var scheduler: StreamTranslateBatchScheduler? = null
 
@@ -117,6 +119,11 @@ class StreamTranslateManager(
         Timber.d("[$TAG] ========== 开始流式翻译流程 ==========")
         Timber.d("[$TAG] ═══════════════════════════════════════════════════════════════")
         Timber.d("[$TAG] 参数: title=${title?.take(50) ?: "null"}, config=${config?.provider ?: "null"}")
+        tlog.log("Manager") {
+            "startStreamTranslation BEGIN webView=${System.identityHashCode(webView)} " +
+                "titleLen=${title?.length ?: 0} provider=${config?.provider ?: initialConfig.provider} " +
+                "model=${config?.model ?: initialConfig.model}"
+        }
 
         totalNodes = 0
         completedNodes = 0
@@ -128,13 +135,19 @@ class StreamTranslateManager(
             try {
                 // 步骤 1: 标记 DOM
                 Timber.d("[$TAG] 步骤 1: 开始标记 DOM")
+                tlog.log("Manager") { "step1 markTextNodes START" }
                 onStateChanged?.invoke(TranslateState.MarkingDOM)
 
                 val nodeCount = injector.markTextNodes()
                 Timber.d("[$TAG] 步骤 1 完成: DOM标记完成，共 $nodeCount 个节点")
+                tlog.log("Manager") { "step1 markTextNodes END count=$nodeCount" }
 
                 if (nodeCount == 0) {
                     Timber.w("[$TAG] 没有找到可翻译的文本节点")
+                    tlog.log("Manager") {
+                        "ABORT reason=no_translatable_text nodeCount=0 " +
+                            "(可能：DOM未就绪 / 内容全为非英文 / WebView刚 reload 还没渲染)"
+                    }
                     onError?.invoke("没有找到可翻译的文本")
                     onStateChanged?.invoke(TranslateState.Idle)
                     return@launch
@@ -144,13 +157,19 @@ class StreamTranslateManager(
 
                 // 步骤 2: 提取文本节点
                 Timber.d("[$TAG] 步骤 2: 开始提取文本节点")
+                tlog.log("Manager") { "step2 extractTextNodes START" }
                 onStateChanged?.invoke(TranslateState.ExtractingText)
 
                 val textNodes = injector.extractTextNodes()
                 Timber.d("[$TAG] 步骤 2 完成: 提取了 ${textNodes.size} 个文本节点")
+                tlog.log("Manager") {
+                    "step2 extractTextNodes END count=${textNodes.size} " +
+                        "totalChars=${textNodes.sumOf { it.text.length }}"
+                }
 
                 if (textNodes.isEmpty()) {
                     Timber.w("[$TAG] 提取的文本节点列表为空")
+                    tlog.log("Manager") { "ABORT reason=empty_text_nodes nodeCount=$nodeCount" }
                     onError?.invoke("没有可翻译的文本内容")
                     onStateChanged?.invoke(TranslateState.Idle)
                     return@launch
@@ -158,12 +177,16 @@ class StreamTranslateManager(
 
                 // 步骤 3: 开始流式翻译
                 Timber.d("[$TAG] 步骤 3: 开始流式翻译")
+                tlog.log("Manager") {
+                    "step3 startStreamTranslationInternal nodes=${textNodes.size} provider=${finalConfig.provider}"
+                }
                 onStateChanged?.invoke(TranslateState.Translating)
 
                 startStreamTranslationInternal(textNodes, title, finalConfig)
 
             } catch (e: Exception) {
                 Timber.e(e, "[$TAG] 流式翻译流程失败")
+                tlog.error("Manager", e) { "startStreamTranslation FAILED cancelled=$isCancelled" }
                 if (!isCancelled) {
                     onError?.invoke(e.message ?: "翻译失败")
                     onStateChanged?.invoke(TranslateState.Idle)
