@@ -556,6 +556,7 @@
     <string name="translate_error_title">Translation Error</string>
     <string name="translate_error_hint">Please check your translation settings and try again.</string>
     <string name="go_to_settings">Go to Settings</string>
+    <string name="retry">Retry</string>
     <string name="image_filter">Image filter</string>
     <string name="image_filter_settings">Filter images</string>
     <string name="image_filter_enable">Enable filter</string>

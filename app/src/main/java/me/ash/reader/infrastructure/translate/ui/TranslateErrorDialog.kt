@@ -1,6 +1,8 @@
 package me.ash.reader.infrastructure.translate.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -19,13 +21,18 @@ import me.ash.reader.R
 fun TranslateErrorDialog(
     errorMessage: String,
     onDismiss: () -> Unit,
+    onRetry: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.translate_error_title)) },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Text(text = errorMessage)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -36,13 +43,18 @@ fun TranslateErrorDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    onDismiss()
-                    onNavigateToSettings()
+            Row {
+                TextButton(onClick = onRetry) {
+                    Text(text = stringResource(R.string.retry))
                 }
-            ) {
-                Text(text = stringResource(R.string.go_to_settings))
+                TextButton(
+                    onClick = {
+                        onDismiss()
+                        onNavigateToSettings()
+                    }
+                ) {
+                    Text(text = stringResource(R.string.go_to_settings))
+                }
             }
         },
         dismissButton = {

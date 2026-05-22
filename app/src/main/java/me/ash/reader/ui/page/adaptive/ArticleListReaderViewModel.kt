@@ -754,7 +754,7 @@ class ArticleListReaderViewModel
         }
 
         manager.onError = { error ->
-            Timber.e("[$TAG] 翻译错误: $error")
+            Timber.e("[$TAG] Translation Error:\n$error")
             _translationState.update {
                 it.copy(
                     translateState = TranslateState.Idle,
@@ -1100,6 +1100,12 @@ class ArticleListReaderViewModel
      */
     fun dismissTranslateError() {
         _translationState.update { it.copy(translateError = null) }
+    }
+
+    fun retryTranslation() {
+        val manager = streamTranslateManager ?: return
+        _translationState.update { it.copy(translateError = null) }
+        startTranslation(manager)
     }
 
     /**

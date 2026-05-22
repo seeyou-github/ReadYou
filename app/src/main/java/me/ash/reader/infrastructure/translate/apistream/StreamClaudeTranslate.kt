@@ -135,9 +135,20 @@ class StreamClaudeTranslate @Inject constructor(
                         return
                     }
                     // 关心 content_block_delta 事件
-                    if (type != null && type != "content_block_delta") return
                     try {
                         val json = gson.fromJson(data, JsonObject::class.java) ?: return
+                        if (type == "error" || json.has("error")) {
+                            val error = TranslationApiException(
+                                provider = "Claude SSE",
+                                response = null,
+                                cause = IllegalStateException("SSE error event"),
+                                responseBody = data,
+                            )
+                            es.cancel()
+                            if (!resumed) { resumed = true; continuation.resumeWithException(error) }
+                            return
+                        }
+                        if (type != null && type != "content_block_delta") return
                         // 若 type 字段在 data 内，过滤同样适用
                         val deltaType = json.get("type")?.asString
                         if (deltaType != null && deltaType != "content_block_delta") return
@@ -153,12 +164,16 @@ class StreamClaudeTranslate @Inject constructor(
 
                 override fun onFailure(es: EventSource, t: Throwable?, response: okhttp3.Response?) {
                     if (!isCancelled && !resumed) {
-                        val code = response?.code ?: -1
                         val errBody = try { response?.body?.string() } catch (_: Exception) { null }
-                        val msg = "Claude SSE 失败 (HTTP $code): ${t?.message ?: response?.message}"
-                        Timber.e("[$TAG] $msg body=$errBody")
+                        val error = TranslationApiException(
+                            provider = "Claude",
+                            response = response,
+                            cause = t,
+                            responseBody = errBody,
+                        )
+                        Timber.e(error, "[$TAG] Translation API failure\n${error.message}")
                         resumed = true
-                        continuation.resumeWithException(Exception(msg))
+                        continuation.resumeWithException(error)
                     } else if (!resumed) {
                         resumed = true
                         continuation.resume(Unit)

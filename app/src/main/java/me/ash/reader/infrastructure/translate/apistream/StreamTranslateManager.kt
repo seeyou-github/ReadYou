@@ -8,6 +8,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.PrintWriter
+import java.io.StringWriter
 import me.ash.reader.infrastructure.log.TranslateDebugLogger
 import me.ash.reader.infrastructure.translate.TranslateTask
 import me.ash.reader.infrastructure.translate.TranslatePriority
@@ -209,7 +211,7 @@ class StreamTranslateManager(
                 Timber.e(e, "[$TAG] 流式翻译流程失败")
                 tlog.error("Manager", e) { "startStreamTranslation FAILED cancelled=$isCancelled" }
                 if (!isCancelled) {
-                    onError?.invoke(e.message ?: "翻译失败")
+                    onError?.invoke(e.toFullErrorMessage())
                     onStateChanged?.invoke(TranslateState.Idle)
                 }
             }
@@ -257,7 +259,8 @@ class StreamTranslateManager(
             onError = { error ->
                 if (!isCancelled) {
                     Timber.e(error, "[$TAG] onError 流式翻译错误")
-                    this@StreamTranslateManager.onError?.invoke(error.message ?: "翻译失败")
+                    tlog.error("Manager", error) { "scheduler onError full=${error.message.orEmpty()}" }
+                    this@StreamTranslateManager.onError?.invoke(error.toFullErrorMessage())
                 }
             }
             onComplete = { results ->
@@ -352,4 +355,16 @@ class StreamTranslateManager(
 
 
 
+}
+
+private fun Throwable.toFullErrorMessage(): String {
+    val stackTrace = StringWriter().also { writer ->
+        printStackTrace(PrintWriter(writer))
+    }.toString()
+    return buildString {
+        appendLine(message ?: "翻译失败")
+        appendLine()
+        appendLine("Full Exception:")
+        append(stackTrace)
+    }.trim()
 }

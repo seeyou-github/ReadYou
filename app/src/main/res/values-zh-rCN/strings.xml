@@ -425,5 +425,6 @@
     <string name="local_rule_content_failed_message">本地规则无法下载或解析这篇文章。\n\n原因：%1$s</string>
     <string name="cache_title_image_on_update">更新时缓存标题图片</string>
     <string name="cache_content_image_on_update">更新时缓存正文图片</string>
+    <string name="retry">重试</string>
 
 </resources>

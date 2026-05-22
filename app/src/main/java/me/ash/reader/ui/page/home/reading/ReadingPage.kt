@@ -740,6 +740,7 @@ fun ReadingPage(
         TranslateErrorDialog(
             errorMessage = error,
             onDismiss = { viewModel.dismissTranslateError() },
+            onRetry = { viewModel.retryTranslation() },
             onNavigateToSettings = onNavigateToAITranslation
         )
     }

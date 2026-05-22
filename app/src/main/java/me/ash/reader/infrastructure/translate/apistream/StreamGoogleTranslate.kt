@@ -132,6 +132,17 @@ class StreamGoogleTranslate @Inject constructor(
                     if (isCancelled) { es.cancel(); return }
                     try {
                         val json = gson.fromJson(data, JsonObject::class.java) ?: return
+                        if (json.has("error")) {
+                            val error = TranslationApiException(
+                                provider = "Gemini SSE",
+                                response = null,
+                                cause = IllegalStateException("SSE error event"),
+                                responseBody = data,
+                            )
+                            es.cancel()
+                            if (!resumed) { resumed = true; continuation.resumeWithException(error) }
+                            return
+                        }
                         val candidates = json.getAsJsonArray("candidates") ?: return
                         if (candidates.size() == 0) return
                         val content = candidates.get(0).asJsonObject.getAsJsonObject("content")
@@ -148,12 +159,16 @@ class StreamGoogleTranslate @Inject constructor(
 
                 override fun onFailure(es: EventSource, t: Throwable?, response: okhttp3.Response?) {
                     if (!isCancelled && !resumed) {
-                        val code = response?.code ?: -1
                         val errBody = try { response?.body?.string() } catch (_: Exception) { null }
-                        val msg = "Gemini SSE 失败 (HTTP $code): ${t?.message ?: response?.message}"
-                        Timber.e("[$TAG] $msg body=$errBody")
+                        val error = TranslationApiException(
+                            provider = "Gemini",
+                            response = response,
+                            cause = t,
+                            responseBody = errBody,
+                        )
+                        Timber.e(error, "[$TAG] Translation API failure\n${error.message}")
                         resumed = true
-                        continuation.resumeWithException(Exception(msg))
+                        continuation.resumeWithException(error)
                     } else if (!resumed) {
                         resumed = true
                         continuation.resume(Unit)
