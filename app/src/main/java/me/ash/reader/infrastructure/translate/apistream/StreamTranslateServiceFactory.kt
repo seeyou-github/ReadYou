@@ -19,10 +19,19 @@ class StreamTranslateServiceFactory @Inject constructor(
     private val streamClaudeTranslate: StreamClaudeTranslate,
 ) {
     fun getService(serviceId: String): StreamTranslateService {
+        val normalizedServiceId = when (serviceId.lowercase()) {
+            "siliconflow" -> "SiliconFlow"
+            "cerebras" -> "Cerebras"
+            else -> serviceId
+        }
         val persisted = DynamicProvidersPreference.read(context)[serviceId]
+            ?: DynamicProvidersPreference.read(context)[normalizedServiceId]
         val builtIn =
-            if (serviceId !in DynamicProvidersPreference.readHiddenBuiltIns(context)) {
+            if (serviceId !in DynamicProvidersPreference.readHiddenBuiltIns(context) &&
+                normalizedServiceId !in DynamicProvidersPreference.readHiddenBuiltIns(context)
+            ) {
                 DynamicProvidersPreference.builtInConfig(serviceId)
+                    ?: DynamicProvidersPreference.builtInConfig(normalizedServiceId)
             } else {
                 null
             }

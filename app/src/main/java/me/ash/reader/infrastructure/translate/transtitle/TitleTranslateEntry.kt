@@ -24,6 +24,7 @@ import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.IODispatcher
 import me.ash.reader.infrastructure.preference.SettingsProvider
 import me.ash.reader.infrastructure.translate.TranslateProvider
+import me.ash.reader.infrastructure.translate.TranslateRuntimeConfigResolver
 import me.ash.reader.infrastructure.translate.apistream.StreamTranslateService
 import me.ash.reader.infrastructure.translate.apistream.StreamTranslateServiceFactory
 import me.ash.reader.infrastructure.translate.cache.ArticleTranslationCacheService
@@ -51,6 +52,7 @@ constructor(
     private val streamTranslateServiceFactory: StreamTranslateServiceFactory,
     private val settingsProvider: SettingsProvider,
     private val titleTranslateQueue: TitleTranslateQueue,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
 ) {
     val isTranslating = mutableStateOf(false)
     val translationProgress = mutableStateOf(0)
@@ -188,18 +190,19 @@ constructor(
                     apiKey = "",
                 )
 
-        val translateService = streamTranslateServiceFactory.getService(config.provider)
+        val runtimeConfig = TranslateRuntimeConfigResolver.resolve(context, config)
+        val translateService = streamTranslateServiceFactory.getService(runtimeConfig.provider)
         currentTranslateService = translateService
         val titleTranslateService = TitleTranslateService(translateService)
 
         titleTranslateService.translateTitles(
                 titles = articles.map { it.title },
                 articleIds = articles.map { it.id },
-                config = config,
+                config = runtimeConfig,
                 translateService = translateService,
                 onTitleTranslated = { articleId, translatedTitle ->
                     publishLiveTranslatedTitle(articleId, translatedTitle)
-                    rememberPendingTitleUpdate(articleId, translatedTitle, config)
+                    rememberPendingTitleUpdate(articleId, translatedTitle, runtimeConfig)
                 },
                 onProgress = { completed, _ ->
                     translationProgress.value = completed

@@ -13,6 +13,7 @@ import java.io.StringWriter
 import me.ash.reader.infrastructure.log.TranslateDebugLogger
 import me.ash.reader.infrastructure.translate.TranslateTask
 import me.ash.reader.infrastructure.translate.TranslatePriority
+import me.ash.reader.infrastructure.translate.TranslateRuntimeConfigResolver
 import me.ash.reader.infrastructure.translate.cache.TranslateCache
 import me.ash.reader.infrastructure.translate.model.TranslateModelConfig
 import me.ash.reader.infrastructure.translate.ui.TranslateState
@@ -132,7 +133,7 @@ class StreamTranslateManager(
         completedNodes = 0
         isCancelled = false
 
-        val finalConfig = config ?: initialConfig
+        val finalConfig = TranslateRuntimeConfigResolver.resolve(webView.context, config ?: initialConfig)
 
         scope.launch {
             try {
@@ -201,7 +202,8 @@ class StreamTranslateManager(
                 // 步骤 3: 开始流式翻译
                 Timber.d("[$TAG] 步骤 3: 开始流式翻译")
                 tlog.log("Manager") {
-                    "step3 startStreamTranslationInternal nodes=${textNodes.size} provider=${finalConfig.provider}"
+                    "step3 startStreamTranslationInternal nodes=${textNodes.size} provider=${finalConfig.provider} " +
+                        "model=${finalConfig.model} multiKeyRuntime=true"
                 }
                 onStateChanged?.invoke(TranslateState.Translating)
 

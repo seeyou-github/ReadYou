@@ -97,7 +97,8 @@ val currentConfig = settings.quickTranslateModel ?: TranslateModelConfig(
     // 创建 StreamTranslateManager（使用SSE流式翻译）
     val streamTranslateManager = remember(webView, currentTranslateServiceId, currentConfig) {
         webView?.let {
-            val streamService = streamTranslateServiceFactory.getService(currentTranslateServiceId)
+            val serviceId = currentConfig.provider.ifBlank { currentTranslateServiceId }
+            val streamService = streamTranslateServiceFactory.getService(serviceId)
             StreamTranslateManager(
                 it,
                 streamService,

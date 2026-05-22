@@ -465,9 +465,6 @@ fun ReadingPage(
                                     try {
                                         Timber.tag("AutoTranslate").d("currentTranslateServiceId = $currentTranslateServiceId")
                                         
-                                        val streamService = streamTranslateServiceFactory.getService(currentTranslateServiceId)
-                                        Timber.tag("AutoTranslate").d("streamService = ${streamService.javaClass.simpleName}")
-                                        
                                         val currentConfig = settings.quickTranslateModel ?: TranslateModelConfig(
                                             provider = TranslateProvider.SILICONFLOW.serviceId,
                                             model = "",
@@ -475,6 +472,10 @@ fun ReadingPage(
                                         )
                                         Timber.tag("AutoTranslate").d("TranslateModelConfig provider = ${currentConfig.provider}")
                                         Timber.tag("AutoTranslate").d("TranslateModelConfig model = ${currentConfig.model}")
+
+                                        val serviceId = currentConfig.provider.ifBlank { currentTranslateServiceId }
+                                        val streamService = streamTranslateServiceFactory.getService(serviceId)
+                                        Timber.tag("AutoTranslate").d("streamService = ${streamService.javaClass.simpleName}")
                                         
                                         val manager = StreamTranslateManager(webView, streamService, currentConfig)
                                         Timber.tag("AutoTranslate").d("StreamTranslateManager created successfully")
