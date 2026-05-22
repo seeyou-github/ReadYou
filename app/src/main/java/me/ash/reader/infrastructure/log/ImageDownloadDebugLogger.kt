@@ -41,13 +41,14 @@ constructor(
     }
 
     fun logAlways(message: () -> String) {
-        write(message)
+        log(message)
     }
 
     private fun write(message: () -> String) {
         val line = "${formatter.format(Date())} ${message()}"
         Log.d(TAG, line)
         applicationScope.launch(ioDispatcher) {
+            if (!settingsProvider.settings.imageDownloadDebugLog.value) return@launch
             synchronized(lock) {
                 val file = logFile
                 file.parentFile?.mkdirs()
@@ -67,6 +68,10 @@ constructor(
         private const val TAG = "ImageDownload"
         private const val LOG_FILE_NAME = "image_download.log"
         private const val MAX_LOG_BYTES = 2L * 1024L * 1024L
+
+        fun deleteLogFile(context: Context) {
+            context.filesDir.resolve("logs").resolve(LOG_FILE_NAME).delete()
+        }
 
         fun from(context: Context): ImageDownloadDebugLogger =
             EntryPointAccessors.fromApplication(

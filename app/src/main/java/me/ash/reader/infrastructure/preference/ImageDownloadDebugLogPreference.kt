@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import me.ash.reader.infrastructure.log.ImageDownloadDebugLogger
 import me.ash.reader.ui.ext.DataStoreKey
 import me.ash.reader.ui.ext.DataStoreKey.Companion.imageDownloadDebugLog
 import me.ash.reader.ui.ext.dataStore
@@ -16,11 +17,18 @@ sealed class ImageDownloadDebugLogPreference(val value: Boolean) : Preference() 
     override fun put(context: Context, scope: CoroutineScope) {
         scope.launch {
             context.dataStore.put(imageDownloadDebugLog, value)
+            if (!value) {
+                ImageDownloadDebugLogger.deleteLogFile(context)
+            }
         }
     }
 
     fun toggle(context: Context, scope: CoroutineScope) = scope.launch {
-        context.dataStore.put(imageDownloadDebugLog, !value)
+        val newValue = !value
+        context.dataStore.put(imageDownloadDebugLog, newValue)
+        if (!newValue) {
+            ImageDownloadDebugLogger.deleteLogFile(context)
+        }
     }
 
     companion object {
