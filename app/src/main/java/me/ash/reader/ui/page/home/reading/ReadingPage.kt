@@ -147,6 +147,16 @@ fun ReadingPage(
     DisposableEffect(Unit) {
         onDispose {
             currentPreloadArticleId?.let { viewModel.removeReadingImagePreloads(it) }
+            currentPreloadArticleId = null
+        }
+    }
+
+    // 退出文章详情（articleId 变为 null）时立即取消当前文章的图片下载，
+    // 否则在自适应布局里 ReadingPage 不会被 dispose，队列会继续下载。
+    LaunchedEffect(readerState.articleId) {
+        if (readerState.articleId == null) {
+            currentPreloadArticleId?.let { viewModel.removeReadingImagePreloads(it) }
+            currentPreloadArticleId = null
         }
     }
     
