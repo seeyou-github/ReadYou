@@ -29,6 +29,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import me.ash.reader.BuildConfig
+import me.ash.reader.infrastructure.log.ImageDownloadDebugLogger
+import me.ash.reader.infrastructure.log.NetworkDebugEventListener
 import me.ash.reader.infrastructure.net.UserAgentHolder
 import okhttp3.Cache
 import okhttp3.Interceptor
@@ -59,9 +61,11 @@ object OkHttpClientModule {
     @Singleton
     fun provideOkHttpClient(
         @ApplicationContext context: Context,
+        imageDownloadDebugLogger: ImageDownloadDebugLogger,
     ): OkHttpClient = cachingHttpClient(
         context = context,
-        cacheDirectory = context.cacheDir.resolve("http")
+        cacheDirectory = context.cacheDir.resolve("http"),
+        networkDebugLogger = imageDownloadDebugLogger,
     ).newBuilder()
         .addNetworkInterceptor(UserAgentInterceptor)
         .build()
@@ -75,11 +79,20 @@ fun cachingHttpClient(
     connectTimeoutSecs: Long = 10L,
     readTimeoutSecs: Long = 30L,
     clientCertificateAlias: String? = null,
+    networkDebugLogger: ImageDownloadDebugLogger? = null,
 ): OkHttpClient {
     val builder: OkHttpClient.Builder = OkHttpClient.Builder()
 
     if (cacheDirectory != null) {
         builder.cache(Cache(cacheDirectory, cacheSize))
+    }
+
+    val debugLogger =
+        networkDebugLogger ?: runCatching { ImageDownloadDebugLogger.from(context) }.getOrNull()
+    if (debugLogger != null) {
+        builder.eventListenerFactory(
+            NetworkDebugEventListener.Factory(debugLogger)
+        )
     }
 
     builder

@@ -25,6 +25,7 @@ import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneSca
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -36,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import java.util.concurrent.Executors
@@ -51,6 +53,7 @@ import me.ash.reader.ui.page.home.flow.FlowPage
 import me.ash.reader.ui.page.home.reading.ReadingPage
 
 import me.ash.reader.infrastructure.translate.apistream.StreamTranslateServiceFactory
+import me.ash.reader.infrastructure.log.ImageDownloadDebugLogger
 
 // 2026-01-21: 新增阅读界面样式设置对话框
 import me.ash.reader.ui.component.dialogs.ReadingPageStyleDialog
@@ -74,6 +77,8 @@ fun ArticleListReaderPage(
     onNavigateToStylePage: () -> Unit,
     onNavigateToAITranslation: () -> Unit = { },
 ) {
+    val context = LocalContext.current
+    val debugLogger = remember(context) { ImageDownloadDebugLogger.from(context) }
 //    val themeViewModel: ColorThemeViewModel = hiltViewModel()
 //    val allThemes by themeViewModel.allThemes.collectAsState(initial = emptyList())
 //    val selectedThemeId by themeViewModel.selectedThemeId.collectAsState()
@@ -85,6 +90,13 @@ fun ArticleListReaderPage(
 //    val currentReaderPaints = currentTheme?.let { colorThemeToReaderPaints(it) } ?: defaultReaderPaints()
 
     val scope = rememberCoroutineScope()
+
+    DisposableEffect(Unit) {
+        debugLogger.logAlways { "PAGE ENTER ArticleListReaderPage" }
+        onDispose {
+            debugLogger.logAlways { "PAGE EXIT ArticleListReaderPage" }
+        }
+    }
 
     val backBehavior = BackNavigationBehavior.PopUntilScaffoldValueChange
 
@@ -175,6 +187,9 @@ fun ArticleListReaderPage(
                             isTwoPane = isTwoPane,
 
                             navigateToArticle = { id, index ->
+                                debugLogger.logAlways {
+                                    "NAVIGATE article_list -> article_reading articleId=$id index=$index"
+                                }
                                 scope.launch {
                                     navigator.navigateTo(
                                         pane = ListDetailPaneScaffoldRole.Detail,
@@ -223,6 +238,9 @@ fun ArticleListReaderPage(
                         onNavAction = {
                             when (it) {
                                 NavigationAction.Close -> {
+                                    debugLogger.logAlways {
+                                        "NAVIGATE article_reading close articleId=${navigator.currentDestination?.contentKey?.articleId}"
+                                    }
                                     if (navigator.canNavigateBack(backBehavior)) {
                                         scope
                                             .launch { navigator.navigateBack(backBehavior) }
@@ -232,12 +250,18 @@ fun ArticleListReaderPage(
                                     }
                                 }
                                 NavigationAction.HideList -> {
+                                    debugLogger.logAlways {
+                                        "NAVIGATE article_reading hide_list articleId=${navigator.currentDestination?.contentKey?.articleId}"
+                                    }
                                     scope.launch {
                                         listAlpha = 0f
                                         paneExpansionState.animateTo(hiddenAnchor)
                                     }
                                 }
                                 NavigationAction.ExpandList -> {
+                                    debugLogger.logAlways {
+                                        "NAVIGATE article_reading expand_list articleId=${navigator.currentDestination?.contentKey?.articleId}"
+                                    }
                                     listAlpha = 1f
                                     scope.launch { paneExpansionState.animateTo(expandedAnchor) }
                                 }

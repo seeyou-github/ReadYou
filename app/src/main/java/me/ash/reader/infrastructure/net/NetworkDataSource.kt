@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import okhttp3.ResponseBody
+import okhttp3.OkHttpClient
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -27,10 +28,15 @@ interface NetworkDataSource {
 
         private var instance: NetworkDataSource? = null
 
-        fun getInstance(): NetworkDataSource {
+        fun getInstance(okHttpClient: OkHttpClient? = null): NetworkDataSource {
             return instance ?: synchronized(this) {
                 instance ?: Retrofit.Builder()
                     .baseUrl("https://api.github.com/")
+                    .apply {
+                        if (okHttpClient != null) {
+                            client(okHttpClient)
+                        }
+                    }
                     .addConverterFactory(GsonConverterFactory.create())
                     .build().create(NetworkDataSource::class.java).also {
                         instance = it

@@ -208,14 +208,28 @@ class ArticleImagePreloadQueue @Inject constructor(
 
     fun clear() {
         val callsToCancel: List<Call>
+        var pendingCount = 0
+        var activeCount = 0
         synchronized(lock) {
-            log { "clear queue pending=${pendingTasks.size} active=${activeTasks.size}" }
+            pendingCount = pendingTasks.size
+            activeCount = activeTasks.size
+            log {
+                "CANCEL_COMMAND clearImagePreloads pending=$pendingCount active=$activeCount registeredCalls=${activeCalls.size} dispatcherRunning=${imageOkHttpClient.dispatcher.runningCallsCount()} dispatcherQueued=${imageOkHttpClient.dispatcher.queuedCallsCount()}"
+            }
             pendingTasks.clear()
             interruptedTasks.addAll(activeTasks.keys)
             callsToCancel = activeCalls.values.toList()
         }
-        callsToCancel.forEach { it.cancel() }
+        callsToCancel.forEach { call ->
+            call.cancel()
+            log {
+                "CANCEL_CALL clearImagePreloads canceled=${call.isCanceled()} url=${call.request().url}"
+            }
+        }
         imageOkHttpClient.dispatcher.cancelAll()
+        log {
+            "CANCEL_RESULT clearImagePreloads requestedCalls=${callsToCancel.size} dispatcherRunning=${imageOkHttpClient.dispatcher.runningCallsCount()} dispatcherQueued=${imageOkHttpClient.dispatcher.queuedCallsCount()}"
+        }
     }
 
     private fun signalWorkers() {
@@ -224,19 +238,34 @@ class ArticleImagePreloadQueue @Inject constructor(
 
     fun removeReadingImagesForArticle(articleId: String) {
         val callsToCancel: List<Call>
+        var removedPendingCount = 0
+        var activeCount = 0
         synchronized(lock) {
-            log { "removeReadingImagesForArticle articleId=$articleId pending=${pendingTasks.size} active=${activeTasks.size}" }
+            val pendingBefore = pendingTasks.size
+            log {
+                "CANCEL_COMMAND removeReadingImagesForArticle articleId=$articleId pending=$pendingBefore active=${activeTasks.size} registeredCalls=${activeCalls.size}"
+            }
             pendingTasks.entries.removeAll {
                 it.key.articleId == articleId && it.key.type == ArticleImageCacheType.CONTENT
             }
+            removedPendingCount = pendingBefore - pendingTasks.size
             val activeKeys =
                 activeTasks.keys.filter {
                     it.articleId == articleId && it.type == ArticleImageCacheType.CONTENT
                 }
+            activeCount = activeKeys.size
             interruptedTasks.addAll(activeKeys)
             callsToCancel = activeKeys.mapNotNull { activeCalls[it] }
         }
-        callsToCancel.forEach { it.cancel() }
+        callsToCancel.forEach { call ->
+            call.cancel()
+            log {
+                "CANCEL_CALL removeReadingImagesForArticle articleId=$articleId canceled=${call.isCanceled()} url=${call.request().url}"
+            }
+        }
+        log {
+            "CANCEL_RESULT removeReadingImagesForArticle articleId=$articleId removedPending=$removedPendingCount activeMatched=$activeCount requestedCalls=${callsToCancel.size}"
+        }
     }
 
     private suspend fun workerLoop() {

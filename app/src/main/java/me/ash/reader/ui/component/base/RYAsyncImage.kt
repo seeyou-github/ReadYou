@@ -48,6 +48,16 @@ fun RYAsyncImage(
 ) {
     val context = LocalContext.current
     val debugLogger = remember(context) { ImageDownloadDebugLogger.from(context) }
+    val remoteImagesPaused = ImageNetworkGate.remoteImagesPaused
+    val requestData =
+        if (remoteImagesPaused && ImageNetworkGate.isRemoteImage(data)) {
+            debugLogger.logAlways {
+                "RYAsyncImage blocked remoteImagesPaused=true data=${describeImageData(data)} key=$key"
+            }
+            null
+        } else {
+            data
+        }
     val painter =
         rememberAsyncImagePainter(
             model =
@@ -60,20 +70,20 @@ fun RYAsyncImage(
                             if (!referer.isNullOrBlank()) {
                                 addHeader("Referer", referer)
                             }
-                            debugLogger.log {
-                                "RYAsyncImage request data=${describeImageData(data)} key=$key referer=${referer.orEmpty()}"
+                            debugLogger.logAlways {
+                                "RYAsyncImage request data=${describeImageData(requestData)} originalData=${describeImageData(data)} key=$key referer=${referer.orEmpty()}"
                             }
                         } else {
-                            debugLogger.log {
-                                "RYAsyncImage request data=${describeImageData(data)} key=$key referer=disabled"
+                            debugLogger.logAlways {
+                                "RYAsyncImage request data=${describeImageData(requestData)} originalData=${describeImageData(data)} key=$key referer=disabled"
                             }
                         }
                         val resolvedUserAgent =
                             userAgent?.takeIf { it.isNotBlank() } ?: UserAgentHolder.get()
                         if (!resolvedUserAgent.isNullOrBlank()) {
                             addHeader("User-Agent", resolvedUserAgent)
-                            debugLogger.log {
-                                "RYAsyncImage request data=${describeImageData(data)} key=$key userAgent=$resolvedUserAgent"
+                            debugLogger.logAlways {
+                                "RYAsyncImage request data=${describeImageData(requestData)} originalData=${describeImageData(data)} key=$key userAgent=$resolvedUserAgent"
                             }
                         }
                         // 2026-01-23: 浣跨敤 key 寮哄埗 Coil 鍦ㄦ暟鎹彉鍖栨椂閲嶆柊鍔犺浇
@@ -81,7 +91,7 @@ fun RYAsyncImage(
                             memoryCacheKey(key.toString())
                         }
                     }
-                    .data(data = data)
+                    .data(data = requestData)
                     .apply {
                         if (placeholder != null) placeholder(placeholder)
                         if (error != null) error(error)
@@ -91,12 +101,12 @@ fun RYAsyncImage(
                         size(size)
                         listener(
                             onSuccess = { _, result: ImageResult ->
-                                debugLogger.log {
+                                debugLogger.logAlways {
                                     "RYAsyncImage success data=${describeImageData(data)} key=$key requestData=${describeImageData(result.request.data)}"
                                 }
                             },
                             onError = { _, result ->
-                                debugLogger.log {
+                                debugLogger.logAlways {
                                     "RYAsyncImage error data=${describeImageData(data)} key=$key throwable=${result.throwable::class.java.simpleName}:${result.throwable.message}"
                                 }
                             }

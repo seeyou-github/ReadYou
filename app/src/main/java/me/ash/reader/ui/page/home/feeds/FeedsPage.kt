@@ -68,6 +68,7 @@ import androidx.work.WorkInfo
 import kotlin.collections.set
 import kotlinx.coroutines.launch
 import me.ash.reader.R
+import me.ash.reader.infrastructure.log.ImageDownloadDebugLogger
 import me.ash.reader.infrastructure.preference.FeedsLayoutStylePreference
 import me.ash.reader.infrastructure.preference.LocalFeedsFilterBarPadding
 import me.ash.reader.infrastructure.preference.LocalFeedsFilterBarStyle
@@ -84,6 +85,7 @@ import me.ash.reader.infrastructure.preference.LocalSkipVersionNumber
 import me.ash.reader.ui.component.FilterBar
 import me.ash.reader.ui.component.base.DisplayText
 import me.ash.reader.ui.component.base.FeedbackIconButton
+import me.ash.reader.ui.component.base.ImageNetworkGate
 import me.ash.reader.ui.component.base.RYScaffold
 import me.ash.reader.ui.ext.atElevation
 import me.ash.reader.ui.component.scrollbar.drawVerticalScrollIndicator
@@ -130,6 +132,7 @@ fun FeedsPage(
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val debugLogger = remember(context) { ImageDownloadDebugLogger.from(context) }
     val hapticFeedback = LocalHapticFeedback.current
     val colorThemes = LocalFeedsPageColorThemes.current
     val selectedColorTheme = colorThemes.firstOrNull { it.isDefault } ?: colorThemes.firstOrNull()
@@ -139,6 +142,14 @@ fun FeedsPage(
     val groupListExpand = LocalFeedsGroupListExpand.current
     val filterBarStyle = LocalFeedsFilterBarStyle.current
     val filterBarPadding = LocalFeedsFilterBarPadding.current
+
+    DisposableEffect(Unit) {
+        ImageNetworkGate.pauseRemoteImages()
+        debugLogger.logAlways { "PAGE ENTER home FeedsPage" }
+        onDispose {
+            debugLogger.logAlways { "PAGE EXIT home FeedsPage" }
+        }
+    }
     val filterBarHeight = LocalFeedsFilterBarHeight.current
     val filterBarTonalElevation = LocalFeedsFilterBarTonalElevation.current
     val layoutStyle = LocalFeedsLayoutStyle.current

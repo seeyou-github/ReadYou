@@ -6,6 +6,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import me.ash.reader.infrastructure.net.NetworkDataSource
 import javax.inject.Singleton
+import okhttp3.OkHttpClient
 
 /**
  * Provides network requests for Retrofit.
@@ -18,6 +19,6 @@ object RetrofitModule {
 
     @Provides
     @Singleton
-    fun provideAppNetworkDataSource(): NetworkDataSource =
-        NetworkDataSource.getInstance()
+    fun provideAppNetworkDataSource(okHttpClient: OkHttpClient): NetworkDataSource =
+        NetworkDataSource.getInstance(okHttpClient)
 }

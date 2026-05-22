@@ -145,8 +145,10 @@ import me.ash.reader.infrastructure.preference.LocalSortUnreadArticles
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListFirstItemLargeImage
 import me.ash.reader.infrastructure.preference.PullToLoadNextFeedPreference
 import me.ash.reader.infrastructure.preference.SortUnreadArticlesPreference
+import me.ash.reader.infrastructure.log.ImageDownloadDebugLogger
 import me.ash.reader.ui.component.FilterBar
 import me.ash.reader.ui.component.base.FeedbackIconButton
+import me.ash.reader.ui.component.base.ImageNetworkGate
 import me.ash.reader.ui.component.base.RYExtensibleVisibility
 import me.ash.reader.ui.component.base.RYScaffold
 import me.ash.reader.ui.ext.atElevation
@@ -199,6 +201,7 @@ fun FlowPage(
     val sharedContent = LocalSharedContent.current
     val markAsReadOnScroll = LocalMarkAsReadOnScroll.current.value
     val context = LocalContext.current
+    val debugLogger = remember(context) { ImageDownloadDebugLogger.from(context) }
     val scope = rememberCoroutineScope()
     val boldCharacters = LocalReadingBoldCharacters.current
     val readingFonts = LocalReadingFonts.current
@@ -209,6 +212,14 @@ fun FlowPage(
     val textAlign = LocalReadingTextAlign.current.toTextAlignCSS()
     val textBold = LocalReadingTextBold.current.value
     val subheadBold = LocalReadingSubheadBold.current.value
+
+    DisposableEffect(Unit) {
+        ImageNetworkGate.resumeRemoteImages()
+        debugLogger.logAlways { "PAGE ENTER article_list FlowPage isTwoPane=$isTwoPane" }
+        onDispose {
+            debugLogger.logAlways { "PAGE EXIT article_list FlowPage isTwoPane=$isTwoPane" }
+        }
+    }
     val subheadUpperCase = LocalReadingSubheadUpperCase.current.value
     val imgMargin = LocalReadingImageHorizontalPadding.current
     val imgBorderRadius = LocalReadingImageRoundedCorners.current
@@ -370,9 +381,13 @@ fun FlowPage(
 
     // 退回主界面（FeedsPage）时取消所有图片预下载，不要让流量继续跑。
     // 与 onDispose 区分：onDispose 在打开文章详情时也会触发，那种情况不能清。
-    val handleNavigateUp: () -> Unit = remember(viewModel, onNavigateUp) {
+    val handleNavigateUp: () -> Unit = remember(viewModel, onNavigateUp, debugLogger) {
         {
+            debugLogger.logAlways { "NAVIGATE article_list -> home command=clearImagePreloads" }
             viewModel.clearImagePreloads()
+            ImageNetworkGate.pauseRemoteImages()
+            viewModel.cancelSharedNetworkRequests("navigate_article_list_to_home")
+            debugLogger.logAlways { "NAVIGATE article_list -> home afterClearImagePreloads" }
             onNavigateUp()
         }
     }

@@ -13,6 +13,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import me.ash.reader.infrastructure.log.ImageDownloadDebugLogger
 import me.ash.reader.infrastructure.log.TranslateDebugLogger
 import me.ash.reader.ui.ext.isUrl
 import me.ash.reader.domain.model.article.ArticleImageCacheType
@@ -34,6 +35,8 @@ class WebViewClient(
     private val onPageFinished: ((WebView) -> Unit)? = null,
 ) : WebViewClient() {
 
+    private val debugLogger by lazy { ImageDownloadDebugLogger.from(context) }
+
     private val cacheDao: ArticleImageCacheDao? by lazy {
         runCatching {
                 EntryPointAccessors.fromApplication(
@@ -50,6 +53,11 @@ class WebViewClient(
         request: WebResourceRequest?,
     ): WebResourceResponse? {
         val url = request?.url?.toString()
+        if (url != null) {
+            debugLogger.logAlways {
+                "WEBVIEW REQUEST articleId=${articleId.orEmpty()} method=${request?.method.orEmpty()} url=$url"
+            }
+        }
         if (url != null && articleId != null) {
             try {
                 val cache =
@@ -63,6 +71,9 @@ class WebViewClient(
                     if (file.exists()) {
                         val mime =
                             URLConnection.guessContentTypeFromName(file.name) ?: "image/*"
+                        debugLogger.logAlways {
+                            "WEBVIEW CACHE_HIT articleId=$articleId url=$url path=${file.absolutePath} bytes=${file.length()}"
+                        }
                         return WebResourceResponse(mime, null, file.inputStream())
                     }
                 }
@@ -92,10 +103,16 @@ class WebViewClient(
                     connection = URI.create(url).toURL().openConnection() as HttpURLConnection
                     connection.setRequestProperty("Referer", refererDomain)
                     val inputStream = DataInputStream(connection.inputStream)
+                    debugLogger.logAlways {
+                        "WEBVIEW HTTP_FALLBACK articleId=${articleId.orEmpty()} url=$url referer=${refererDomain.orEmpty()} contentType=${connection.contentType}"
+                    }
                     return WebResourceResponse(connection.contentType, "UTF-8", inputStream)
                 }
             } catch (e: Exception) {
                 Log.e("RLog", "shouldInterceptRequest url: $e")
+                debugLogger.logAlways {
+                    "WEBVIEW REQUEST_ERROR articleId=${articleId.orEmpty()} url=$url throwable=${e::class.java.simpleName}:${e.message}"
+                }
             }
         }
         return super.shouldInterceptRequest(view, request)

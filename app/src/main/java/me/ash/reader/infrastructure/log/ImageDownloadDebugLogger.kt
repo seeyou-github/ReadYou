@@ -37,10 +37,17 @@ constructor(
     fun log(message: () -> String) {
         if (!settingsProvider.settings.imageDownloadDebugLog.value) return
 
+        write(message)
+    }
+
+    fun logAlways(message: () -> String) {
+        write(message)
+    }
+
+    private fun write(message: () -> String) {
         val line = "${formatter.format(Date())} ${message()}"
         Log.d(TAG, line)
         applicationScope.launch(ioDispatcher) {
-            if (!settingsProvider.settings.imageDownloadDebugLog.value) return@launch
             synchronized(lock) {
                 val file = logFile
                 file.parentFile?.mkdirs()

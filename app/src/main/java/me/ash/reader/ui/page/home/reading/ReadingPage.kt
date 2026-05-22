@@ -47,6 +47,7 @@ import kotlinx.coroutines.launch
 import android.net.Uri
 import me.ash.reader.R
 import me.ash.reader.infrastructure.android.TextToSpeechManager
+import me.ash.reader.infrastructure.log.ImageDownloadDebugLogger
 import me.ash.reader.infrastructure.log.TranslateDebugLogger
 import me.ash.reader.infrastructure.preference.LocalPullToSwitchArticle
 import me.ash.reader.infrastructure.preference.LocalReadingAutoHideToolbar
@@ -69,6 +70,7 @@ import me.ash.reader.infrastructure.preference.LocalSettings
 import me.ash.reader.infrastructure.translate.model.TranslateModelConfig
 import me.ash.reader.infrastructure.translate.TranslateProvider
 import me.ash.reader.ui.component.dialogs.ReadingPageStyleDialog
+import me.ash.reader.ui.component.base.ImageNetworkGate
 import me.ash.reader.ui.component.reader.LocalReaderPaints
 import me.ash.reader.ui.page.adaptive.ArticleListReaderViewModel
 import me.ash.reader.ui.page.adaptive.NavigationAction
@@ -103,6 +105,7 @@ fun ReadingPage(
     val readerState = viewModel.readerStateStateFlow.collectAsStateValue()
     val translationState = viewModel.translationStateStateFlow.collectAsStateValue()
     val tlog = remember(context) { TranslateDebugLogger.from(context) }
+    val debugLogger = remember(context) { ImageDownloadDebugLogger.from(context) }
     val boldCharacters = LocalReadingBoldCharacters.current
 //    val topBarHeight = LocalFeedsTopBarHeight.current
     val coroutineScope = rememberCoroutineScope()
@@ -112,6 +115,18 @@ fun ReadingPage(
 
     // 2026-01-21: 新增阅读界面样式设置对话框状态
     var showReadingPageStyleDialog by remember { mutableStateOf(false) }
+
+    DisposableEffect(Unit) {
+        ImageNetworkGate.resumeRemoteImages()
+        debugLogger.logAlways { "PAGE ENTER article_reading ReadingPage articleId=${readerState.articleId}" }
+        onDispose {
+            debugLogger.logAlways { "PAGE EXIT article_reading ReadingPage articleId=${readerState.articleId}" }
+        }
+    }
+
+    LaunchedEffect(readerState.articleId) {
+        debugLogger.logAlways { "PAGE STATE article_reading articleId=${readerState.articleId}" }
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.readerEvent.collect { event ->

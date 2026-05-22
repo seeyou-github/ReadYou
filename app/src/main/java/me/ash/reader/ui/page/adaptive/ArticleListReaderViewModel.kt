@@ -48,6 +48,7 @@ import me.ash.reader.infrastructure.android.AndroidImageDownloader
 import me.ash.reader.infrastructure.android.TextToSpeechManager
 import me.ash.reader.infrastructure.di.ApplicationScope
 import me.ash.reader.infrastructure.di.IODispatcher
+import me.ash.reader.infrastructure.log.ImageDownloadDebugLogger
 import me.ash.reader.infrastructure.preference.PullToLoadNextFeedPreference
 import me.ash.reader.infrastructure.preference.SettingsProvider
 import me.ash.reader.infrastructure.rss.ArticleImagePreloadQueue
@@ -65,6 +66,7 @@ import me.ash.reader.plugin.PluginConstants
 import me.ash.reader.plugin.PluginRuleDao
 import me.ash.reader.plugin.PluginSyncService
 import org.jsoup.Jsoup
+import okhttp3.OkHttpClient
 import timber.log.Timber
 
 private const val TAG = "ArticleListReaderViewModel"
@@ -86,6 +88,8 @@ class ArticleListReaderViewModel
     val textToSpeechManager: TextToSpeechManager,
     private val imageDownloader: AndroidImageDownloader,
     private val articleImagePreloadQueue: ArticleImagePreloadQueue,
+    private val okHttpClient: OkHttpClient,
+    private val imageDownloadDebugLogger: ImageDownloadDebugLogger,
     private val articleListUseCase: ArticlePagingListUseCase,
     workManager: WorkManager,
 
@@ -667,6 +671,16 @@ class ArticleListReaderViewModel
 
     fun clearImagePreloads() {
         articleImagePreloadQueue.clear()
+    }
+
+    fun cancelSharedNetworkRequests(reason: String) {
+        imageDownloadDebugLogger.logAlways {
+            "CANCEL_COMMAND sharedOkHttp reason=$reason running=${okHttpClient.dispatcher.runningCallsCount()} queued=${okHttpClient.dispatcher.queuedCallsCount()}"
+        }
+        okHttpClient.dispatcher.cancelAll()
+        imageDownloadDebugLogger.logAlways {
+            "CANCEL_RESULT sharedOkHttp reason=$reason running=${okHttpClient.dispatcher.runningCallsCount()} queued=${okHttpClient.dispatcher.queuedCallsCount()}"
+        }
     }
 
     fun renderDescriptionContent() {
