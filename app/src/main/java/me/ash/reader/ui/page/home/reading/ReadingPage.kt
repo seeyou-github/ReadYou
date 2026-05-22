@@ -516,6 +516,15 @@ fun ReadingPage(
                                                 webViewRef = webView
                                                 // 2026-01-31: WebView准备就绪，后续缓存恢复由TranslateButton处理
                                             },
+                                            onWebViewPageStarted = { webView ->
+                                                webViewRef = webView
+                                                // 新 HTML 即将加载，旧的 page-finished 状态失效
+                                                webViewPageLoaded = false
+                                                webViewLoadedArticleId = null
+                                                Timber.tag("AutoTranslate").d(
+                                                    "WebView page started, invalidate loaded flag"
+                                                )
+                                            },
                                             onWebViewPageFinished = { webView ->
                                                 webViewRef = webView
                                                 webViewLoadedArticleId = readerState.articleId

@@ -47,6 +47,7 @@ fun RYWebView(
     enableJavaScript: Boolean = true,
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
     onWebViewReady: ((android.webkit.WebView) -> Unit)? = null,
+    onPageStarted: ((android.webkit.WebView) -> Unit)? = null,
     onPageFinished: ((android.webkit.WebView) -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -77,6 +78,7 @@ fun RYWebView(
     val codeBgColor: Int =
         MaterialTheme.colorScheme.surfaceColorAtElevation((tonalElevation.value + 6).dp).toArgb()
     val boldCharacters = LocalReadingBoldCharacters.current
+    val currentOnPageStarted by rememberUpdatedState(onPageStarted)
     val currentOnPageFinished by rememberUpdatedState(onPageFinished)
 
     val webView by
@@ -149,6 +151,7 @@ fun RYWebView(
                     )
                 if (loadedHtml != html) {
                     loadedHtml = html
+                    currentOnPageStarted?.invoke(it)
                     loadDataWithBaseURL(
                         null,
                         html,
