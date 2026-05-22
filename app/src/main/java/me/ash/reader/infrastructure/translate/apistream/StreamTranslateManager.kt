@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.ash.reader.infrastructure.log.TranslateDebugLogger
 import me.ash.reader.infrastructure.translate.TranslateTask
@@ -138,7 +139,17 @@ class StreamTranslateManager(
                 tlog.log("Manager") { "step1 markTextNodes START" }
                 onStateChanged?.invoke(TranslateState.MarkingDOM)
 
-                val nodeCount = injector.markTextNodes()
+                var nodeCount = injector.markTextNodes()
+                var markAttempt = 0
+                while (nodeCount == 0 && markAttempt < 3 && !isCancelled) {
+                    markAttempt++
+                    val waitMillis = 150L * markAttempt
+                    tlog.log("Manager") {
+                        "step1 markTextNodes RETRY attempt=$markAttempt waitMs=$waitMillis"
+                    }
+                    delay(waitMillis)
+                    nodeCount = injector.markTextNodes()
+                }
                 Timber.d("[$TAG] 步骤 1 完成: DOM标记完成，共 $nodeCount 个节点")
                 tlog.log("Manager") { "step1 markTextNodes END count=$nodeCount" }
 
@@ -160,7 +171,17 @@ class StreamTranslateManager(
                 tlog.log("Manager") { "step2 extractTextNodes START" }
                 onStateChanged?.invoke(TranslateState.ExtractingText)
 
-                val textNodes = injector.extractTextNodes()
+                var textNodes = injector.extractTextNodes()
+                var extractAttempt = 0
+                while (textNodes.isEmpty() && extractAttempt < 2 && !isCancelled) {
+                    extractAttempt++
+                    val waitMillis = 150L * extractAttempt
+                    tlog.log("Manager") {
+                        "step2 extractTextNodes RETRY attempt=$extractAttempt waitMs=$waitMillis"
+                    }
+                    delay(waitMillis)
+                    textNodes = injector.extractTextNodes()
+                }
                 Timber.d("[$TAG] 步骤 2 完成: 提取了 ${textNodes.size} 个文本节点")
                 tlog.log("Manager") {
                     "step2 extractTextNodes END count=${textNodes.size} " +

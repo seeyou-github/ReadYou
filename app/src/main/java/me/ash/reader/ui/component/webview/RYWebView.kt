@@ -81,6 +81,7 @@ fun RYWebView(
     val boldCharacters = LocalReadingBoldCharacters.current
     val currentOnPageStarted by rememberUpdatedState(onPageStarted)
     val currentOnPageFinished by rememberUpdatedState(onPageFinished)
+    var latestLoadToken by remember { mutableStateOf<String?>(null) }
 
     val webView by
         remember(backgroundColor) {
@@ -97,7 +98,23 @@ fun RYWebView(
                             },
                             enableJavaScript = enableJavaScript,
                             articleId = articleId,
-                            onPageFinished = { webView -> currentOnPageFinished?.invoke(webView) },
+                            onPageFinished = { finishedWebView ->
+                                val expectedToken = latestLoadToken
+                                if (expectedToken != null) {
+                                    finishedWebView.evaluateJavascript(
+                                        "(function(){return document.documentElement.getAttribute('data-ry-load-token') || '';})()"
+                                    ) { result ->
+                                        val actualToken = result?.trim('"')
+                                        if (actualToken == expectedToken) {
+                                            currentOnPageFinished?.invoke(finishedWebView)
+                                        } else {
+                                            TranslateDebugLogger.from(context).log("RYWebView") {
+                                                "ignore stale onPageFinished expectedToken=$expectedToken actualToken=$actualToken webView=${System.identityHashCode(finishedWebView)}"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
                         ),
                     enableJavaScript = enableJavaScript,
                     onImageClick = onImageClick,
@@ -122,7 +139,7 @@ fun RYWebView(
                 Log.i("RLog", "readingFont: ${context.filesDir.absolutePath}")
 //                Log.i("RLog", "CustomWebView: ${content}")
                 settings.defaultFontSize = fontSize
-                val html =
+                val htmlWithoutLoadToken =
                     WebViewHtml.HTML.format(
                         WebViewStyle.get(
                             fontSize = fontSize,
@@ -150,11 +167,17 @@ fun RYWebView(
                         content,
                         WebViewScript.get(boldCharacters.value),
                     )
+                val loadToken = "${articleId.orEmpty()}-${htmlWithoutLoadToken.hashCode()}"
+                val html = htmlWithoutLoadToken.replaceFirst(
+                    "<html dir=\"auto\">",
+                    "<html dir=\"auto\" data-ry-load-token=\"$loadToken\">"
+                )
                 if (loadedHtml != html) {
                     loadedHtml = html
+                    latestLoadToken = loadToken
                     runCatching {
                         TranslateDebugLogger.from(context).log("RYWebView") {
-                            "loadDataWithBaseURL articleId=$articleId contentLen=${content.length} htmlLen=${html.length} webView=${System.identityHashCode(it)}"
+                            "loadDataWithBaseURL articleId=$articleId token=$loadToken contentLen=${content.length} htmlLen=${html.length} webView=${System.identityHashCode(it)}"
                         }
                     }
                     currentOnPageStarted?.invoke(it)
