@@ -16,6 +16,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,7 +48,13 @@ class ArticleImagePreloadQueue @Inject constructor(
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val cacheDir = context.cacheDir.resolve("article_images")
-    private val signal = Channel<Unit>(capacity = Channel.UNLIMITED)
+    // 合并信号：容量限制为 worker 数，避免反复 enqueue 把 channel 撑出几百个无用 Unit；
+    // 但仍能在两个 worker 同时空闲时把它们都唤醒。
+    private val signal =
+        Channel<Unit>(
+            capacity = MAX_CONCURRENT_DOWNLOADS,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
     private val imageOkHttpClient =
         okHttpClient
             .newBuilder()
@@ -108,6 +115,7 @@ class ArticleImagePreloadQueue @Inject constructor(
                             key = key,
                             accountId = article.accountId,
                             refererUrl = article.link.takeIf { it.isNotBlank() },
+                            articleDateMs = article.date.time,
                             priority =
                                 if (article.id in priorityArticleIds) {
                                     VISIBLE_TITLE_PRIORITY + article.date.time
@@ -152,6 +160,7 @@ class ArticleImagePreloadQueue @Inject constructor(
                             key = key,
                             accountId = article.accountId,
                             refererUrl = article.link.takeIf { it.isNotBlank() },
+                            articleDateMs = 0L,
                             priority = READING_PRIORITY,
                             sequence = sequence.incrementAndGet(),
                             source = TaskSource.READING,
@@ -165,6 +174,35 @@ class ArticleImagePreloadQueue @Inject constructor(
             log { "preempt active downloads for reading articleId=${article.id}" }
             preemptActiveDownloads()
             signalWorkers()
+        }
+    }
+
+    /**
+     * 仅根据当前"可见文章集合"调整 pending 中 title image task 的 priority；
+     * 不新增/删除 task，也不打 25 行 skip 日志。
+     * 列表滚动等只改可见集合的场景应调用此方法，避免反复 enqueueTitleImages 把整页重排序。
+     */
+    fun bumpVisibilityPriority(priorityArticleIds: Set<String>) {
+        synchronized(lock) {
+            var updated = 0
+            pendingTasks.values.forEach { task ->
+                if (task.key.type != ArticleImageCacheType.TITLE) return@forEach
+                val newPriority =
+                    if (task.key.articleId in priorityArticleIds) {
+                        VISIBLE_TITLE_PRIORITY + task.articleDateMs
+                    } else {
+                        task.articleDateMs
+                    }
+                if (task.priority != newPriority) {
+                    task.priority = newPriority
+                    updated++
+                }
+            }
+            if (updated > 0) {
+                log {
+                    "bumpVisibilityPriority visible=${priorityArticleIds.size} updated=$updated pending=${pendingTasks.size}"
+                }
+            }
         }
     }
 
@@ -483,7 +521,10 @@ class ArticleImagePreloadQueue @Inject constructor(
         val key: TaskKey,
         val accountId: Int,
         val refererUrl: String?,
-        val priority: Long,
+        // 仅 title image 使用：文章发布时间，用于在可见集合变化时重算 priority；
+        // reading image 固定为 0。
+        val articleDateMs: Long,
+        var priority: Long,
         val sequence: Long,
         val source: TaskSource,
     )

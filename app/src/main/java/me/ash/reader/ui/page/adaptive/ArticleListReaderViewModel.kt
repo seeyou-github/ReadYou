@@ -653,6 +653,10 @@ class ArticleListReaderViewModel
         articleImagePreloadQueue.enqueueTitleImages(articles, priorityArticleIds)
     }
 
+    fun bumpTitleImageVisibilityPriority(priorityArticleIds: Set<String>) {
+        articleImagePreloadQueue.bumpVisibilityPriority(priorityArticleIds)
+    }
+
     fun enqueueReadingImagePreloads(articleWithFeed: ArticleWithFeed, html: String) {
         articleImagePreloadQueue.enqueueReadingImages(articleWithFeed, html)
     }

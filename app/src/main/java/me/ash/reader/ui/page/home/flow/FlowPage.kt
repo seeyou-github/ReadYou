@@ -358,12 +358,13 @@ fun FlowPage(
     }
 
     // 2026-02-03: 页面销毁时取消所有翻译任务
+    // 注意：图片预下载队列是全局的，不在这里清，否则每次进文章详情都会被 nuke，
+    // 导致大图永远下不完。
     DisposableEffect(Unit) {
         onDispose {
             Timber.tag("AutoTranslateTitle").d("FlowPage: 页面销毁，取消所有翻译任务")
             viewModel.titleTranslateQueue.cancelAllPendingTasks()
             viewModel.titleTranslateEntry.cancelAllTranslations()
-            viewModel.clearImagePreloads()
         }
     }
 
@@ -757,14 +758,8 @@ fun FlowPage(
                         snapshotFlow { visibleArticleIds }
                             .distinctUntilChanged()
                             .collect { priorityArticleIds ->
-                                val articles =
-                                    pagingItems.itemSnapshotList.items
-                                        .filterIsInstance<ArticleFlowItem.Article>()
-                                        .map { it.articleWithFeed }
-                                viewModel.enqueueTitleImagePreloads(
-                                    articles = articles,
-                                    priorityArticleIds = priorityArticleIds,
-                                )
+                                // 只更新 pending 中已存在 title task 的优先级，不再整页重 enqueue。
+                                viewModel.bumpTitleImageVisibilityPriority(priorityArticleIds)
                             }
                     }
 

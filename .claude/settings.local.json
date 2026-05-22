@@ -3,7 +3,8 @@
     "allow": [
       "Bash(./gradlew.bat :app:compileGoogleReleaseKotlin)",
       "Bash(./gradlew.bat :app:tasks --all)",
-      "Bash(./gradlew.bat :app:compileDebugKotlin)"
+      "Bash(./gradlew.bat :app:compileDebugKotlin)",
+      "Read(//d/Download/**)"
     ]
   }
 }
