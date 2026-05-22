@@ -215,6 +215,7 @@ class ArticleImagePreloadQueue @Inject constructor(
             callsToCancel = activeCalls.values.toList()
         }
         callsToCancel.forEach { it.cancel() }
+        imageOkHttpClient.dispatcher.cancelAll()
     }
 
     private fun signalWorkers() {
@@ -284,6 +285,11 @@ class ArticleImagePreloadQueue @Inject constructor(
     }
 
     private suspend fun runTask(task: Task) {
+        if (consumeInterruption(task.key)) {
+            log { "skip interrupted task before run articleId=${task.key.articleId} type=${task.key.type} url=${task.key.url}" }
+            return
+        }
+
         val existing =
             articleImageCacheDao.queryByArticleIdAndUrl(
                 articleId = task.key.articleId,
@@ -300,10 +306,17 @@ class ArticleImagePreloadQueue @Inject constructor(
         log {
             "runTask articleId=${task.key.articleId} type=${task.key.type} source=${task.source} url=${task.key.url} target=${file.absolutePath} exists=${file.exists()}"
         }
-        if (!file.exists()) {
+        val downloadedInThisRun = !file.exists()
+        if (downloadedInThisRun) {
             downloadWithSingleRetry(task, file)
         }
         if (!file.exists()) return
+        if (consumeInterruption(task.key)) {
+            log { "skip interrupted task after download articleId=${task.key.articleId} type=${task.key.type} url=${task.key.url}" }
+            if (downloadedInThisRun) file.delete()
+            tempFileFor(file).delete()
+            return
+        }
 
         val path = file.absolutePath
         articleImageCacheDao.insert(
@@ -322,6 +335,10 @@ class ArticleImagePreloadQueue @Inject constructor(
     private suspend fun downloadWithSingleRetry(task: Task, file: File) {
         repeat(MAX_ATTEMPTS) { attempt ->
             try {
+                if (consumeInterruption(task.key)) {
+                    log { "download interrupted before attempt articleId=${task.key.articleId} url=${task.key.url}" }
+                    return
+                }
                 log { "download attempt=${attempt + 1} articleId=${task.key.articleId} url=${task.key.url}" }
                 downloadToFile(task, file)
                 log { "download success attempt=${attempt + 1} articleId=${task.key.articleId} url=${task.key.url} size=${file.length()}" }
@@ -343,6 +360,7 @@ class ArticleImagePreloadQueue @Inject constructor(
 
     private suspend fun downloadToFile(task: Task, file: File) {
         withContext(ioDispatcher) {
+            throwIfInterrupted(task.key)
             val tempFile = tempFileFor(file)
             val existingBytes = tempFile.takeIf { it.exists() }?.length() ?: 0L
             val requestBuilder = Request.Builder().url(task.key.url)
@@ -351,12 +369,21 @@ class ArticleImagePreloadQueue @Inject constructor(
             }
             task.refererUrl?.let { requestBuilder.header("Referer", it) }
             val call = imageOkHttpClient.newCall(requestBuilder.build())
-            synchronized(lock) { activeCalls[task.key] = call }
+            val shouldCancel =
+                synchronized(lock) {
+                    activeCalls[task.key] = call
+                    isInterruptedLocked(task.key)
+                }
+            if (shouldCancel) {
+                call.cancel()
+                throw DownloadInterruptedException()
+            }
             log {
                 "request start articleId=${task.key.articleId} url=${task.key.url} referer=${task.refererUrl.orEmpty()} rangeStart=$existingBytes tempExists=${tempFile.exists()} tempBytes=$existingBytes"
             }
 
             call.execute().use { response ->
+                throwIfInterrupted(task.key)
                 val body = response.body ?: throw IOException("Empty image body")
                 val append = shouldAppendResponse(response, existingBytes)
                 if (existingBytes > 0L && !append) {
@@ -388,6 +415,7 @@ class ArticleImagePreloadQueue @Inject constructor(
                     }
                 }
                 log { "write temp file articleId=${task.key.articleId} url=${task.key.url} temp=${tempFile.absolutePath} bytes=$bytesWritten" }
+                throwIfInterrupted(task.key)
                 if (file.exists()) file.delete()
                 if (!tempFile.renameTo(file)) {
                     log { "rename failed fallback copy articleId=${task.key.articleId} url=${task.key.url}" }
@@ -401,6 +429,18 @@ class ArticleImagePreloadQueue @Inject constructor(
 
     private fun consumeInterruption(key: TaskKey): Boolean =
         synchronized(lock) { interruptedTasks.remove(key) }
+
+    private fun isInterrupted(key: TaskKey): Boolean =
+        synchronized(lock) { isInterruptedLocked(key) }
+
+    private fun isInterruptedLocked(key: TaskKey): Boolean =
+        interruptedTasks.contains(key)
+
+    private fun throwIfInterrupted(key: TaskKey) {
+        if (isInterrupted(key)) {
+            throw DownloadInterruptedException()
+        }
+    }
 
     private fun tempFileFor(file: File): File = File(file.parentFile, "${file.name}.tmp")
 
@@ -441,6 +481,7 @@ class ArticleImagePreloadQueue @Inject constructor(
         var lastLogAt = startedAt
         var lastLogBytes = startBytes
         while (true) {
+            throwIfInterrupted(task.key)
             val read = input.read(buffer)
             if (read < 0) break
             output.write(buffer, 0, read)
@@ -547,4 +588,6 @@ class ArticleImagePreloadQueue @Inject constructor(
         fun cacheKey(articleId: String, url: String, type: String): String =
             "$articleId|$type|$url"
     }
+
+    private class DownloadInterruptedException : IOException("Image download interrupted")
 }
