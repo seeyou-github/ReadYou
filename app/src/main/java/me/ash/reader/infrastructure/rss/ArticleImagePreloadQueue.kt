@@ -348,7 +348,7 @@ class ArticleImagePreloadQueue @Inject constructor(
         }
 
         val path = file.absolutePath
-        articleImageCacheDao.insert(
+        articleImageCacheDao.insertIfArticleExists(
             ArticleImageCache(
                 articleId = task.key.articleId,
                 accountId = task.accountId,
@@ -357,7 +357,21 @@ class ArticleImagePreloadQueue @Inject constructor(
                 localPath = path,
             )
         )
-        log { "db insert articleId=${task.key.articleId} type=${task.key.type} path=$path" }
+        val inserted =
+            articleImageCacheDao.queryByArticleIdAndUrl(
+                articleId = task.key.articleId,
+                url = task.key.url,
+                type = task.key.type,
+            )
+        if (inserted == null || inserted.localPath != path) {
+            log {
+                "skip db insert articleId=${task.key.articleId} type=${task.key.type} reason=missing_article path=$path"
+            }
+            return
+        }
+        log {
+            "db insert articleId=${task.key.articleId} type=${task.key.type} path=$path"
+        }
         publishCache(task.key, path)
     }
 

@@ -92,7 +92,7 @@ class ArticleImageCacheService @Inject constructor(
         }
         val path = file.absolutePath
         if (existing == null || existing.localPath != path) {
-            articleImageCacheDao.insert(
+            articleImageCacheDao.insertIfArticleExists(
                 ArticleImageCache(
                     articleId = article.id,
                     accountId = accountId,
